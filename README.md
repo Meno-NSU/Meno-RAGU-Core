@@ -81,6 +81,12 @@ data/
 
 Из корня нового core выполните:
 
+Qdrant должен быть доступен по указанному адресу. Для сборки на хосте с
+хранилищем из Meno-Deploy запустите там `./scripts/compose.sh --indexing up -d qdrant`:
+этот режим открывает REST-порт на `127.0.0.1:6333` и использует тот же том Qdrant,
+к которому подключается контейнер backend. Docker и файлы окружения Deploy
+должны быть подготовлены заранее.
+
 ```bash
 uv run --frozen python scripts/build_knowledge.py \
   --source-url https://disk.yandex.ru/d/XZjLjlah72eG1w \
