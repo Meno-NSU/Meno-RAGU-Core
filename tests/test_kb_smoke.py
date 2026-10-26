@@ -5,12 +5,13 @@ raising. Skipped when the (gitignored) corpus is not present."""
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
-CORPUS = Path("resources/stand_nsu/chunked_texts_about_nsu_with_metadata.jsonl")
-MAPPING = Path("resources/stand_nsu/chunk_mapping_to_texts.json")
+from meno_rag.config import Settings
+
+CORPUS = Settings().corpus_path
+MAPPING = Settings().chunk_mapping_path
 
 pytestmark = pytest.mark.skipif(
     not (CORPUS.is_file() and MAPPING.is_file()),

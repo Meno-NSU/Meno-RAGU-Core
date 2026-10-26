@@ -528,3 +528,13 @@ class TestAbbreviationExpandingExtractor:
         rewritten = asyncio.run(extractor._expand_abbreviations([original_chunk]))
         assert rewritten == [original_chunk]
         assert len(llm.calls) == 0
+
+
+def test_collection_manifest_keeps_names_after_graph_directory_moves(tmp_path):
+    from graph_utils.graph_utils import PortableQdrantStorage
+    storage = PortableQdrantStorage(
+        filename=str(tmp_path / 'moved' / 'vdb_chunk.json'),
+        embedding_dim=3, storage_folder=str(tmp_path / 'moved'),
+        collection_names={'vdb_chunk': 'original_chunks'}, location=':memory:',
+    )
+    assert storage.collection_name == 'original_chunks'

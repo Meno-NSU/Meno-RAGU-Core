@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git libgomp1 ca
     && useradd --uid 10001 --create-home meno
 WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
+COPY scripts ./scripts
 COPY src ./src
 COPY code ./code
 COPY legal ./legal

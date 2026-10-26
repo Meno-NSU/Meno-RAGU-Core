@@ -7,11 +7,6 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("faiss")
-pytest.importorskip("bm25s")
-pytest.importorskip("transformers")
-
-
 SNAPSHOT = Path(__file__).parent / "snapshots" / "pipeline_snapshot.json"
 
 

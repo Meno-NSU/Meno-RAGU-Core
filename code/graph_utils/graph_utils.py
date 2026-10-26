@@ -348,6 +348,8 @@ def load_graph_engines(graph_dir: str, embedder_name: str,
         raise IOError(f'The directory "{graph_dir}" does not exist!')
     Settings.storage_folder = graph_dir
     Settings.language = SPARSE_MODEL_LANGUAGE
+    Settings.tokenizer_embedder_backend = 'local'
+    Settings.tokenizer_embedder_name = embedder_name
     if embedder is None:
         embedder_client = CachedAsyncOpenAI(base_url=embedder_url, api_key=embedder_key)
         embedder = EmbedderOpenAI(client=embedder_client, model_name=embedder_name)

@@ -30,3 +30,10 @@ def test_request_id_header_is_echoed(client):
 def test_request_id_is_generated_when_absent(client):
     response = client.get("/healthz")
     assert response.headers.get("x-request-id")
+
+
+def test_readyz_returns_503_without_loaded_graph(client):
+    client.app.state.pipeline = None
+    response = client.get("/readyz")
+    assert response.status_code == 503
+    assert response.json()["rag_ready"] is False

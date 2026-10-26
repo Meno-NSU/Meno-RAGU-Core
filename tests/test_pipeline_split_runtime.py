@@ -1,8 +1,6 @@
 """Verify that pipeline routes rewrite/rerank through runtime.core and generation
 through runtime.generation when using a split PipelineRuntime."""
 
-import asyncio
-
 import pytest
 
 from meno_rag.stand.pipeline import ModelRuntime, PipelineRuntime
@@ -44,27 +42,12 @@ class CaptureRouter:
 async def test_pipeline_routes_rewrite_through_core_and_generation_through_gen():
     """With split PipelineRuntime, rewrite & rerank use runtime.core, generation
     uses runtime.generation."""
-    from meno_rag.config import get_settings
-
-    settings = get_settings()
-    if not settings.faiss_index_path.exists():
-        pytest.skip("stand resources not present")
-
     from meno_rag.schemas import ChatMessage
-    from meno_rag.stand.pipeline import StandRagPipeline
-    from meno_rag.stand.resources import load_stand_resources
+    from tests.ragu_fakes import pipeline as make_pipeline
 
-    resources = load_stand_resources(settings)
     router = CaptureRouter()
-    pipeline = StandRagPipeline(
-        settings=settings,
-        resources=resources,
-        llm_router=router,
-        rewrite_semaphore=asyncio.Semaphore(1),
-        rerank_semaphore=asyncio.Semaphore(1),
-        generation_semaphore=asyncio.Semaphore(1),
-        embed_semaphore=asyncio.Semaphore(1),
-    )
+    pipeline = make_pipeline()
+    pipeline.llm_router = router
     core = ModelRuntime(provider="vllm", model_id="menon-core", base_url="http://v/v1")
     gen = ModelRuntime(provider="openrouter", model_id="d/c:free", base_url="http://or/v1")
     pipeline_runtime = PipelineRuntime(core=core, generation=gen)

@@ -90,14 +90,14 @@ def main():
                         default='http://localhost:8000/v1',
                         help='Your URL prefix for the OpenAI-compatible API of the generative LLM.')
     parser.add_argument('--key', dest='openai_api_key', type=str, required=False,
-                        default='EMPTY', help='Your secret OpenAI API key for the generative LLM.')
+                        default=os.getenv('MENO_INDEX_LLM_KEY', 'EMPTY'), help='Your secret OpenAI API key for the generative LLM.')
     parser.add_argument('-e', '--embedder', dest='embedder_name', type=str, required=True,
                         help='The name of the embedding model (it must be served by an OpenAI-compatible '
                              'embeddings API, for example the bge-m3 model served by vLLM).')
     parser.add_argument('--embedder_url', dest='embedder_base_url', type=str, required=False, default=None,
                         help='Your URL prefix for the OpenAI-compatible embeddings API '
                              '(the "--url" value is used if it is not specified).')
-    parser.add_argument('--embedder_key', dest='embedder_api_key', type=str, required=False, default=None,
+    parser.add_argument('--embedder_key', dest='embedder_api_key', type=str, required=False, default=os.getenv('MENO_INDEX_EMBEDDER_KEY'),
                         help='Your secret OpenAI API key for the embeddings API '
                              '(the "--key" value is used if it is not specified).')
     parser.add_argument('--qdrant_location', dest='qdrant_location', type=str, required=False, default='',
