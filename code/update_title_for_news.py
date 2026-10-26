@@ -1,8 +1,8 @@
 from argparse import ArgumentParser
 import codecs
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import json
-import locale
 import os
 import random
 import re
@@ -14,9 +14,17 @@ from filter_utils.filter_utils import normalize_text
 
 
 
+RUSSIAN_MONTHS = ('января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+                  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря')
+
+
+def format_news_date(timestamp, timezone):
+    date = datetime.fromtimestamp(timestamp, timezone)
+    return f'(новость опубликована {date.day} {RUSSIAN_MONTHS[date.month - 1]} {date.year})'
+
+
 def main():
     random.seed(42)
-    locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
 
     parser = ArgumentParser()
     parser.add_argument('-b', '--base', dest='base_data', type=str, required=True,
@@ -25,7 +33,9 @@ def main():
                         help='The additional JSONL news knowledge (crawled from the VK pages corresponding to NSU).')
     parser.add_argument('-o', '--output', dest='output_name', type=str, required=True,
                         help='The output JSONL knowledge database with enriched document titles.')
+    parser.add_argument('--timezone', default='Asia/Novosibirsk', help='Timezone for publication dates.')
     args = parser.parse_args()
+    news_timezone = ZoneInfo(args.timezone)
 
     knowledge_input_fname = os.path.normpath(args.base_data)
     if not os.path.isfile(knowledge_input_fname):
@@ -71,7 +81,7 @@ def main():
             news_text = normalize_text(cur_sample['content'], ru_stemmer)
             if len(news_text) > 0:
                 news_timestamp = cur_sample['date']
-                news_date = '(новость опубликована ' + datetime.fromtimestamp(news_timestamp).strftime('%d %B %Y') + ')'
+                news_date = format_news_date(news_timestamp, news_timezone)
                 if news_text in uniques_news:
                     if news_timestamp > uniques_news[news_text]['timestamp']:
                         uniques_news[news_text] = {

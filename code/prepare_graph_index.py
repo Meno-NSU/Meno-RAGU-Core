@@ -45,6 +45,28 @@ from graph_utils.graph_utils import (
 from rewriting_utils.rewriting_utils import load_abbreviations
 
 
+class ContextBudgetLLM(LLMOpenAI):
+    def __init__(self, *, tokenizer, context_tokens, completion_tokens, **kwargs):
+        super().__init__(**kwargs)
+        self.tokenizer = tokenizer
+        self.context_tokens = context_tokens
+        self.completion_tokens = completion_tokens
+        self.overflow_count = 0
+
+    async def chat_completion(self, conversation, output_schema=str, **kwargs):
+        prompt_tokens = len(self.tokenizer.apply_chat_template(
+            conversation, tokenize=True, add_generation_prompt=True
+        ))
+        if prompt_tokens + self.completion_tokens > self.context_tokens:
+            self.overflow_count += 1
+            raise ValueError(
+                f'Graph LLM prompt needs {prompt_tokens} tokens plus {self.completion_tokens} completion tokens, '
+                f'but the configured context is {self.context_tokens}. Increase --llm_context_tokens '
+                'to the served model limit or reduce --max_completion_tokens.'
+            )
+        return await super().chat_completion(conversation, output_schema=output_schema, **kwargs)
+
+
 def main():
     parser = ArgumentParser()
     parser.add_argument('-i', '--input', dest='input_name', type=str, required=True,
@@ -81,6 +103,16 @@ def main():
                              'rest of the text verbatim) before the artifact extraction; the knowledge base '
                              'keeps the original chunk texts, and the rewritten copies keep the original '
                              'chunk ids. Without this flag the rewriting stage is skipped.')
+    parser.add_argument('--llm_tokenizer', default=None,
+                        help='Local path or Hugging Face tokenizer id, independent of the served LLM name.')
+    parser.add_argument('--embedder_tokenizer', default=None,
+                        help='Local path or Hugging Face tokenizer id for embeddings.')
+    parser.add_argument('--llm_context_tokens', type=int, default=16384,
+                        help='Total LLM context window; checked before graph LLM requests.')
+    parser.add_argument('--embedder_tokens', type=int, default=8192,
+                        help='Maximum embedding input length, including special tokens.')
+    parser.add_argument('--qdrant_key', default=os.getenv('QDRANT_API_KEY'),
+                        help='Qdrant API key; defaults to QDRANT_API_KEY.')
     parser.add_argument('--vector_only', dest='vector_only', action='store_true',
                         help='Will only the chunk vector context be built (without entity and relation '
                              'extraction)? Such a graph supports only the naive search mode.')
@@ -136,6 +168,11 @@ def main():
     parser.add_argument('--seed', dest='random_seed', type=int, required=False, default=RANDOM_SEED,
                         help='The random seed for the reproducibility.')
     args = parser.parse_args()
+
+    if args.llm_context_tokens <= args.max_completion_tokens:
+        raise ValueError('LLM context must exceed the completion token budget.')
+    if args.embedder_tokens <= 0:
+        raise ValueError('Embedding token limit must be positive.')
 
     input_fname = os.path.normpath(args.input_name)
     if not os.path.isfile(input_fname):
@@ -232,7 +269,8 @@ def main():
     Settings.storage_folder = graph_dir
     Settings.language = SPARSE_MODEL_LANGUAGE
     Settings.tokenizer_embedder_backend = 'local'
-    Settings.tokenizer_embedder_name = args.embedder_name
+    Settings.tokenizer_embedder_name = args.embedder_tokenizer or args.embedder_name
+    Settings.embedder_token_limit = args.embedder_tokens
 
     embedder_client = CachedAsyncOpenAI(base_url=embedder_base_url, api_key=embedder_api_key)
     dense_embedder = EmbedderOpenAI(client=embedder_client, model_name=args.embedder_name)
@@ -240,6 +278,8 @@ def main():
     print(f'The sparse embedder is the fastembed BM25 model for the "{SPARSE_MODEL_LANGUAGE}" language.')
 
     vdb_storage_kwargs = {'sparse_type': 'bm25'}
+    if args.qdrant_key:
+        vdb_storage_kwargs['api_key'] = args.qdrant_key
     if qdrant_location is not None:
         vdb_storage_kwargs['location'] = qdrant_location
         location_msg = f'"{qdrant_location}"'
@@ -252,6 +292,9 @@ def main():
         artifact_extractor = None
         print('The vector-only mode is used: no entity and relation extraction will be performed.')
     else:
+        from transformers import AutoTokenizer
+
+        llm_tokenizer = AutoTokenizer.from_pretrained(args.llm_tokenizer or args.llm_name)
         llm_client = CachedAsyncOpenAI(
             base_url=args.openai_base_url,
             api_key=args.openai_api_key,
@@ -262,9 +305,14 @@ def main():
             cache=args.cache_dir if args.cache_dir is not None else os.path.join(graph_dir, 'llm_cache'),
             debug_errors_storage=os.path.join(graph_dir, 'llm_debug')
         )
-        llm = LLMOpenAI(client=llm_client, model_name=args.llm_name, temperature=args.temperature)
+        llm = ContextBudgetLLM(
+            client=llm_client, model_name=args.llm_name, temperature=args.temperature,
+            tokenizer=llm_tokenizer, context_tokens=args.llm_context_tokens,
+            completion_tokens=args.max_completion_tokens,
+        )
         Settings.tokenizer_llm_backend = 'local'
-        Settings.tokenizer_llm_name = args.llm_name
+        Settings.tokenizer_llm_name = args.llm_tokenizer or args.llm_name
+        Settings.llm_context_token_limit = args.llm_context_tokens
         icl_config = None
         icl_embedder = None
         if args.icl_examples > 0:
@@ -319,6 +367,9 @@ def main():
         )
         try:
             await knowledge_graph.build_from_docs(chunk_texts)
+            if llm is not None and llm.overflow_count:
+                raise RuntimeError(f'{llm.overflow_count} graph LLM requests exceeded the context budget. '
+                                   'The graph is incomplete; review context/completion limits.')
             collections = {
                 'vdb_entity': knowledge_graph.index.nodes_vector_db.collection_name,
                 'vdb_relation': knowledge_graph.index.edges_vector_db.collection_name,

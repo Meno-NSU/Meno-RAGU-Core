@@ -27,14 +27,8 @@ os.environ['PYTORCH_ALLOC_CONF'] = 'expandable_segments:True'
 from pydantic import BaseModel
 from tqdm import tqdm
 import openai
-from vllm import LLM, SamplingParams
-try:
-    from vllm.sampling_params import StructuredOutputsParams
-except:
-    from vllm.sampling_params import GuidedDecodingParams as StructuredOutputsParams
 from transformers import AutoTokenizer, AutoConfig
 
-from vllm_utils.vllm_utils import finalize_vllm
 
 
 class DocumentDescription(BaseModel):
@@ -133,7 +127,7 @@ def main():
     parser.add_argument('--url', dest='openai_base_url', type=str, required=False,
                         default='http://localhost:8000/v1', help='Your URL prefix for OpenAI API calls.')
     parser.add_argument('--key', dest='openai_api_key', type=str, required=False,
-                        default='EMPTY', help='Your secret OpenAI API key.')
+                        default=os.getenv('MENO_INDEX_LLM_KEY', 'EMPTY'), help='Your secret OpenAI API key.')
     parser.add_argument('--vllm', dest='use_vllm', action='store_true',
                         help='Will offline VLLM-based inference be used?')
     parser.add_argument('--max_input_len', dest='max_input_len', type=int, required=False,
@@ -152,6 +146,8 @@ def main():
     parser.add_argument('--resume', dest='resume', action='store_true',
                         help='Skip documents already present in the output file and continue from '
                              'there (used only without --vllm).')
+    parser.add_argument('--fail_on_error', action='store_true',
+                        help='Fail the build if any metadata could not be generated; resume only valid records.')
     args = parser.parse_args()
 
     input_fname = os.path.normpath(args.input_name)
@@ -227,6 +223,13 @@ def main():
 
     num_parsing_errors = 0
     if args.use_vllm:
+        from vllm import LLM, SamplingParams
+        try:
+            from vllm.sampling_params import StructuredOutputsParams
+        except ImportError:
+            from vllm.sampling_params import GuidedDecodingParams as StructuredOutputsParams
+        from vllm_utils.vllm_utils import finalize_vllm
+
         try:
             llm_tokenizer = AutoTokenizer.from_pretrained(args.model_name)
             llm_config = AutoConfig.from_pretrained(args.model_name)
@@ -310,6 +313,8 @@ def main():
                 predicted_metadata = DocumentDescription.model_validate_json(responses[doc_idx].outputs[0].text)
                 doc_title = ' '.join(predicted_metadata.title.strip().split()).strip()
                 doc_annotation = ' '.join(predicted_metadata.annotation.strip().split()).strip()
+                if args.fail_on_error and (not doc_title or not doc_annotation):
+                    raise ValueError('The model returned an empty title or annotation.')
             except Exception as err:
                 summarization_logger.warning(str(err))
                 doc_title = ''
@@ -358,6 +363,10 @@ def main():
                 except Exception:
                     break
                 if ('doc_title' not in obj) or ('doc_annotation' not in obj):
+                    break
+                if args.fail_on_error and any(
+                    not isinstance(obj[key], str) or not obj[key].strip() for key in ('doc_title', 'doc_annotation')
+                ):
                     break
                 kept_lines.append(s)
             num_already_done = len(kept_lines)
@@ -410,6 +419,8 @@ def main():
                     )
                     out_rec['doc_title'] = ' '.join(predicted_metadata.title.strip().split()).strip()
                     out_rec['doc_annotation'] = ' '.join(predicted_metadata.annotation.strip().split()).strip()
+                    if args.fail_on_error and (not out_rec['doc_title'] or not out_rec['doc_annotation']):
+                        raise ValueError('The model returned an empty title or annotation.')
                 except Exception as err:
                     summarization_logger.warning(f'doc_idx={doc_idx} JSON parsing error: {err}')
                     out_rec['doc_title'] = ''
@@ -462,6 +473,8 @@ def main():
         info_msg = f'Titles and annotations are successfully generated for {len(instructions)} documents.'
     summarization_logger.info(info_msg)
     summarization_logger.info(f'The enriched documents are saved into the "{output_fname}".')
+    if args.fail_on_error and num_parsing_errors:
+        raise RuntimeError(f'Metadata generation failed for {num_parsing_errors} documents; retry with --resume.')
 
 
 if __name__ == '__main__':

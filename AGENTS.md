@@ -14,6 +14,8 @@ All scripts in `code/` must be launched with `code/` as the current directory, *
 - README command examples use `../data/...` paths, which are relative to `code/`.
 - `chat.py` hardcodes its log output to `conversation.log` in CWD.
 
+`scripts/build_knowledge.py` is the supported end-to-end corpus/graph driver. Launch it from the repository root (or by absolute path); it starts subprocesses with `code/` as CWD. It uses existing HTTP services only, separates served model aliases from local/HF tokenizer identifiers, discovers all news files, verifies checkpoints before resuming, and publishes a new backend bundle only after graph/Qdrant checks. Logs and the resumable cache live in the sibling `.<output-name>.build` directory. No local vLLM or torch is needed for its HTTP metadata stages. The old `index_kb.sh` is an author-specific legacy workflow.
+
 ## Service packaging and tests
 
 The repository now includes `pyproject.toml`, `uv.lock`, a CPU-only API Dockerfile, and CI. The production-compatible service is in `src/meno_rag`; run its tests from the repository root with `uv run pytest`. `RaguRagPipeline` is the active pipeline; the shared pipeline module retains API-stage and generation helpers. Do not restore FAISS/FRIDA retrieval. Run `uv run ruff check src tests` and `uv run mypy` for the service.
@@ -47,7 +49,7 @@ The former steps 6–7 (`prepare_bm25_index.py`, `prepare_vector_index.py`) were
 
 Optional: `validate_base_urls.py` before `combine_data.py`, `update_title_for_news.py` after step 7, `prepare_chunk_mapping.py` after all corpus changes, `prepare_graph_index.py` after the whole pipeline (RAGU graph + Qdrant collections; needs served Meno LLM + served bge-m3; `--vector_only` needs neither).
 
-Optional preprocessing before `combine_data.py`: `validate_base_urls.py` filters the `-b` base file by text quality and URL accessibility (parallel HTTP checks via `urllib3` with per-host connection limiting). Optional post-step-6/7 enrichment: `update_title_for_news.py` appends a human-readable publication date ("(новость опубликована …)") to `doc_title` of `content_source == 'news'` records; `-b` is the metadata JSONL, `-n` the news files (repeatable, same `*_yyyymmdd_yyyymmdd.jsonl` naming rule), `-o` the output; requires the `ru_RU.UTF-8` locale.
+Optional preprocessing before `combine_data.py`: `validate_base_urls.py` filters the `-b` base file by text quality and URL accessibility (parallel HTTP checks via `urllib3` with per-host connection limiting). Optional post-step-6/7 enrichment: `update_title_for_news.py` appends a human-readable publication date ("(новость опубликована …)") to `doc_title` of `content_source == 'news'` records; `-b` is the metadata JSONL, `-n` the news files (repeatable, same `*_yyyymmdd_yyyymmdd.jsonl` naming rule), `-o` the output; `--timezone` defaults to `Asia/Novosibirsk`, independent of system locale.
 
 The `-m` model is **not** the same for every step: step 6 (`generate_title_and_annotation.py`) is a generative pass using the Meno LLM, but step 7 (`evaluate_title_and_annotation.py`) scores generated annotations via bge-m3 **embeddings** (the embeddings service with `--url`, or a local `SentenceTransformer` without it — not a decoder LLM either way). Don't assume every `-m` is a generative model. Steps 1–3 (`prepare_nsu_main_info_corpus.py`, `prepare_teachers_corpus.py`, `combine_data.py`) take no `-m` at all.
 

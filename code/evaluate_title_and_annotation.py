@@ -13,7 +13,6 @@ os.environ['PYTORCH_ALLOC_CONF'] = 'expandable_segments:True'
 
 import numpy as np
 from sklearn.metrics.pairwise import euclidean_distances
-import torch
 from tqdm import trange
 
 from search_utils.search_utils import DenseEmbedderService, load_dense_embedder, vectorize_texts
@@ -26,9 +25,6 @@ RANDOM_SEED: int = 42
 def main():
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
-    torch.manual_seed(RANDOM_SEED)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(RANDOM_SEED)
 
     parser = ArgumentParser()
     parser.add_argument('-i', '--input', dest='input_name', type=str, required=True,
@@ -40,7 +36,7 @@ def main():
     parser.add_argument('--url', dest='openai_base_url', type=str, required=False, default=None,
                         help='The URL prefix of the OpenAI-compatible embeddings service. If it is not '
                              'specified, the model is loaded locally as a SentenceTransformer.')
-    parser.add_argument('--key', dest='openai_api_key', type=str, required=False, default='EMPTY',
+    parser.add_argument('--key', dest='openai_api_key', type=str, required=False, default=os.getenv('MENO_INDEX_EMBEDDER_KEY', 'EMPTY'),
                         help='The secret API key for the OpenAI-compatible embeddings service.')
     parser.add_argument('-o', '--output', dest='output_name', type=str, required=True,
                         help='The output JSONL file knowledge database with eval scores.')
@@ -80,13 +76,14 @@ def main():
         )
         summary_eval_logger.info(f'The embeddings service at "{args.openai_base_url}" is used '
                                  f'for evaluation with the model "{args.model_name}".')
-    elif torch.cuda.is_available():
-        dense_embedder = load_dense_embedder(args.model_name, device='cuda:0')
-        summary_eval_logger.info(f'The bge-m3-like embedder is successfully loaded from the "{args.model_name}". '
-                                 f'CUDA is used.')
     else:
-        dense_embedder = load_dense_embedder(args.model_name, device='cpu')
-        summary_eval_logger.info(f'The bge-m3-like embedder is successfully loaded from the "{args.model_name}".')
+        import torch
+        torch.manual_seed(RANDOM_SEED)
+        device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+        if device != 'cpu':
+            torch.cuda.manual_seed(RANDOM_SEED)
+        dense_embedder = load_dense_embedder(args.model_name, device=device)
+        summary_eval_logger.info(f'The local embedder is loaded on {device}.')
 
     all_scores = []
     with codecs.open(output_fname, mode='w', encoding='utf-8', buffering=0) as dst_fp:
