@@ -12,6 +12,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote, urlsplit, urlunsplit
@@ -20,6 +21,7 @@ from zoneinfo import ZoneInfo
 REPO_DIR = Path(__file__).resolve().parents[1]
 CODE_DIR = REPO_DIR / "code"
 CORPUS_NAME = "chunked_texts_about_nsu_with_metadata_and_scores.jsonl"
+YANDEX_API = "https://cloud-api.yandex.net/v1/disk/public/resources"
 
 
 class BuildError(RuntimeError):
@@ -37,6 +39,9 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Сборка корпуса НГУ и полного графа RAGU через HTTP-службы моделей.")
     parser.add_argument(
         "--input-dir", type=Path, required=True, help="Каталог data из набора meno_stand_actual либо его родитель."
+    )
+    parser.add_argument(
+        "--source-url", help="Публичная ссылка на папку Яндекс Диска; нужные исходники скачиваются в --input-dir."
     )
     parser.add_argument("--output-dir", type=Path, required=True, help="Новый каталог готовой базы знаний для backend.")
     parser.add_argument("--llm-url", required=True, help="Адрес OpenAI-совместимой LLM; суффикс /v1 можно опустить.")
@@ -133,12 +138,17 @@ class Sources:
         ]
 
 
-def find_sources(args):
-    root = args.input_dir.expanduser().resolve()
+def input_root(directory):
+    root = directory.expanduser().resolve()
     if (root / "data" / "source").is_dir():
         root = root / "data"
     elif root.name == "source" and root.is_dir():
         root = root.parent
+    return root
+
+
+def find_sources(args):
+    root = input_root(args.input_dir)
     source = root / "source"
     summary = args.summary or source / "nsu_text_corpus_20260706.jsonl"
     summary_raw = not summary.is_file() and args.summary is None
@@ -184,6 +194,157 @@ def atomic_json(path, value):
         stream.flush()
         os.fsync(stream.fileno())
     temporary.replace(path)
+
+
+class YandexSource:
+    def __init__(self, public_url, directory, client):
+        self.public_url = http_url(public_url)
+        self.root = input_root(directory)
+        self.client = client
+
+    def api(self, path, *, download=False, offset=0):
+        import httpx
+
+        url = YANDEX_API + ("/download" if download else "")
+        params = {"public_key": self.public_url, "path": path}
+        if not download:
+            params.update(limit=1000, offset=offset)
+        try:
+            response = self.client.get(url, params=params, timeout=30)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise BuildError(f"API Яндекс Диска вернул HTTP {exc.response.status_code} для {path}.") from exc
+        except (httpx.HTTPError, ValueError) as exc:
+            raise BuildError(f"Ошибка API Яндекс Диска для {path}: {type(exc).__name__}. Повторите команду.") from exc
+
+    def listing(self, path):
+        items = []
+        while True:
+            data = self.api(path, offset=len(items))
+            if data.get("type") != "dir" or "_embedded" not in data:
+                raise BuildError(f"Нужна публичная папка Яндекс Диска: {path}")
+            page = data["_embedded"]
+            current = page.get("items", [])
+            items.extend(current)
+            if not current or len(items) >= page["total"]:
+                return {item["name"]: item for item in items}
+
+    def selection(self):
+        top = self.listing("/")
+        prefix = "" if "source" in top else "/data"
+        data = top if not prefix else self.listing(prefix)
+        source = self.listing(prefix + "/source")
+        knowledge = self.listing(prefix + "/knowledge")
+        selected = []
+
+        def include(folder, remote_folder, local_folder, name):
+            item = folder.get(name, {})
+            if item.get("type") != "file":
+                raise BuildError(f"В наборе Яндекс Диска отсутствует {remote_folder}/{name}")
+            sha256 = item.get("sha256", "")
+            size = item.get("size", 0)
+            if not re.fullmatch(r"[0-9a-fA-F]{64}", sha256) or not isinstance(size, int) or size <= 0:
+                raise BuildError(f"Нет размера или SHA-256 исходного файла: {name}")
+            selected.append(
+                {
+                    "remote": f"{remote_folder}/{name}",
+                    "local": f"{local_folder}{name}",
+                    "size": size,
+                    "sha256": sha256.lower(),
+                }
+            )
+
+        def include_source(name):
+            include(source, prefix + "/source", "source/", name)
+
+        if "nsu_text_corpus_20260706.jsonl" in source:
+            include_source("nsu_text_corpus_20260706.jsonl")
+        else:
+            include(data, prefix, "", "nsu_main_info.md")
+        teachers = sorted(name for name in source if re.fullmatch(r"teachers_corpus_\d{8}\.jsonl", name))
+        if teachers:
+            include_source(teachers[-1])
+        else:
+            include_source("teachers.json")
+            include_source("teachers_chunks.json")
+        include_source("nsu_text_corpus_20250318_validated.jsonl")
+        news = sorted(name for name in source if re.fullmatch(r"filtered_news_\d{8}_\d{8}\.jsonl", name))
+        if not news:
+            raise BuildError("В наборе Яндекс Диска нет файлов новостей.")
+        for name in news:
+            include_source(name)
+        include(knowledge, prefix + "/knowledge", "knowledge/", "abbreviations.json")
+        return selected
+
+    def target(self, item):
+        target = self.root / item["local"]
+        if not target.resolve().is_relative_to(self.root) or target == self.root:
+            raise BuildError("Путь загрузки выходит за пределы --input-dir.")
+        return target
+
+    def download(self, item):
+        import httpx
+
+        target = self.target(item)
+        if target.exists():
+            if target.stat().st_size == item["size"] and digest(target) == item["sha256"]:
+                print(f"[ПРОПУСК ЗАГРУЗКИ] {item['local']}: SHA-256 проверен.", flush=True)
+                return
+            raise BuildError(f"Локальный файл отличается от исходника: {target}. Укажите новый --input-dir.")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        partial = target.with_name(target.name + ".part")
+        if partial.is_symlink():
+            raise BuildError(f"Вместо временного файла найдена ссылка: {partial}")
+        print(f"[ЗАГРУЗКА] {item['local']}: {item['size'] / 1_000_000:.1f} МБ", flush=True)
+        for attempt in range(3):
+            try:
+                link = self.api(item["remote"], download=True)
+                parts = urlsplit(link.get("href", ""))
+                if parts.scheme != "https" or not parts.hostname or parts.username or parts.password:
+                    raise BuildError(f"API не вернул HTTPS-ссылку для {item['local']}")
+                checksum = hashlib.sha256()
+                received = 0
+                with self.client.stream("GET", link["href"], follow_redirects=True, timeout=60) as response:
+                    response.raise_for_status()
+                    with partial.open("wb") as stream:
+                        for chunk in response.iter_bytes(chunk_size=1024 * 1024):
+                            received += len(chunk)
+                            if received > item["size"]:
+                                raise BuildError(f"Изменился размер исходника Яндекс Диска: {item['local']}")
+                            stream.write(chunk)
+                            checksum.update(chunk)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                if received != item["size"] or checksum.hexdigest() != item["sha256"]:
+                    raise BuildError(f"Не совпали размер или SHA-256: {item['local']}. Файл не принят как готовый.")
+                partial.replace(target)
+                return
+            except httpx.HTTPError as exc:
+                if attempt == 2:
+                    raise BuildError(
+                        f"Не удалось скачать {item['local']}: {type(exc).__name__}. Повторите команду."
+                    ) from exc
+                time.sleep(attempt + 1)
+
+    def run(self):
+        self.root.mkdir(parents=True, exist_ok=True)
+        with (self.root / ".download.lock").open("w") as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise BuildError("Исходники в этом каталоге уже скачиваются.") from exc
+            manifest = self.root / ".yandex-source.json"
+            if manifest.exists():
+                saved = json.loads(manifest.read_text(encoding="utf-8"))
+                if saved["public_url"] != self.public_url:
+                    raise BuildError("В --input-dir уже скачивался другой набор. Укажите новый каталог.")
+                files = saved["files"]
+            else:
+                files = self.selection()
+                atomic_json(manifest, {"public_url": self.public_url, "files": files})
+            for item in files:
+                self.download(item)
 
 
 def scan_jsonl(path, required=(), *, metadata=False, corpus=False):
@@ -408,7 +569,7 @@ def make_plan(args, sources, work):
 class Builder:
     def __init__(self, args, *, http_client=None):
         self.args = args
-        self.sources = find_sources(args)
+        self.sources = None if args.source_url else find_sources(args)
         args.output_dir = args.output_dir.expanduser().resolve()
         args.llm_url = http_url(args.llm_url, openai=True)
         args.embedder_url = http_url(args.embedder_url, openai=True)
@@ -619,6 +780,14 @@ class Builder:
         ):
             raise BuildError("Каталог результата непустой и не создан этим сборщиком. Укажите новый --output-dir.")
         if self.args.dry_run:
+            if self.args.source_url:
+                print(f"00-download: {self.args.source_url} → {input_root(self.args.input_dir)}")
+                try:
+                    self.sources = find_sources(self.args)
+                except BuildError:
+                    print("Затем: объединение → фрагменты → метаданные → оценки → даты → отображения → граф RAGU.")
+                    print("Точный план файлов будет определён при загрузке; dry-run не обращается к Яндекс Диску.")
+                    return self.args.output_dir
             self.args.llm_model = self.args.llm_model or "<автоматически из /v1/models>"
             for stage in make_plan(self.args, self.sources, self.work):
                 print(f"{stage.name}: {shlex.join(stage.command)}")
@@ -629,6 +798,9 @@ class Builder:
             self.client = httpx.Client(timeout=30)
             self.owns_client = True
         try:
+            if self.args.source_url:
+                YandexSource(self.args.source_url, self.args.input_dir, self.client).run()
+                self.sources = find_sources(self.args)
             self.preflight()
             stages = make_plan(self.args, self.sources, self.work)
             fingerprint, config = self.configuration(stages)

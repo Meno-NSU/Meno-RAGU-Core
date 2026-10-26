@@ -16,6 +16,8 @@ All scripts in `code/` must be launched with `code/` as the current directory, *
 
 `scripts/build_knowledge.py` is the supported end-to-end corpus/graph driver. Launch it from the repository root (or by absolute path); it starts subprocesses with `code/` as CWD. It uses existing HTTP services only, separates served model aliases from local/HF tokenizer identifiers, discovers all news files, verifies checkpoints before resuming, and publishes a new backend bundle only after graph/Qdrant checks. Logs and the resumable cache live in the sibling `.<output-name>.build` directory. No local vLLM or torch is needed for its HTTP metadata stages. The old `index_kb.sh` is an author-specific legacy workflow.
 
+`--source-url` optionally downloads the required prepared/raw inputs from a public Yandex Disk folder before source discovery. Download selection and SHA-256 checksums are pinned in `.yandex-source.json` inside `--input-dir`; complete files are reused, partial downloads remain `.part`, and existing differing local files are never overwritten. Without that flag, inputs must already exist. Dry-run never contacts Yandex, even when the input directory is absent.
+
 ## Service packaging and tests
 
 The repository now includes `pyproject.toml`, `uv.lock`, a CPU-only API Dockerfile, and CI. The production-compatible service is in `src/meno_rag`; run its tests from the repository root with `uv run pytest`. `RaguRagPipeline` is the active pipeline; the shared pipeline module retains API-stage and generation helpers. Do not restore FAISS/FRIDA retrieval. Run `uv run ruff check src tests` and `uv run mypy` for the service.
