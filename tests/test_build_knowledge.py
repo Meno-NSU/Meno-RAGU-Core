@@ -189,7 +189,10 @@ def test_build_runs_real_corpus_pipeline_and_publishes_backend_bundle(inputs, se
     assert len(manifest["files"]) >= 7
     assert "10-graph" in executed
     assert sum(request.url.path == "/v1/chat/completions" for request in calls) == 7
-    repeated = build.Builder(build.parse_args(inputs + (["--no-news-dates"] if no_dates else [])), http_client=client)
+    repeated = build.Builder(
+        build.parse_args(inputs + (["--no-news-dates"] if no_dates else []) + ["--log-level", "DEBUG"]),
+        http_client=client,
+    )
     monkeypatch.setattr(repeated, "execute", lambda *args: pytest.fail("Completed build must not execute stages"))
     assert repeated.build() == output
     counts["chunks"] -= 1
@@ -299,10 +302,12 @@ def test_subprocess_gets_correct_directory_and_secrets_only_via_environment(inpu
     assert "secret-not-in-command" not in " ".join(stage.command)
     log = tmp_path / "worker.log"
     builder.execute(stage, log)
-    assert log.read_text() == "worker passed\n"
+    assert log.read_text().endswith("worker passed\n")
+    assert "secret-not-in-command" not in log.read_text()
     stage.args = ["3"]
     with pytest.raises(build.BuildError, match="кодом 3"):
         builder.execute(stage, log)
+    assert log.read_text().count("worker passed\n") == 2
 
 
 @pytest.mark.parametrize(

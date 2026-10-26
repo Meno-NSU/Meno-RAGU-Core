@@ -200,6 +200,56 @@ HTTP-запросов, загрузки токенизаторов и запис
 Имена первых двух переменных можно изменить через `--llm-key-env` и
 `--embedder-key-env`. Значения ключей не включаются в команды и манифест.
 
+## Длительная сборка в tmux и журналы
+
+После установки `tmux`, `uv` и запуска Qdrant создайте сессию на сервере:
+
+```bash
+tmux new-session -s meno-build -c /home/rsolikhov/meno_ragu_stand bash
+```
+
+Внутри этой сессии выполните:
+
+```bash
+mkdir -p /home/rsolikhov/logs
+export PATH="$HOME/.local/bin:$PATH"
+set -o pipefail
+uv run --frozen python -u scripts/build_knowledge.py \
+  --source-url https://disk.yandex.ru/d/XZjLjlah72eG1w \
+  --input-dir /home/rsolikhov/meno_stand_actual/data \
+  --output-dir /home/rsolikhov/knowledge/nsu-v1 \
+  --llm-url http://everest.nsu.ru:9022/v1 \
+  --llm-model gemma-4-12B-it \
+  --tokenizer google/gemma-4-12B-it \
+  --embedder-url http://127.0.0.1:8001/v1 \
+  --embedder-tokenizer /home/rsolikhov/vllm/bge-m3 \
+  --qdrant-url http://127.0.0.1:6333 \
+  --log-level DEBUG \
+  2>&1 | tee -a /home/rsolikhov/logs/meno-knowledge-build.log
+meno_build_exit=${PIPESTATUS[0]}
+printf '\nКод завершения сборщика: %s\n' "$meno_build_exit" | tee -a /home/rsolikhov/logs/meno-knowledge-build.log
+```
+
+Вывод stdout и stderr одновременно виден в tmux и сохраняется в общий файл.
+`--log-level DEBUG` включает подробные сообщения RAGU; параметр можно менять
+при продолжении сборки, не пересоздавая результаты. Python работает без
+буферизации. Поэтапные журналы в `.nsu-v1.build/logs/` дополняются при повторных
+попытках и содержат время запуска каждого этапа. Код завершения `0` означает
+успешную сборку; другой код нужно проверять по журналу.
+
+Для отключения нажмите **Ctrl+B**, отпустите клавиши, затем **D**. Сборка
+продолжится после отключения SSH. Для возвращения используйте
+`tmux attach-session -t meno-build`; просмотр истории — **Ctrl+B**, затем **[**,
+выход из просмотра — **Q**. Из другого SSH-сеанса журнал можно читать командой:
+
+```bash
+tail -n 100 -F /home/rsolikhov/logs/meno-knowledge-build.log
+```
+
+Сессия переживает отключение SSH, но не перезагрузку сервера. После перезагрузки
+повторите команду сборки в новой сессии: сохранённые этапы и кэш будут использованы
+для продолжения. Управление сессиями описано в [руководстве tmux](https://man.openbsd.org/tmux.1).
+
 ## Настройки
 
 | Переменная | Назначение |
@@ -553,6 +603,10 @@ python prepare_chunk_mapping.py -i ../data/chunked_texts_about_nsu_with_metadata
 Скрипт проверяет непустоту текста каждого фрагмента и завершается ошибкой, если найден пустой. Порядок документов фиксируется на пятом шаге конвейера: `calculate_num_tokens.py` сортирует документы по числу токенов, а последующие шаги (генерация метаданных, оценка качества, даты новостей) этот порядок сохраняют. Поэтому отображение строят по финальному файлу базы знаний, после всех его изменений, непосредственно перед сборкой графа.
 
 ### 3.13 (Необязательно) Построение графа знаний для поиска в режимах local и naive
+
+`--log_level DEBUG` включает подробные журналы RAGU: запросы к моделям,
+использование кэша и операции сборки. По умолчанию выбран `INFO`. В едином
+сборщике соответствующий параметр называется `--log-level`.
 
 Имя LLM в API и её токенизатор можно разделить: `--llm` задаёт имя в API,
 `--llm_tokenizer` — локальный путь или HF id токенизатора. Аналогично работают

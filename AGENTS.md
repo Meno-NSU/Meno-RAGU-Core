@@ -20,6 +20,8 @@ All scripts in `code/` must be launched with `code/` as the current directory, *
 
 The current indexing LLM is `gemma-4-12B-it` at `http://everest.nsu.ru:9022/v1`, separate from the dialogue Meno service. `load_hf_tokenizer` in `tokenization_utils` adapts Transformers 5 list-form `extra_special_tokens` (Gemma 4) to the pinned Transformers 4 CPU environment without editing files or changing token IDs. Use it for corpus and graph-build tokenizers. The driver infers the context from the selected served model's `max_model_len`, falling back to 16384 only when absent; an explicit value must fit the served window.
 
+The driver supports `--log-level INFO|DEBUG` and forwards it as `--log_level` to the graph CLI. RAGU's upstream logger hardcodes INFO, so configure its sink explicitly in the graph entrypoint. Log verbosity does not affect resume fingerprints. Stage logs append timestamped attempts; the documented tmux command also tees all console output to a persistent full-run log.
+
 ## Service packaging and tests
 
 The repository now includes `pyproject.toml`, `uv.lock`, a CPU-only API Dockerfile, and CI. The production-compatible service is in `src/meno_rag`; run its tests from the repository root with `uv run pytest`. `RaguRagPipeline` is the active pipeline; the shared pipeline module retains API-stage and generation helpers. Do not restore FAISS/FRIDA retrieval. Run `uv run ruff check src tests` and `uv run mypy` for the service.

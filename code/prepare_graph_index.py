@@ -6,6 +6,7 @@ import json
 import networkx as nx
 import os
 import random
+import sys
 from typing import Dict, List, Optional, Set, Union
 
 os.environ['HTTP_PROXY'] = ''
@@ -25,6 +26,7 @@ os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 try:
     from ragu import BuilderArguments, KnowledgeGraph, Settings, StorageArguments
     from ragu.common.prompts import ICLConfig
+    from ragu.common.logger import logger
     from ragu.models.embedder import EmbedderOpenAI
     from ragu.models.llm import LLMOpenAI
     from ragu.models.openai import CachedAsyncOpenAI
@@ -44,6 +46,12 @@ from graph_utils.graph_utils import (
 )
 from rewriting_utils.rewriting_utils import load_abbreviations
 from tokenization_utils.tokenization_utils import load_hf_tokenizer
+
+
+def configure_logging(level):
+    logger.remove()
+    logger.add(sys.stdout, colorize=sys.stdout.isatty(), enqueue=True, level=level, diagnose=False,
+               format='{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}')
 
 
 class ContextBudgetLLM(LLMOpenAI):
@@ -168,7 +176,10 @@ def main():
                              '(for smoke runs).')
     parser.add_argument('--seed', dest='random_seed', type=int, required=False, default=RANDOM_SEED,
                         help='The random seed for the reproducibility.')
+    parser.add_argument('--log_level', choices=['INFO', 'DEBUG'], default='INFO',
+                        help='RAGU log level, including model request and cache diagnostics.')
     args = parser.parse_args()
+    configure_logging(args.log_level)
 
     if args.llm_context_tokens <= args.max_completion_tokens:
         raise ValueError('LLM context must exceed the completion token budget.')

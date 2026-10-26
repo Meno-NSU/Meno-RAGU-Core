@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import quote, urlsplit, urlunsplit
 from zoneinfo import ZoneInfo
@@ -81,6 +82,7 @@ def parse_args(argv=None):
     parser.add_argument("--chunk-header-sources", default="base,news")
     parser.add_argument("--no-news-dates", action="store_true")
     parser.add_argument("--timezone", default="Asia/Novosibirsk")
+    parser.add_argument("--log-level", choices=("INFO", "DEBUG"), default="INFO", help="Подробность журналов RAGU.")
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -550,6 +552,8 @@ def make_plan(args, sources, work):
                 str(args.llm_context_tokens),
                 "--qdrant_location",
                 args.qdrant_url,
+                "--log_level",
+                args.log_level,
                 "--cache",
                 str(work / "llm-cache"),
                 "--chunk_header",
@@ -658,7 +662,18 @@ class Builder:
         settings = {
             key: str(value) if isinstance(value, Path) else value
             for key, value in vars(self.args).items()
-            if key not in {"dry_run", "summary", "teachers", "base", "news", "abbreviations", "input_dir", "output_dir"}
+            if key
+            not in {
+                "dry_run",
+                "summary",
+                "teachers",
+                "base",
+                "news",
+                "abbreviations",
+                "input_dir",
+                "output_dir",
+                "log_level",
+            }
         }
         scripts = {stage.script for stage in stages}
         code_hashes = {name: digest(CODE_DIR / name) for name in sorted(scripts)}
@@ -698,7 +713,7 @@ class Builder:
         environment["MENO_INDEX_LLM_KEY"] = os.environ.get(self.args.llm_key_env, "EMPTY")
         environment["MENO_INDEX_EMBEDDER_KEY"] = os.environ.get(self.args.embedder_key_env, "EMPTY")
         with (
-            log_path.open("w", encoding="utf-8") as log,
+            log_path.open("a", encoding="utf-8") as log,
             subprocess.Popen(
                 stage.command,
                 cwd=CODE_DIR,
@@ -710,6 +725,8 @@ class Builder:
                 errors="replace",
             ) as process,
         ):
+            log.write(f"\n[{datetime.now(UTC).isoformat()}] {stage.name}: {shlex.join(stage.command)}\n")
+            log.flush()
             try:
                 for line in process.stdout:
                     print(line, end="", flush=True)
@@ -770,7 +787,11 @@ class Builder:
                 raise BuildError(f"Неполная коллекция Qdrant {name}: {count} элементов.")
 
     def run_stage(self, stage):
-        signature = {"command": stage.command, "inputs": {str(path): digest(path) for path in stage.inputs}}
+        command = stage.command
+        if "--log_level" in command:
+            index = command.index("--log_level")
+            command = command[:index] + command[index + 2 :]
+        signature = {"command": command, "inputs": {str(path): digest(path) for path in stage.inputs}}
         entry = self.state["stages"].get(stage.name)
         try:
             reusable = entry and entry["signature"] == signature and entry["output"] == self.stage_hash(stage)
