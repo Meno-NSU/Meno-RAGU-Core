@@ -43,6 +43,7 @@ from graph_utils.graph_utils import (
     save_chunk_mapping,
 )
 from rewriting_utils.rewriting_utils import load_abbreviations
+from tokenization_utils.tokenization_utils import load_hf_tokenizer
 
 
 class ContextBudgetLLM(LLMOpenAI):
@@ -292,9 +293,7 @@ def main():
         artifact_extractor = None
         print('The vector-only mode is used: no entity and relation extraction will be performed.')
     else:
-        from transformers import AutoTokenizer
-
-        llm_tokenizer = AutoTokenizer.from_pretrained(args.llm_tokenizer or args.llm_name)
+        llm_tokenizer = load_hf_tokenizer(args.llm_tokenizer or args.llm_name)
         llm_client = CachedAsyncOpenAI(
             base_url=args.openai_base_url,
             api_key=args.openai_api_key,

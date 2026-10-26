@@ -303,3 +303,35 @@ def test_subprocess_gets_correct_directory_and_secrets_only_via_environment(inpu
     stage.args = ["3"]
     with pytest.raises(build.BuildError, match="кодом 3"):
         builder.execute(stage, log)
+
+
+@pytest.mark.parametrize(
+    "configured, served, expected",
+    [
+        (None, 32768, 32768),
+        (None, None, 16384),
+        (8192, 32768, 8192),
+        (65536, 32768, "API сообщает максимум"),
+        (None, 4096, "уменьшите предел ответа"),
+    ],
+)
+def test_preflight_uses_actual_served_context_window(inputs, monkeypatch, configured, served, expected):
+    arguments = [*inputs, "--llm-model", "gemma-4-12B-it"]
+    if configured is not None:
+        arguments += ["--llm-context-tokens", str(configured)]
+    builder = build.Builder(build.parse_args(arguments))
+
+    def request(method, url, **kwargs):
+        if url.endswith("/models"):
+            return {"data": [{"id": "gemma-4-12B-it", "max_model_len": served}]}
+        if url.endswith("/embeddings"):
+            return {"data": [{"embedding": [1, 0]}]}
+        return {}
+
+    monkeypatch.setattr(builder, "request", request)
+    if isinstance(expected, str):
+        with pytest.raises(build.BuildError, match=expected):
+            builder.preflight()
+    else:
+        builder.preflight()
+        assert builder.args.llm_context_tokens == expected

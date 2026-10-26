@@ -67,7 +67,11 @@ def parse_args(argv=None):
     )
     parser.add_argument("--abbreviations", type=Path)
     parser.add_argument("--chunk-tokens", type=positive, default=350)
-    parser.add_argument("--llm-context-tokens", type=positive, default=16384)
+    parser.add_argument(
+        "--llm-context-tokens",
+        type=positive,
+        help="Контекст LLM: по умолчанию max_model_len из /v1/models, иначе 16384.",
+    )
     parser.add_argument("--max-completion-tokens", type=positive, default=6144)
     parser.add_argument("--embedder-tokens", type=positive, default=8192)
     parser.add_argument("--concurrency", type=positive, default=8)
@@ -87,7 +91,7 @@ def parse_args(argv=None):
         parser.error("--chunk-tokens должен быть не меньше 45 (минимальный фрагмент — 30 токенов).")
     if args.icl_examples < 0:
         parser.error("--icl-examples не может быть отрицательным.")
-    if args.llm_context_tokens <= args.max_completion_tokens:
+    if args.llm_context_tokens is not None and args.llm_context_tokens <= args.max_completion_tokens:
         parser.error("--llm-context-tokens должен превышать --max-completion-tokens.")
     return args
 
@@ -605,12 +609,12 @@ class Builder:
             raise BuildError(f"Не удалось обратиться к {url}: {exc}") from exc
 
     def preflight(self):
-        from transformers import AutoTokenizer
+        from tokenization_utils.tokenization_utils import load_hf_tokenizer
 
         for name in dict.fromkeys((self.args.tokenizer, self.args.graph_tokenizer, self.args.embedder_tokenizer)):
             print(f"[ПРОВЕРКА] Токенизатор: {name}", flush=True)
             try:
-                tokenizer = AutoTokenizer.from_pretrained(name)
+                tokenizer = load_hf_tokenizer(name)
                 if name == self.args.graph_tokenizer:
                     tokenizer.apply_chat_template(
                         [{"role": "user", "content": "Проверка"}], tokenize=True, add_generation_prompt=True
@@ -625,6 +629,19 @@ class Builder:
             self.args.llm_model = ids[0]
         if self.args.llm_model not in ids:
             raise BuildError(f"Модель {self.args.llm_model!r} отсутствует в API: {ids}")
+        info = next(row for row in models["data"] if row["id"] == self.args.llm_model)
+        served_context = info.get("max_model_len")
+        if not isinstance(served_context, int) or served_context <= 0:
+            served_context = None
+        if self.args.llm_context_tokens is None:
+            self.args.llm_context_tokens = served_context or 16384
+        if served_context and self.args.llm_context_tokens > served_context:
+            raise BuildError(
+                f"Задан контекст {self.args.llm_context_tokens}, но API сообщает максимум {served_context}."
+            )
+        if self.args.llm_context_tokens <= self.args.max_completion_tokens:
+            raise BuildError("Контекст службы не превышает --max-completion-tokens; уменьшите предел ответа.")
+        print(f"[ПРОВЕРКА] LLM: {self.args.llm_model}; контекст: {self.args.llm_context_tokens} токенов.", flush=True)
         embedding = self.request(
             "POST",
             self.args.embedder_url + "/embeddings",
@@ -789,6 +806,7 @@ class Builder:
                     print("Точный план файлов будет определён при загрузке; dry-run не обращается к Яндекс Диску.")
                     return self.args.output_dir
             self.args.llm_model = self.args.llm_model or "<автоматически из /v1/models>"
+            self.args.llm_context_tokens = self.args.llm_context_tokens or "<из /v1/models; иначе 16384>"
             for stage in make_plan(self.args, self.sources, self.work):
                 print(f"{stage.name}: {shlex.join(stage.command)}")
             return self.args.output_dir

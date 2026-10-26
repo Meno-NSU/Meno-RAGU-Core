@@ -11,9 +11,10 @@ import time
 from typing import List, Tuple, Union
 
 from razdel import sentenize, tokenize
-from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
+from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 from tqdm import trange
 
+from tokenization_utils.tokenization_utils import load_hf_tokenizer
 
 RANDOM_SEED: int = 42
 
@@ -401,10 +402,7 @@ def main():
             if not os.path.isdir(base_dirname):
                 raise IOError(f'The directory "{base_dirname}" does not exist!')
 
-    try:
-        llm_tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    except:
-        llm_tokenizer = AutoTokenizer.from_pretrained(os.path.normpath(args.model_name))
+    llm_tokenizer = load_hf_tokenizer(args.model_name)
     print(f'The tokenizer is successfully loaded from "{args.model_name}".')
 
     with codecs.open(input_fname, mode='r', encoding='utf-8') as src_fp:

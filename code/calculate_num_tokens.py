@@ -4,9 +4,9 @@ import json
 import os
 import random
 
-from transformers import AutoTokenizer
 from tqdm import trange
 
+from tokenization_utils.tokenization_utils import load_hf_tokenizer
 
 def main():
     random.seed(42)
@@ -31,10 +31,7 @@ def main():
             if not os.path.isdir(base_dirname):
                 raise IOError(f'The directory "{base_dirname}" does not exist!')
 
-    try:
-        tok = AutoTokenizer.from_pretrained(args.model_name)
-    except:
-        tok = AutoTokenizer.from_pretrained(os.path.normpath(args.model_name))
+    tok = load_hf_tokenizer(args.model_name)
     print(f'The tokenizer is successfully loaded from "{args.model_name}".')
 
     with codecs.open(input_fname, mode='r', encoding='utf-8') as src_fp:

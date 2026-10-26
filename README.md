@@ -86,14 +86,16 @@ uv run --frozen python scripts/build_knowledge.py \
   --source-url https://disk.yandex.ru/d/XZjLjlah72eG1w \
   --input-dir /home/rsolikhov/meno_stand_actual/data \
   --output-dir /home/rsolikhov/knowledge/nsu-v1 \
-  --llm-url http://GRAPH_LLM_HOST:9022/v1 \
-  --tokenizer /path/to/graph-model-tokenizer \
+  --llm-url http://everest.nsu.ru:9022/v1 \
+  --llm-model gemma-4-12B-it \
+  --tokenizer google/gemma-4-12B-it \
   --embedder-url http://127.0.0.1:8001/v1 \
   --embedder-tokenizer /home/rsolikhov/vllm/bge-m3 \
   --qdrant-url http://127.0.0.1:6333
 ```
 
-Подставьте адрес внешней модели для сборки графа и доступные на сервере пути.
+В примере используется выбранная внешняя модель `gemma-4-12B-it` на Everest.
+Пути соответствуют серверу `/home/rsolikhov`; при другом расположении замените их.
 Скрипт обращается к уже работающим LLM, bge-m3 и Qdrant; службы и контейнеры он
 не запускает. Реранкер при индексировании не используется. LLM должна поддерживать
 OpenAI-совместимые chat completions со структурированным JSON-ответом.
@@ -108,6 +110,13 @@ OpenAI-совместимые chat completions со структурирован
 токенизатором измеряется контекст графовой LLM. Если корпус нужно разбивать
 токенизатором Meno, укажите его в `--tokenizer`, а токенизатор внешней LLM —
 в `--graph-tokenizer`. Токенизаторы проверяются до обработки корпуса.
+
+Официальный [токенизатор Gemma 4](https://huggingface.co/google/gemma-4-12B-it/tree/main)
+загружается автоматически по HF id. Его текстовый режим поддерживается в
+CPU-окружении core с Transformers 4.x; веса Gemma на машине сборщика не нужны.
+Окно контекста определяется по `max_model_len` выбранной модели из `/v1/models`.
+Если API не сообщает это поле, используется 16384; флаг `--llm-context-tokens`
+задаёт предел явно и не может превышать объявленное сервером значение.
 
 Если данные ещё не скачаны, `--source-url` загружает нужные файлы из публичной
 папки Яндекс Диска в `--input-dir` перед сборкой. Каталог создаётся автоматически;
@@ -148,7 +157,7 @@ OpenAI-совместимые chat completions со структурирован
 `Asia/Novosibirsk`; локаль `ru_RU.UTF-8` не требуется. Их добавление отключается
 флагом `--no-news-dates`. Диаграммы качества не строятся.
 
-По умолчанию размер фрагмента — 350 токенов, контекст LLM — 16384, предел
+По умолчанию размер фрагмента — 350 токенов, контекст LLM определяется через API, предел
 ответа при сборке графа — 6144, параллелизм — 8 запросов, примеры в промптах
 отключены. При необходимости измените `--chunk-tokens`, `--llm-context-tokens`,
 `--max-completion-tokens`, `--concurrency` и `--icl-examples`; контекст должен
