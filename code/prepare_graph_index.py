@@ -317,7 +317,17 @@ def main():
                 vdb_storage_kwargs=vdb_storage_kwargs
             )
         )
-        await knowledge_graph.build_from_docs(chunk_texts)
+        try:
+            await knowledge_graph.build_from_docs(chunk_texts)
+            collections = {
+                'vdb_entity': knowledge_graph.index.nodes_vector_db.collection_name,
+                'vdb_relation': knowledge_graph.index.edges_vector_db.collection_name,
+                'vdb_chunk': knowledge_graph.index.chunks_vector_db.collection_name,
+            }
+            with open(os.path.join(graph_dir, 'qdrant_collections.json'), 'w', encoding='utf-8') as fp:
+                json.dump(collections, fp, ensure_ascii=False, indent=2)
+        finally:
+            await knowledge_graph.index.close()
 
     asyncio.run(build_graph())
 

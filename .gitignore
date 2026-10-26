@@ -2,3 +2,15 @@ __pycache__/
 .ipynb_checkpoints/
 .idea
 *.log
+
+.venv/
+.env
+.env.*
+!.env.example
+var/
+logs/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/

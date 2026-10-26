@@ -2,6 +2,7 @@ import asyncio
 import codecs
 import json
 import os
+from pathlib import Path
 import re
 import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -186,6 +187,13 @@ class GraphSearchEngines:
     def search(self, search_query: str, local_top_k: int = 20, naive_top_k: int = 60,
                local_rerank_top_k: Optional[int] = None, naive_rerank_top_k: Optional[int] = None
                ) -> Dict[str, Any]:
+        return self.event_loop.run_until_complete(self.asearch(
+            search_query, local_top_k, naive_top_k, local_rerank_top_k, naive_rerank_top_k
+        ))
+
+    async def asearch(self, search_query: str, local_top_k: int = 20, naive_top_k: int = 60,
+                      local_rerank_top_k: Optional[int] = None, naive_rerank_top_k: Optional[int] = None
+                      ) -> Dict[str, Any]:
         local_params = LocalParams(top_k=local_top_k, use_summary=False, use_chunks=True,
                                    rerank_top_k=local_rerank_top_k)
         naive_params = NaiveSearchParams(top_k=naive_top_k, rerank_top_k=naive_rerank_top_k)
@@ -197,7 +205,7 @@ class GraphSearchEngines:
             )
             return local_retrieval, naive_retrieval
 
-        local_retrieval, naive_retrieval = self.event_loop.run_until_complete(search_both())
+        local_retrieval, naive_retrieval = await search_both()
 
         local_chunks = self._chunks_from_retrieval(local_retrieval, rank_based=True)
         naive_chunks = self._chunks_from_retrieval(naive_retrieval, rank_based=False)
@@ -321,6 +329,14 @@ def build_sparse_embedder() -> RagUBM25:
     return RagUBM25(language=SPARSE_MODEL_LANGUAGE)
 
 
+class PortableQdrantStorage(QdrantVectorDBStorage):
+    def __init__(self, filename, collection_names=None, **kwargs):
+        name = (collection_names or {}).get(Path(filename).stem)
+        if name is not None:
+            kwargs['collection_name'] = name
+        super().__init__(filename=filename, **kwargs)
+
+
 def load_graph_engines(graph_dir: str, embedder_name: str,
                        embedder_url: str = 'http://localhost:8000/v1', embedder_key: str = 'EMPTY',
                        qdrant_location: Optional[str] = None,
@@ -351,6 +367,9 @@ def load_graph_engines(graph_dir: str, embedder_name: str,
             scorer_client = CachedAsyncOpenAI(base_url=reranker_url, api_key=reranker_key)
             scorer = ScorerOpenAI(client=scorer_client, model_name=engine_reranker_name)
     vdb_storage_kwargs = {'sparse_type': 'bm25'}
+    manifest = Path(graph_dir) / 'qdrant_collections.json'
+    if manifest.is_file():
+        vdb_storage_kwargs['collection_names'] = json.loads(manifest.read_text(encoding='utf-8'))
     if qdrant_location is not None:
         vdb_storage_kwargs['location'] = qdrant_location
     knowledge_graph = KnowledgeGraph(
@@ -366,7 +385,7 @@ def load_graph_engines(graph_dir: str, embedder_name: str,
             random_seed=RANDOM_SEED
         ),
         storage_settings=StorageArguments(
-            vdb_storage_type=QdrantVectorDBStorage,
+            vdb_storage_type=PortableQdrantStorage,
             vdb_storage_kwargs=vdb_storage_kwargs
         )
     )

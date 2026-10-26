@@ -1,0 +1,325 @@
+"""OpenAI-compatible client for OpenRouter, with header injection, rate-limit
+parsing, and per-model status tracking. Shares the existing httpx.AsyncClient
+pool."""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import time
+from collections.abc import AsyncGenerator
+from datetime import UTC
+from typing import Any
+
+import httpx
+import structlog
+
+from meno_rag.llm.openrouter_errors import (
+    OpenRouterBadRequestError,
+    OpenRouterRateLimitError,
+    OpenRouterUnreachableError,
+    OpenRouterUpstreamError,
+    parse_rate_limit_headers,
+)
+from meno_rag.llm.status import ModelStatusStore
+from meno_rag.llm.think_detector import extract_thinking, has_thinking
+from meno_rag.logging_config import preview_field
+
+logger = structlog.get_logger(__name__)
+
+
+class OpenRouterClient:
+    def __init__(
+        self,
+        *,
+        http_client: httpx.AsyncClient,
+        api_key: str,
+        base_url: str,
+        http_referer: str,
+        x_title: str,
+        status_store: ModelStatusStore,
+        concurrency: int,
+        timeout_seconds: float,
+    ) -> None:
+        self._http = http_client
+        self._api_key = api_key
+        self._base_url = base_url.rstrip("/")
+        self._referer = http_referer
+        self._title = x_title
+        self._status_store = status_store
+        self._semaphore = asyncio.Semaphore(concurrency)
+        self._timeout = timeout_seconds
+
+    async def chat_completion(
+        self,
+        *,
+        model: str,
+        messages: list[dict[str, str]],
+        max_tokens: int | None = None,
+        temperature: float | None = None,
+        seed: int | None = None,
+        stream: bool = False,
+        timeout: float | None = None,
+        extra_body: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {"model": model, "messages": messages, "stream": stream}
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
+        if temperature is not None:
+            payload["temperature"] = temperature
+        if seed is not None:
+            payload["seed"] = seed
+        if extra_body:
+            payload.update(extra_body)
+
+        effective_timeout = timeout if timeout is not None else self._timeout
+        return await self._send(model=model, payload=payload, stream=False, timeout=effective_timeout)
+
+    async def chat_completion_text(self, **kwargs: Any) -> str:
+        data = await self.chat_completion(stream=False, **kwargs)
+        return str(data["choices"][0]["message"]["content"]).strip()
+
+    async def stream_chat_completion(
+        self,
+        *,
+        model: str,
+        messages: list[dict[str, str]],
+        max_tokens: int | None = None,
+        temperature: float | None = None,
+        seed: int | None = None,
+        timeout: float | None = None,
+    ) -> AsyncGenerator[str, None]:
+        payload: dict[str, Any] = {"model": model, "messages": messages, "stream": True}
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
+        if temperature is not None:
+            payload["temperature"] = temperature
+        if seed is not None:
+            payload["seed"] = seed
+
+        effective_timeout = timeout if timeout is not None else self._timeout
+        log = logger.bind(model_provider="openrouter", model_id=model)
+        async with self._semaphore:
+            url = f"{self._base_url}/chat/completions"
+            try:
+                async with self._http.stream(
+                    "POST", url, headers=self._headers(), json=payload, timeout=effective_timeout
+                ) as response:
+                    # Any non-2xx path needs the body for diagnostics, and
+                    # `_extract_error_message` calls .json()/.text which both
+                    # raise ResponseNotRead on a stream that hasn't been
+                    # consumed. Drain once up front for every error class so
+                    # 429/4xx/5xx all reach our typed exceptions instead of
+                    # falling through to a generic internal_error.
+                    if response.status_code >= 400:
+                        await response.aread()
+                    if response.status_code == 429:
+                        await self._handle_429(model, response)
+                    if 500 <= response.status_code < 600:
+                        await self._handle_5xx(model, response)
+                    if 400 <= response.status_code < 500:
+                        body = self._extract_error_message(response)
+                        log.warning(
+                            "or_stream_4xx",
+                            or_status_code=response.status_code,
+                            body_preview=body[:500],
+                        )
+                        raise OpenRouterBadRequestError(
+                            model_id=model,
+                            status_code=response.status_code,
+                            message=body,
+                        )
+                    response.raise_for_status()
+                    buffer = ""
+                    async for chunk in response.aiter_text():
+                        buffer += chunk
+                        while "\n\n" in buffer:
+                            event_block, buffer = buffer.split("\n\n", 1)
+                            for content in self._parse_sse_content(event_block):
+                                yield content
+                    if buffer.strip():
+                        for content in self._parse_sse_content(buffer):
+                            yield content
+            except (httpx.HTTPError, httpx.NetworkError) as exc:
+                await self._status_store.mark_unreachable(model, error=type(exc).__name__)
+                raise OpenRouterUnreachableError(model_id=model, cause=type(exc).__name__) from exc
+            await self._status_store.mark_ok(model)
+
+    async def _send(
+        self, *, model: str, payload: dict[str, Any], stream: bool, timeout: float | None = None
+    ) -> dict[str, Any]:
+        effective_timeout = timeout if timeout is not None else self._timeout
+        log = logger.bind(model_provider="openrouter", model_id=model)
+        log.info("or_request_started")
+        started = time.perf_counter()
+        async with self._semaphore:
+            url = f"{self._base_url}/chat/completions"
+            try:
+                response = await self._http.post(url, headers=self._headers(), json=payload, timeout=effective_timeout)
+            except (httpx.HTTPError, httpx.NetworkError) as exc:
+                await self._status_store.mark_unreachable(model, error=type(exc).__name__)
+                raise OpenRouterUnreachableError(model_id=model, cause=type(exc).__name__) from exc
+
+            if response.status_code == 429:
+                await self._handle_429(model, response)
+            if 500 <= response.status_code < 600:
+                await self._handle_5xx(model, response)
+            if 400 <= response.status_code < 500:
+                # 4xx means the request itself is bad — model not found,
+                # context_length_exceeded, invalid params. Retrying with the
+                # same payload won't help, so we don't mark the model as
+                # unreachable. The full body is logged for diagnosis and the
+                # raised exception carries the upstream message so the API
+                # can surface a human-readable reason to the user.
+                body = self._extract_error_message(response)
+                log.warning(
+                    "or_request_4xx",
+                    or_status_code=response.status_code,
+                    body_preview=body[:500],
+                )
+                raise OpenRouterBadRequestError(
+                    model_id=model,
+                    status_code=response.status_code,
+                    message=body,
+                )
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                await self._status_store.mark_unreachable(model, error=f"http_{response.status_code}")
+                raise OpenRouterUnreachableError(model_id=model, cause=f"http_{response.status_code}") from exc
+            duration_ms = round((time.perf_counter() - started) * 1000, 2)
+            data = response.json()
+            # OR sometimes returns 200 OK with `{"error": {...}}` and no
+            # `choices` when the routed upstream provider rejects the
+            # request. Treat it the same way as the streaming case.
+            err = data.get("error")
+            if err and not data.get("choices"):
+                upstream_msg = err.get("message") if isinstance(err, dict) else str(err)
+                log.warning("or_upstream_error_200", body_preview=str(upstream_msg)[:500])
+                raise OpenRouterUpstreamError(model_id=data.get("model") or model, message=str(upstream_msg))
+            _log_or_completion(log, data=data, duration_ms=duration_ms, status_code=response.status_code)
+            await self._status_store.mark_ok(model)
+            return data
+
+    async def _handle_429(self, model: str, response: httpx.Response) -> None:
+        from datetime import datetime, timedelta
+
+        reset_at, retry_after = parse_rate_limit_headers(dict(response.headers))
+        if reset_at is None:
+            reset_at = datetime.now(UTC) + timedelta(seconds=60)
+        log = logger.bind(model_provider="openrouter", model_id=model)
+        log.warning(
+            "or_request_rate_limited",
+            rate_limit_reset=reset_at.isoformat() if reset_at else None,
+            retry_after_sec=retry_after,
+        )
+        message = self._extract_error_message(response)
+        await self._status_store.mark_rate_limited(model, until=reset_at, error="rate_limit_exceeded")
+        raise OpenRouterRateLimitError(model_id=model, reset_at=reset_at, retry_after_sec=retry_after, message=message)
+
+    async def _handle_5xx(self, model: str, response: httpx.Response) -> None:
+        log = logger.bind(model_provider="openrouter", model_id=model)
+        log.warning(
+            "or_request_unreachable",
+            or_status_code=response.status_code,
+            error_class=f"http_{response.status_code}",
+        )
+        message = self._extract_error_message(response)
+        await self._status_store.mark_unreachable(model, error=f"http_{response.status_code}")
+        raise OpenRouterUnreachableError(model_id=model, cause=f"http_{response.status_code}: {message}")
+
+    def _headers(self) -> dict[str, str]:
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+        if self._referer:
+            headers["HTTP-Referer"] = self._referer
+        if self._title:
+            headers["X-Title"] = self._title
+        return headers
+
+    @staticmethod
+    def _extract_error_message(response: httpx.Response) -> str:
+        try:
+            body = response.json()
+            return str(body.get("error", {}).get("message") or body.get("error") or response.text)
+        except Exception:
+            return response.text or f"HTTP {response.status_code}"
+
+    @staticmethod
+    def _parse_sse_content(block: str) -> list[str]:
+        contents: list[str] = []
+        data_lines = []
+        for line in block.splitlines():
+            if line.startswith("data:"):
+                data_lines.append(line[5:].strip())
+        if not data_lines:
+            return contents
+        payload = "\n".join(data_lines)
+        if payload == "[DONE]":
+            return contents
+        data = json.loads(payload)
+
+        # OR delivers upstream-provider failures (e.g. "JAX does not support
+        # per-request seed") as an `error` field inside a 200-OK SSE chunk.
+        # Surface this as a typed `OpenRouterUpstreamError` so classify_error
+        # maps it to invalid_upstream_request — without the typed class the
+        # raw RuntimeError fell through to internal_error and the arena UI
+        # couldn't tell whether to substitute or surface to the user.
+        error_field = data.get("error")
+        if isinstance(error_field, dict) and error_field.get("message"):
+            raise OpenRouterUpstreamError(model_id=data.get("model"), message=error_field["message"])
+        elif error_field:
+            raise OpenRouterUpstreamError(model_id=data.get("model"), message=str(error_field))
+
+        choices = data.get("choices") or []
+        delta = choices[0].get("delta", {}) if choices else {}
+        content = delta.get("content")
+        if isinstance(content, str) and content:
+            contents.append(content)
+        return contents
+
+
+def _log_or_completion(log: Any, *, data: dict[str, Any], duration_ms: float, status_code: int) -> None:
+    try:
+        choices = data.get("choices") or []
+        choice = choices[0] if choices else {}
+        message = choice.get("message") or {}
+        content = message.get("content") or ""
+        finish_reason = choice.get("finish_reason")
+        usage = data.get("usage") or {}
+
+        thinking_text, visible = ("", content)
+        if has_thinking(content):
+            thinking_text, visible = extract_thinking(content)
+            log.info(
+                "llm_thinking_detected",
+                thinking_chars=len(thinking_text),
+                visible_chars=len(visible),
+            )
+        if not visible.strip():
+            log.warning(
+                "or_empty_completion",
+                content_chars=len(content),
+                finish_reason=finish_reason,
+            )
+        if finish_reason == "length":
+            log.warning(
+                "generation_truncated",
+                content_chars=len(visible),
+                completion_tokens=usage.get("completion_tokens"),
+                hint="raise MAX_OUTPUT_TOKENS if this happens often",
+            )
+        log.info(
+            "or_request_completed",
+            or_status_code=status_code,
+            or_duration_ms=duration_ms,
+            **preview_field("content_preview", visible, 200),
+            content_chars=len(visible),
+            finish_reason=finish_reason,
+            prompt_tokens=usage.get("prompt_tokens"),
+            completion_tokens=usage.get("completion_tokens"),
+        )
+    except Exception:  # pragma: no cover
+        log.debug("or_log_failed", exc_info=True)

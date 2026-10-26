@@ -1,0 +1,19 @@
+name: RAGU Core
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          version: "0.9.10"
+      - run: uv sync --frozen
+      - run: uv run ruff check src tests
+      - run: uv run mypy
+      - run: uv run pytest -q
+      - run: cd code && ../.venv/bin/python -m pytest -q
+      - run: uv build
+      - run: docker build -t meno-ragu-core:test .

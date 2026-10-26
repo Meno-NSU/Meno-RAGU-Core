@@ -14,9 +14,11 @@ All scripts in `code/` must be launched with `code/` as the current directory, *
 - README command examples use `../data/...` paths, which are relative to `code/`.
 - `chat.py` hardcodes its log output to `conversation.log` in CWD.
 
-## Tests exist; still no manifest, no CI, no lint
+## Service packaging and tests
 
-There is **no** `requirements.txt`, `pyproject.toml`, `setup.py`, CI, or linter. Do not assume one exists. There **is** a pytest suite: `code/pytest.ini` + `code/tests/`, run from `code/` with `python -m pytest` (conftest.py puts `code/` on `sys.path`, so `*_utils` imports resolve). Markers: `integration` (builds and searches a real mini RAGU graph; hermetic — Qdrant `:memory:` + fake embedder, no services or network) and `slow`. When you change a script or a `*_utils` module, update/extend its tests in the same change.
+The repository now includes `pyproject.toml`, `uv.lock`, a CPU-only API Dockerfile, and CI. The production-compatible service is in `src/meno_rag`; run its tests from the repository root with `uv run pytest`. `RaguRagPipeline` is the active pipeline; the shared pipeline module retains API-stage and generation helpers. Do not restore FAISS/FRIDA retrieval. Run `uv run ruff check src tests` and `uv run mypy` for the service.
+
+The research pytest suite remains in `code/pytest.ini` + `code/tests/`; run it from `code/` with `../.venv/bin/python -m pytest`. `search_utils` imports sentence-transformers only when local embedding is explicitly requested. The graph adapter offers `asearch()` for the service and the original synchronous `search()` for scripts. `prepare_graph_index.py` also saves `qdrant_collections.json` to preserve collection names when the graph directory moves. Keep API/DB compatibility and the existing Alembic revisions; never reset a production database.
 
 Dependencies must be inferred from imports; the non-obvious ones are: `ragu` (distribution `graph_ragu`; pulls `qdrant-client` and `fastembed`), `nltk` (+ SnowballStemmer `'russian'` data), `razdel` (Russian tokenization), `sentence-transformers` (step 9 scoring and the optional local `ScorerCrossEncoder`), `vllm` (only the `--vllm` offline mode), `torch`, `transformers`, `openai`, `pydantic`, `tqdm`, `rapidfuzz` (the Levenshtein acceptance check of abbreviation rewrites in `graph_utils`), `crawl4ai` + `pymupdf` (only `crawl_nsu_for_kb.py`), `urllib3` + `certifi` (only `validate_base_urls.py`). `faiss` and `bm25s` are no longer used anywhere.
 

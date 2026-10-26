@@ -5,10 +5,15 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 from openai import OpenAI
-from sentence_transformers import SentenceTransformer
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 
-def load_dense_embedder(embedder_name: str, device: str = 'cpu') -> SentenceTransformer:
+def load_dense_embedder(embedder_name: str, device: str = 'cpu') -> 'SentenceTransformer':
+    from sentence_transformers import SentenceTransformer
+
     try:
         return SentenceTransformer(embedder_name, trust_remote_code=True, device=device)
     except:
