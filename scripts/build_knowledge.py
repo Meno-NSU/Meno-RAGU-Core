@@ -442,7 +442,19 @@ def make_plan(args, sources, work):
             Stage(
                 "03-combine",
                 "combine_data.py",
-                ["-s", str(summary), "-t", str(teachers), "-b", str(sources.base), *news_args, "-o", str(united)],
+                [
+                    "-s",
+                    str(summary),
+                    "-t",
+                    str(teachers),
+                    "-b",
+                    str(sources.base),
+                    *news_args,
+                    "--timezone",
+                    args.timezone,
+                    "-o",
+                    str(united),
+                ],
                 [summary, teachers, sources.base, *sources.news],
                 united,
                 ("text", "url", "content_source"),
@@ -679,6 +691,7 @@ class Builder:
         code_hashes = {name: digest(CODE_DIR / name) for name in sorted(scripts)}
         code_hashes["driver"] = digest(Path(__file__))
         code_hashes["dependencies"] = digest(REPO_DIR / "uv.lock")
+        code_hashes["news_utils.py"] = digest(CODE_DIR / "news_utils.py")
         tokenizer_hashes = {}
         for name in {self.args.tokenizer, self.args.graph_tokenizer, self.args.embedder_tokenizer}:
             folder = Path(name)
@@ -875,9 +888,15 @@ class Builder:
         if state_path.exists():
             self.state = json.loads(state_path.read_text())
             if self.state["fingerprint"] != fingerprint:
-                raise BuildError(
-                    "Параметры, код или входные файлы изменились. Продолжение возможно с прежними параметрами; иначе используйте новый --output-dir."
+                if self.state["stages"]:
+                    raise BuildError(
+                        "Параметры, код или входные файлы изменились. Продолжение возможно с прежними параметрами; иначе используйте новый --output-dir."
+                    )
+                print(
+                    "[ПОВТОР] Код или параметры изменились; подтверждённых этапов ещё нет, начинаю заново.", flush=True
                 )
+                self.state = {"fingerprint": fingerprint, "stages": {}}
+                atomic_json(state_path, self.state)
         else:
             self.state = {"fingerprint": fingerprint, "stages": {}}
             atomic_json(state_path, self.state)

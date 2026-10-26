@@ -11,6 +11,7 @@ from nltk.stem.snowball import SnowballStemmer
 from tqdm import tqdm
 
 from filter_utils.filter_utils import MIN_NUM_WORDS, text_is_good, normalize_text
+from news_utils import read_news_samples
 
 
 MAX_F1: float = 0.9
@@ -85,6 +86,8 @@ def main():
                              '(prepared by the prepare_teachers_corpus.py script).')
     parser.add_argument('-o', '--output', dest='output_name', type=str, required=True,
                         help='The output JSONL knowledge database.')
+    parser.add_argument('--timezone', default='Asia/Novosibirsk',
+                        help='Timezone for doc_date values without an explicit offset.')
     args = parser.parse_args()
 
     summary_input_fname = os.path.normpath(args.summary_data)
@@ -109,7 +112,7 @@ def main():
             raise IOError(f'The file "{normalized_news_fname}" has incorrect name!')
         news_fnames.add(normalized_news_fname)
     if len(news_fnames) == 0:
-        raise IOError(f'There are no news knowledges about NSU!')
+        raise IOError('There are no news knowledges about NSU!')
     news_fnames = sorted(list(news_fnames), key=lambda it: -int(it[-14:-6]))
 
     output_fname = os.path.normpath(args.output_name)
@@ -183,17 +186,7 @@ def main():
         del teachers_samples
 
         for cur_fname in news_fnames:
-            with codecs.open(cur_fname, mode='r', encoding='utf-8') as src_fp:
-                samples = sorted(
-                    list(map(
-                        lambda it3: json.loads(it3),
-                        filter(
-                            lambda it2: len(it2) > 0,
-                            map(lambda it1: it1.strip(), src_fp.readlines())
-                        )
-                    )),
-                    key=lambda it4: -it4['date']
-                )
+            samples = read_news_samples(cur_fname, timezone=args.timezone)
             print(f'\nThe file "{cur_fname}" contains {len(samples)} samples.')
             for cur_sample in tqdm(samples, desc=os.path.basename(cur_fname)):
                 new_url_key = url_dedup_key(cur_sample['url'])

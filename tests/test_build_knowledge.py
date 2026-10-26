@@ -39,8 +39,13 @@ def inputs(tmp_path):
     timestamp = datetime(2026, 10, 16, 20, tzinfo=UTC).timestamp()
     for index, dates in enumerate(("20260220_20260306", "20260306_20260403", "20260403_20260709", "20260709_20261016")):
         doc = document("новость" + ("альфа", "бета", "гамма", "дельта")[index])
+        date_fields = (
+            {"doc_date": "2026-10-17 03:00:00", "scrapped_at": "2026-10-19 12:00:00"}
+            if index == 3
+            else {"date": timestamp}
+        )
         write_jsonl(
-            source / f"filtered_news_{dates}.jsonl", [{"content": doc["text"], "url": doc["url"], "date": timestamp}]
+            source / f"filtered_news_{dates}.jsonl", [{"content": doc["text"], "url": doc["url"], **date_fields}]
         )
     tokenizer_dir = tmp_path / "local tokenizer"
     tokenizer = Tokenizer(models.WordLevel({"[UNK]": 0}, unk_token="[UNK]"))
@@ -259,6 +264,28 @@ def test_changed_source_cannot_resume_old_build(inputs, services, monkeypatch):
     monkeypatch.setattr(resumed, "execute", lambda *args: pytest.fail("Changed input must fail before stages"))
     with pytest.raises(build.BuildError, match="входные файлы изменились"):
         resumed.build()
+
+
+def test_first_failed_stage_can_retry_after_code_update_without_discarding_logs(inputs, services, monkeypatch):
+    client, counts, _, _ = services
+    first = build.Builder(build.parse_args(inputs), http_client=client)
+    real_cpu_stages(first, monkeypatch, counts, [], fail="03-combine")
+    with pytest.raises(build.BuildError, match="injected interruption"):
+        first.build()
+    state_path = first.work / "state.json"
+    state = json.loads(state_path.read_text())
+    assert state["stages"] == {}
+    state["fingerprint"] = "previous-code-version"
+    state_path.write_text(json.dumps(state))
+    log = first.work / "logs" / "03-combine.log"
+    log.write_text("previous failure\n")
+    resumed = build.Builder(build.parse_args(inputs), http_client=client)
+    retried = []
+    real_cpu_stages(resumed, monkeypatch, counts, retried)
+    resumed.build()
+    assert retried[0] == "03-combine"
+    assert log.read_text().startswith("previous failure")
+    assert (resumed.args.output_dir / "build_manifest.json").is_file()
 
 
 def test_raw_sources_enable_preparation_stages(inputs):

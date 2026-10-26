@@ -11,6 +11,7 @@ from nltk.stem.snowball import SnowballStemmer
 from tqdm import tqdm
 
 from filter_utils.filter_utils import normalize_text
+from news_utils import read_news_samples
 
 
 
@@ -51,7 +52,7 @@ def main():
             raise IOError(f'The file "{normalized_news_fname}" has incorrect name!')
         news_fnames.add(normalized_news_fname)
     if len(news_fnames) == 0:
-        raise IOError(f'There are no news knowledges about NSU!')
+        raise IOError('There are no news knowledges about NSU!')
     news_fnames = sorted(list(news_fnames), key=lambda it: -int(it[-14:-6]))
 
     knowledge_output_fname = os.path.normpath(args.output_name)
@@ -65,17 +66,7 @@ def main():
 
     uniques_news = dict()
     for cur_fname in news_fnames:
-        with codecs.open(cur_fname, mode='r', encoding='utf-8') as src_fp:
-            samples = sorted(
-                list(map(
-                    lambda it3: json.loads(it3),
-                    filter(
-                        lambda it2: len(it2) > 0,
-                        map(lambda it1: it1.strip(), src_fp.readlines())
-                    )
-                )),
-                key=lambda it4: -it4['date']
-            )
+        samples = read_news_samples(cur_fname, timezone=args.timezone)
         print(f'\nThe file "{cur_fname}" contains {len(samples)} samples.')
         for cur_sample in tqdm(samples, desc=os.path.basename(cur_fname)):
             news_text = normalize_text(cur_sample['content'], ru_stemmer)
