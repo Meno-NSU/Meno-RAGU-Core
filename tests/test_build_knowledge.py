@@ -100,7 +100,7 @@ def services(monkeypatch):
             return httpx.Response(200, json={"result": {"count": counts[path.split("/")[2]]}})
         if path == "/v1/chat/completions":
             content = (
-                "invalid JSON"
+                "{invalid JSON"
                 if broken["metadata"]
                 else json.dumps({"title": "НГУ", "annotation": "Учебная жизнь НГУ."})
             )
@@ -290,14 +290,15 @@ def test_first_failed_stage_can_retry_after_code_update_without_discarding_logs(
 
 
 @pytest.mark.parametrize("changed", [None, "inputs", "settings", "code"])
-def test_metadata_resume_fix_migrates_only_exact_previous_build(inputs, services, monkeypatch, changed):
+@pytest.mark.parametrize("version", build.METADATA_RESUME_PREVIOUS_CODE)
+def test_metadata_resume_fix_migrates_only_exact_previous_build(inputs, services, monkeypatch, changed, version):
     client, counts, _, _ = services
     first = build.Builder(build.parse_args(inputs), http_client=client)
     real_cpu_stages(first, monkeypatch, counts, [], fail="06-metadata")
     with pytest.raises(build.BuildError, match="injected interruption"):
         first.build()
     _, config = first.configuration(build.make_plan(first.args, first.sources, first.work))
-    config["code"].update(build.METADATA_RESUME_PREVIOUS_CODE)
+    config["code"].update(build.METADATA_RESUME_PREVIOUS_CODE[version])
     if changed:
         config[changed]["different"] = "must not migrate"
     state_path = first.work / "state.json"
@@ -316,14 +317,15 @@ def test_metadata_resume_fix_migrates_only_exact_previous_build(inputs, services
         assert executed == ["06-metadata", "07-quality", "08-news-dates", "09-mapping", "10-graph"]
 
 
-def test_metadata_resume_fix_does_not_migrate_completed_metadata(inputs, services, monkeypatch):
+@pytest.mark.parametrize("version", build.METADATA_RESUME_PREVIOUS_CODE)
+def test_metadata_resume_fix_does_not_migrate_completed_metadata(inputs, services, monkeypatch, version):
     client, counts, _, _ = services
     first = build.Builder(build.parse_args(inputs), http_client=client)
     real_cpu_stages(first, monkeypatch, counts, [], fail="07-quality")
     with pytest.raises(build.BuildError, match="injected interruption"):
         first.build()
     _, config = first.configuration(build.make_plan(first.args, first.sources, first.work))
-    config["code"].update(build.METADATA_RESUME_PREVIOUS_CODE)
+    config["code"].update(build.METADATA_RESUME_PREVIOUS_CODE[version])
     state_path = first.work / "state.json"
     state = json.loads(state_path.read_text())
     state["fingerprint"] = hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()

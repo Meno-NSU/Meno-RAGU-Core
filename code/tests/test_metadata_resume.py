@@ -29,17 +29,29 @@ def run_metadata(tmp_path, monkeypatch):
     output = tmp_path / 'metadata.jsonl'
     write_jsonl(source, documents)
     calls = Counter()
+    field_calls = Counter()
     replies = {}
+    requests = []
+    finish_reasons = {}
 
     def respond(request):
-        prompt = json.loads(request.content)['messages'][-1]['content']
+        payload = json.loads(request.content)
+        requests.append(payload)
+        prompt = payload['messages'][-1]['content']
         idx = next(i for i, doc in enumerate(documents) if doc['text'] in prompt)
+        mode = ('json' if 'response_format' in payload else
+                'title' if 'Составьте короткое название' in prompt else 'annotation')
         calls[idx] += 1
-        content = replies.get(idx, [json.dumps({'title': 'Новое название', 'annotation': 'Новая аннотация.'})])
-        content = content[min(calls[idx] - 1, len(content) - 1)]
+        field_calls[idx, mode] += 1
+        defaults = {'json': json.dumps({'title': 'Новое название', 'annotation': 'Новая аннотация.'}),
+                    'title': 'Новое название', 'annotation': 'Новая аннотация.'}
+        content = replies.get((idx, mode), replies.get(idx, [defaults[mode]]))
+        call_number = field_calls[idx, mode] if (idx, mode) in replies else calls[idx]
+        content = content[min(call_number - 1, len(content) - 1)]
         return httpx.Response(200, json={
             'id': 'test', 'object': 'chat.completion', 'created': 1, 'model': 'test',
-            'choices': [{'index': 0, 'finish_reason': 'stop', 'message': {'role': 'assistant', 'content': content}}],
+            'choices': [{'index': 0, 'finish_reason': finish_reasons.get((idx, mode), 'stop'),
+                         'message': {'role': 'assistant', 'content': content}}],
         })
 
     client = httpx.Client(transport=httpx.MockTransport(respond))
@@ -55,6 +67,8 @@ def run_metadata(tmp_path, monkeypatch):
         metadata.main()
         return [json.loads(line) for line in output.read_text().splitlines()]
 
+    run.requests = requests
+    run.finish_reasons = finish_reasons
     yield run, documents, source, output, calls, replies
     client.close()
 
@@ -74,18 +88,20 @@ def test_resume_keeps_successes_after_five_scattered_errors(run_metadata):
 
 
 @pytest.mark.parametrize('invalid', ['invalid JSON', None, '{"title":"", "annotation":"текст"}'])
-def test_invalid_metadata_is_retried_automatically(run_metadata, invalid):
+def test_invalid_metadata_switches_to_plain_generation(run_metadata, invalid):
     run, documents, _, output, calls, replies = run_metadata
     write_jsonl(output, [enriched(doc) for doc in documents[0:11]])
-    replies[11] = [invalid, '{"title":"Название", "annotation":"Аннотация."}']
+    replies[11, 'json'] = [invalid]
     result = run(retries=1)
-    assert calls == Counter({11: 2})
-    assert result[11]['doc_title'] == 'Название'
+    assert calls == Counter({11: 3})
+    assert result[11]['doc_title'] == 'Новое название'
+    assert [row.get('response_format', {}).get('type') for row in run.requests] == ['json_schema', None, None]
+    assert all(row['temperature'] > 0 and isinstance(row['seed'], int) for row in run.requests[1:])
 
 
 def test_permanent_failures_preserve_successes_for_next_run(run_metadata):
     run, documents, _, output, calls, replies = run_metadata
-    replies[2] = ['bad JSON']
+    replies[2] = ['{bad JSON']
     with pytest.raises(RuntimeError, match='failed for 1 documents'):
         run(retries=1)
     saved = [json.loads(line) for line in output.read_text().splitlines()]
@@ -160,3 +176,66 @@ def test_malformed_output_record_does_not_discard_later_successes(run_metadata):
     output.write_text('\n'.join(lines) + '\n')
     assert len(run()) == len(documents)
     assert calls == Counter({1: 1})
+
+
+@pytest.mark.parametrize('content', [
+    '{"title":"Программа", "annotation":"' + r'\text{ }' * 100,
+    '{"title":"Программа", "annotation":"Завершённый JSON при обрезанном ответе."}',
+])
+def test_length_limited_json_recovers_without_repeating_identical_request(run_metadata, content):
+    run, documents, _, output, calls, replies = run_metadata
+    write_jsonl(output, [enriched(doc) for doc in documents[:11]])
+    replies[11, 'json'] = [content]
+    run.finish_reasons[11, 'json'] = 'length'
+    result = run(retries=2)
+    assert calls == Counter({11: 3})
+    assert result[11]['doc_annotation'] == 'Новая аннотация.'
+    assert sum('response_format' in payload for payload in run.requests) == 1
+
+
+@pytest.mark.parametrize('bad', ['', '{"title":"JSON вместо названия"}', r'\text{ }' * 8, 'очень длинное ' * 30])
+def test_degenerate_plain_response_still_fails_closed(run_metadata, bad):
+    run, documents, _, output, calls, replies = run_metadata
+    write_jsonl(output, [enriched(doc) for doc in documents[:11]])
+    replies[11, 'json'] = ['invalid JSON']
+    replies[11, 'title'] = [bad]
+    with pytest.raises(RuntimeError, match='failed for 1 documents'):
+        run(retries=1)
+    saved = [json.loads(line) for line in output.read_text().splitlines()]
+    assert len(saved) == len(documents)
+    assert saved[11]['doc_title'] == ''
+    assert calls == Counter({11: 2})
+
+
+def test_plain_response_serializes_quotes_and_backslashes_locally(run_metadata):
+    run, documents, _, output, _, replies = run_metadata
+    write_jsonl(output, [enriched(doc) for doc in documents[:11]])
+    replies[11, 'json'] = ['invalid JSON']
+    title = 'Программа "Прикладная математика"'
+    annotation = r'Описывается программа "Прикладная математика" и каталог C:\courses.'
+    replies[11, 'title'] = [title]
+    replies[11, 'annotation'] = [annotation]
+    result = run(retries=1)
+    assert result[11]['doc_title'] == title
+    assert result[11]['doc_annotation'] == annotation
+
+
+@pytest.mark.parametrize('field', ['title', 'annotation'])
+def test_truncated_plain_response_is_rejected_and_retry_seed_changes(run_metadata, field):
+    run, documents, _, output, _, replies = run_metadata
+    write_jsonl(output, [enriched(doc) for doc in documents[:11]])
+    replies[11, 'json'] = ['invalid JSON']
+    run.finish_reasons[11, field] = 'length'
+    with pytest.raises(RuntimeError, match='failed for 1 documents'):
+        run(retries=2)
+    plain_title_requests = [row for row in run.requests if 'Составьте короткое название' in row['messages'][-1]['content']]
+    assert len(plain_title_requests) == 2
+    assert len({row['seed'] for row in plain_title_requests}) == 2
+    saved = [json.loads(line) for line in output.read_text().splitlines()]
+    assert saved[11]['doc_title'] == saved[11]['doc_annotation'] == ''
+
+
+def test_long_document_recovery_uses_same_five_source_fragments():
+    document = {'text': 'abcdefghij', 'chunks': [{'start_char': i, 'end_char': i + 1} for i in range(10)]}
+    source = metadata.metadata_source(document)
+    assert source == '\n\n'.join(f'Фрагмент {i + 1}:\n' + document['text'][i] for i in [0, 1, 3, 6, 9])

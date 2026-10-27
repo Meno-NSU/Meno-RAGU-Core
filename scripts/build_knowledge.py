@@ -24,8 +24,14 @@ CODE_DIR = REPO_DIR / "code"
 CORPUS_NAME = "chunked_texts_about_nsu_with_metadata_and_scores.jsonl"
 YANDEX_API = "https://cloud-api.yandex.net/v1/disk/public/resources"
 METADATA_RESUME_PREVIOUS_CODE = {
-    "driver": "227d547e2fc38979d07f625905010447bb8a4c1528bbbd422e0b12f6b448b5b3",
-    "generate_title_and_annotation.py": "e3a2ffd86a88050ae6a8396eb988e196066dfb3e6e5c607cfd6028cc90cdf9c1",
+    "31cdf1e": {
+        "driver": "227d547e2fc38979d07f625905010447bb8a4c1528bbbd422e0b12f6b448b5b3",
+        "generate_title_and_annotation.py": "e3a2ffd86a88050ae6a8396eb988e196066dfb3e6e5c607cfd6028cc90cdf9c1",
+    },
+    "b94b09c": {
+        "driver": "0d3703b8cf99e014bcc7a16edac78fe8fe4dd85e5a3286bff3138c42a67e9ed8",
+        "generate_title_and_annotation.py": "24b8efc26c89b817f46c2f54106c3563cfd0c886c50a16479b83a3e2818c6f76",
+    },
 }
 
 
@@ -892,10 +898,12 @@ class Builder:
         if state_path.exists():
             self.state = json.loads(state_path.read_text())
             if self.state["fingerprint"] != fingerprint:
-                previous_config = {**config, "code": {**config["code"], **METADATA_RESUME_PREVIOUS_CODE}}
-                previous_fingerprint = hashlib.sha256(json.dumps(previous_config, sort_keys=True).encode()).hexdigest()
+                previous_fingerprints = set()
+                for previous_code in METADATA_RESUME_PREVIOUS_CODE.values():
+                    previous_config = {**config, "code": {**config["code"], **previous_code}}
+                    previous_fingerprints.add(hashlib.sha256(json.dumps(previous_config, sort_keys=True).encode()).hexdigest())
                 compatible_metadata_fix = (
-                    self.state["fingerprint"] == previous_fingerprint
+                    self.state["fingerprint"] in previous_fingerprints
                     and set(self.state["stages"]) <= {stage.name for stage in stages if stage.name < "06-metadata"}
                 )
                 if self.state["stages"] and not compatible_metadata_fix:
