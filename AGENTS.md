@@ -24,6 +24,8 @@ The driver supports `--log-level INFO|DEBUG` and forwards it as `--log_level` to
 
 `news_utils.py` is shared by corpus combining and news-title date enrichment. The published first three news files use numeric Unix `date`; the fourth uses ISO `doc_date` with `scrapped_at` metadata. Normalize publication dates in memory, interpret naive strings in `--timezone`, and never substitute collection/scraping dates. Include this helper in build code hashes. A failed build with no completed stage checkpoints may retry after code/config changes in the same work directory; builds with completed checkpoints still enforce the fingerprint.
 
+HTTP metadata resume retains every valid record, including successes after failed rows. Check the complete original record against the corresponding input before reuse; never truncate at the first failure. A sibling `.progress.jsonl` journals indexed results as they complete, supports recovery after interruption, and is removed only after atomic ordered output replacement. Retry malformed/empty metadata within `--max_retries` as well as transient API errors. The driver has an exact previous-code fingerprint migration for the metadata recovery fix from `31cdf1e`, allowed only before stage 06 completes and with all inputs/settings/other code unchanged.
+
 ## Service packaging and tests
 
 The repository now includes `pyproject.toml`, `uv.lock`, a CPU-only API Dockerfile, and CI. The production-compatible service is in `src/meno_rag`; run its tests from the repository root with `uv run pytest`. `RaguRagPipeline` is the active pipeline; the shared pipeline module retains API-stage and generation helpers. Do not restore FAISS/FRIDA retrieval. Run `uv run ruff check src tests` and `uv run mypy` for the service.

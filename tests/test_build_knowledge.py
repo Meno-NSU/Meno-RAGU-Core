@@ -131,6 +131,7 @@ def services(monkeypatch):
     monkeypatch.setattr(multiprocessing, "Pool", lambda **kwargs: ThreadPool(2))
     monkeypatch.setitem(sys.modules, "vllm", None)
     monkeypatch.setitem(sys.modules, "torch", None)
+    monkeypatch.setattr("time.sleep", lambda delay: None)
     yield client, counts, calls, broken
     client.close()
 
@@ -286,6 +287,51 @@ def test_first_failed_stage_can_retry_after_code_update_without_discarding_logs(
     assert retried[0] == "03-combine"
     assert log.read_text().startswith("previous failure")
     assert (resumed.args.output_dir / "build_manifest.json").is_file()
+
+
+@pytest.mark.parametrize("changed", [None, "inputs", "settings", "code"])
+def test_metadata_resume_fix_migrates_only_exact_previous_build(inputs, services, monkeypatch, changed):
+    client, counts, _, _ = services
+    first = build.Builder(build.parse_args(inputs), http_client=client)
+    real_cpu_stages(first, monkeypatch, counts, [], fail="06-metadata")
+    with pytest.raises(build.BuildError, match="injected interruption"):
+        first.build()
+    _, config = first.configuration(build.make_plan(first.args, first.sources, first.work))
+    config["code"].update(build.METADATA_RESUME_PREVIOUS_CODE)
+    if changed:
+        config[changed]["different"] = "must not migrate"
+    state_path = first.work / "state.json"
+    state = json.loads(state_path.read_text())
+    state["fingerprint"] = hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
+    state_path.write_text(json.dumps(state))
+    resumed = build.Builder(build.parse_args(inputs), http_client=client)
+    executed = []
+    real_cpu_stages(resumed, monkeypatch, counts, executed)
+    if changed:
+        with pytest.raises(build.BuildError, match="входные файлы изменились"):
+            resumed.build()
+        assert not executed
+    else:
+        resumed.build()
+        assert executed == ["06-metadata", "07-quality", "08-news-dates", "09-mapping", "10-graph"]
+
+
+def test_metadata_resume_fix_does_not_migrate_completed_metadata(inputs, services, monkeypatch):
+    client, counts, _, _ = services
+    first = build.Builder(build.parse_args(inputs), http_client=client)
+    real_cpu_stages(first, monkeypatch, counts, [], fail="07-quality")
+    with pytest.raises(build.BuildError, match="injected interruption"):
+        first.build()
+    _, config = first.configuration(build.make_plan(first.args, first.sources, first.work))
+    config["code"].update(build.METADATA_RESUME_PREVIOUS_CODE)
+    state_path = first.work / "state.json"
+    state = json.loads(state_path.read_text())
+    state["fingerprint"] = hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
+    state_path.write_text(json.dumps(state))
+    resumed = build.Builder(build.parse_args(inputs), http_client=client)
+    monkeypatch.setattr(resumed, "execute", lambda *args: pytest.fail("Completed metadata must not migrate"))
+    with pytest.raises(build.BuildError, match="входные файлы изменились"):
+        resumed.build()
 
 
 def test_raw_sources_enable_preparation_stages(inputs):

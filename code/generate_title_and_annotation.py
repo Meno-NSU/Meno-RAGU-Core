@@ -5,7 +5,7 @@ import logging
 import os
 import random
 import sys
-import threading
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -114,6 +114,59 @@ PROMPT_TEMPLATE_FOR_SHORT_DOCUMENT: str = '''Ваша задача — на ос
 '''
 
 
+def load_metadata_checkpoint(output_fname, documents):
+    records = {}
+    for indexed, filename in ((False, output_fname), (True, output_fname + '.progress.jsonl')):
+        if not os.path.isfile(filename):
+            continue
+        with open(filename, encoding='utf-8') as stream:
+            doc_idx = -1
+            for line_number, line in enumerate(stream, 1):
+                if not line.strip():
+                    continue
+                if not indexed:
+                    doc_idx += 1
+                try:
+                    item = json.loads(line)
+                except json.JSONDecodeError:
+                    summarization_logger.warning(f'Повреждённая запись {filename}:{line_number}; она будет повторена.')
+                    continue
+                if indexed:
+                    doc_idx, record = item['doc_idx'], item['record']
+                else:
+                    record = item
+                if type(doc_idx) is not int or not 0 <= doc_idx < len(documents) or not isinstance(record, dict):
+                    raise ValueError(f'Некорректный индекс документа: {filename}:{line_number}.')
+                expected = dict(documents[doc_idx])
+                expected['doc_full_text'] = expected.pop('text')
+                actual = dict(record)
+                for key in ('doc_title', 'doc_annotation'):
+                    expected.pop(key, None)
+                    actual.pop(key, None)
+                if actual != expected:
+                    raise ValueError(f'Метаданные не соответствуют входному документу {doc_idx}: {filename}:{line_number}.')
+                if all(isinstance(record.get(key), str) and record[key].strip()
+                       for key in ('doc_title', 'doc_annotation')):
+                    records[doc_idx] = record
+    return records
+
+
+def save_metadata(output_fname, records, count):
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=os.path.dirname(output_fname) or '.',
+                                         prefix=os.path.basename(output_fname) + '.', suffix='.tmp', delete=False) as stream:
+            temporary = stream.name
+            for doc_idx in range(count):
+                stream.write(json.dumps(records[doc_idx], ensure_ascii=False) + '\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, output_fname)
+    finally:
+        if temporary is not None and os.path.exists(temporary):
+            os.unlink(temporary)
+
+
 def main():
     random.seed(RANDOM_SEED)
 
@@ -141,11 +194,11 @@ def main():
                         default=60.0, help='Timeout (in seconds) for a single OpenAI API request '
                                            '(used only without --vllm).')
     parser.add_argument('--max_retries', dest='max_retries', type=int, required=False,
-                        default=5, help='Max number of retries for transient OpenAI API errors '
+                        default=5, help='Max number of retries for transient API errors or invalid metadata '
                                         '(used only without --vllm).')
     parser.add_argument('--resume', dest='resume', action='store_true',
-                        help='Skip documents already present in the output file and continue from '
-                             'there (used only without --vllm).')
+                        help='Reuse every valid matching output/progress record and retry only missing or invalid '
+                             'documents (used only without --vllm).')
     parser.add_argument('--fail_on_error', action='store_true',
                         help='Fail the build if any metadata could not be generated; resume only valid records.')
     args = parser.parse_args()
@@ -349,42 +402,15 @@ def main():
         }
         summarization_logger.info(f'OpenAI client with url={args.openai_base_url} is created.')
 
-        num_already_done = 0
-        if args.resume and os.path.isfile(output_fname):
-            kept_lines = []
-            with codecs.open(output_fname, mode='r', encoding='utf-8') as fp:
-                existing_lines = [ln for ln in fp.read().split('\n')]
-            for ln in existing_lines:
-                s = ln.strip()
-                if not s:
-                    continue
-                try:
-                    obj = json.loads(s)
-                except Exception:
-                    break
-                if ('doc_title' not in obj) or ('doc_annotation' not in obj):
-                    break
-                if args.fail_on_error and any(
-                    not isinstance(obj[key], str) or not obj[key].strip() for key in ('doc_title', 'doc_annotation')
-                ):
-                    break
-                kept_lines.append(s)
-            num_already_done = len(kept_lines)
-            non_empty_existing = sum(1 for ln in existing_lines if ln.strip())
-            if num_already_done != non_empty_existing:
-                with codecs.open(output_fname, mode='w', encoding='utf-8') as fp:
-                    for s in kept_lines:
-                        fp.write(s + '\n')
-            if num_already_done > 0:
-                summarization_logger.info(
-                    f'Resume is enabled. {num_already_done} already-processed documents '
-                    f'are found in the "{output_fname}" and will be skipped.'
-                )
-
-        write_mode = 'a' if num_already_done > 0 else 'w'
+        records = load_metadata_checkpoint(output_fname, documents) if args.resume else {}
+        summarization_logger.info(f'Повторный запуск: сохранены метаданные {len(records)} документов; '
+                                  f'осталось обработать {len(documents) - len(records)}.')
 
         def process_one(doc_idx, cur_msg):
-            response = None
+            out_rec = dict(documents[doc_idx])
+            out_rec['doc_full_text'] = out_rec.pop('text')
+            out_rec['doc_title'] = ''
+            out_rec['doc_annotation'] = ''
             for attempt in range(args.max_retries + 1):
                 try:
                     response = client.chat.completions.create(
@@ -395,61 +421,43 @@ def main():
                         max_tokens=MAX_NEW_TOKENS,
                         timeout=args.timeout,
                     )
-                    break
+                    try:
+                        predicted_metadata = DocumentDescription.model_validate_json(response.choices[0].message.content)
+                        title = ' '.join(predicted_metadata.title.split())
+                        annotation = ' '.join(predicted_metadata.annotation.split())
+                        if not title or not annotation:
+                            raise ValueError('Пустое название или аннотация.')
+                    except (ValueError, TypeError, IndexError) as err:
+                        reason = response.choices[0].finish_reason if response.choices else 'no_choices'
+                        raise ValueError(f'Некорректные метаданные; finish_reason={reason}: {err}') from err
+                    out_rec['doc_title'], out_rec['doc_annotation'] = title, annotation
+                    return doc_idx, out_rec, False
                 except (openai.RateLimitError, openai.APITimeoutError,
-                        openai.APIConnectionError, openai.InternalServerError) as err:
+                        openai.APIConnectionError, openai.InternalServerError, ValueError, TypeError) as err:
+                    summarization_logger.warning(f'doc_idx={doc_idx}, попытка {attempt + 1}/{args.max_retries + 1}: {err}')
                     if attempt >= args.max_retries:
                         summarization_logger.error(
                             f'doc_idx={doc_idx} failed after {attempt + 1} attempts: {err}'
                         )
-                        response = None
                         break
                     sleep_time = min(60.0, (2.0 ** attempt) + random.random())
                     time.sleep(sleep_time)
-            out_rec = dict(documents[doc_idx])
-            is_error = False
-            if response is None:
-                out_rec['doc_title'] = ''
-                out_rec['doc_annotation'] = ''
-                is_error = True
-            else:
-                try:
-                    predicted_metadata = DocumentDescription.model_validate_json(
-                        response.choices[0].message.content
-                    )
-                    out_rec['doc_title'] = ' '.join(predicted_metadata.title.strip().split()).strip()
-                    out_rec['doc_annotation'] = ' '.join(predicted_metadata.annotation.strip().split()).strip()
-                    if args.fail_on_error and (not out_rec['doc_title'] or not out_rec['doc_annotation']):
-                        raise ValueError('The model returned an empty title or annotation.')
-                except Exception as err:
-                    summarization_logger.warning(f'doc_idx={doc_idx} JSON parsing error: {err}')
-                    out_rec['doc_title'] = ''
-                    out_rec['doc_annotation'] = ''
-                    is_error = True
-            out_rec['doc_full_text'] = out_rec.pop('text')
-            return doc_idx, out_rec, is_error
+            return doc_idx, out_rec, True
 
-        next_to_write = num_already_done
-        results_buffer = {}
-        write_lock = threading.Lock()
-
-        def try_flush(dst_fp):
-            nonlocal next_to_write
-            with write_lock:
-                while next_to_write in results_buffer:
-                    rec = results_buffer.pop(next_to_write)
-                    dst_fp.write(json.dumps(obj=rec, ensure_ascii=False) + '\n')
-                    dst_fp.flush()
-                    next_to_write += 1
-
-        work_items = list(enumerate(instructions))[num_already_done:]
+        work_items = [(idx, message) for idx, message in enumerate(instructions) if idx not in records]
         total_to_do = len(work_items)
         summarization_logger.info(
             f'{total_to_do} documents to process with concurrency={args.concurrency}, '
             f'timeout={args.timeout}s, max_retries={args.max_retries}.'
         )
 
-        with codecs.open(output_fname, mode=write_mode, encoding='utf-8') as dst_fp:
+        progress_fname = output_fname + '.progress.jsonl'
+        if not args.resume:
+            with open(output_fname, 'w', encoding='utf-8'):
+                pass
+        with open(progress_fname, mode='a' if args.resume else 'w', encoding='utf-8') as progress:
+            progress.write('\n')
+            progress.flush()
             with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
                 futures = {
                     executor.submit(process_one, doc_idx, cur_msg): doc_idx
@@ -458,12 +466,14 @@ def main():
                 with tqdm(total=total_to_do, desc='LLM summarization') as pbar:
                     for fut in as_completed(futures):
                         doc_idx, out_rec, is_error = fut.result()
-                        with write_lock:
-                            results_buffer[doc_idx] = out_rec
+                        progress.write(json.dumps({'doc_idx': doc_idx, 'record': out_rec}, ensure_ascii=False) + '\n')
+                        progress.flush()
+                        records[doc_idx] = out_rec
                         if is_error:
                             num_parsing_errors += 1
-                        try_flush(dst_fp)
                         pbar.update(1)
+        save_metadata(output_fname, records, len(documents))
+        os.unlink(progress_fname)
 
     if num_parsing_errors > 0:
         info_msg = (f'Titles and annotations are generated for {len(instructions) - num_parsing_errors} '

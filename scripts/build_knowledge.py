@@ -23,6 +23,10 @@ REPO_DIR = Path(__file__).resolve().parents[1]
 CODE_DIR = REPO_DIR / "code"
 CORPUS_NAME = "chunked_texts_about_nsu_with_metadata_and_scores.jsonl"
 YANDEX_API = "https://cloud-api.yandex.net/v1/disk/public/resources"
+METADATA_RESUME_PREVIOUS_CODE = {
+    "driver": "227d547e2fc38979d07f625905010447bb8a4c1528bbbd422e0b12f6b448b5b3",
+    "generate_title_and_annotation.py": "e3a2ffd86a88050ae6a8396eb988e196066dfb3e6e5c607cfd6028cc90cdf9c1",
+}
 
 
 class BuildError(RuntimeError):
@@ -888,14 +892,24 @@ class Builder:
         if state_path.exists():
             self.state = json.loads(state_path.read_text())
             if self.state["fingerprint"] != fingerprint:
-                if self.state["stages"]:
+                previous_config = {**config, "code": {**config["code"], **METADATA_RESUME_PREVIOUS_CODE}}
+                previous_fingerprint = hashlib.sha256(json.dumps(previous_config, sort_keys=True).encode()).hexdigest()
+                compatible_metadata_fix = (
+                    self.state["fingerprint"] == previous_fingerprint
+                    and set(self.state["stages"]) <= {stage.name for stage in stages if stage.name < "06-metadata"}
+                )
+                if self.state["stages"] and not compatible_metadata_fix:
                     raise BuildError(
                         "Параметры, код или входные файлы изменились. Продолжение возможно с прежними параметрами; иначе используйте новый --output-dir."
                     )
-                print(
-                    "[ПОВТОР] Код или параметры изменились; подтверждённых этапов ещё нет, начинаю заново.", flush=True
-                )
-                self.state = {"fingerprint": fingerprint, "stages": {}}
+                if compatible_metadata_fix:
+                    print("[ОБНОВЛЕНИЕ] Исправлено восстановление метаданных; сохраняю подтверждённые этапы 01–05.", flush=True)
+                    self.state["fingerprint"] = fingerprint
+                else:
+                    print(
+                        "[ПОВТОР] Код или параметры изменились; подтверждённых этапов ещё нет, начинаю заново.", flush=True
+                    )
+                    self.state = {"fingerprint": fingerprint, "stages": {}}
                 atomic_json(state_path, self.state)
         else:
             self.state = {"fingerprint": fingerprint, "stages": {}}
