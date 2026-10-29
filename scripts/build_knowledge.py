@@ -23,6 +23,7 @@ REPO_DIR = Path(__file__).resolve().parents[1]
 CODE_DIR = REPO_DIR / "code"
 CORPUS_NAME = "chunked_texts_about_nsu_with_metadata_and_scores.jsonl"
 YANDEX_API = "https://cloud-api.yandex.net/v1/disk/public/resources"
+CONCURRENCY_PREVIOUS_DRIVER = "a9b9b56ef9ccd63a8db264ababf047fe661fcdce0f1296a77cfb5e8706cf1645"
 GRAPH_REWRITE_PREVIOUS_CODE = {
     "driver": "35b3a5f4de9d6541c56e45d0559df2c3072e7d9aa34e7bda8e193b30f4a6f062",
     "prepare_graph_index.py": "74d53d3f408b1ad1273176f6888cb2cba1681a10ddfbb294abea2acd400834c1",
@@ -215,6 +216,18 @@ def atomic_json(path, value):
         stream.flush()
         os.fsync(stream.fileno())
     temporary.replace(path)
+
+
+def content_command(command):
+    result = []
+    index = 0
+    while index < len(command):
+        if command[index] in {"--log_level", "--concurrency", "--rate_max_simultaneous"}:
+            index += 2
+        else:
+            result.append(command[index])
+            index += 1
+    return result
 
 
 class YandexSource:
@@ -700,6 +713,7 @@ class Builder:
                 "input_dir",
                 "output_dir",
                 "log_level",
+                "concurrency",
             }
         }
         scripts = {stage.script for stage in stages}
@@ -815,14 +829,14 @@ class Builder:
                 raise BuildError(f"Неполная коллекция Qdrant {name}: {count} элементов.")
 
     def run_stage(self, stage):
-        command = stage.command
-        if "--log_level" in command:
-            index = command.index("--log_level")
-            command = command[:index] + command[index + 2 :]
+        command = content_command(stage.command)
         signature = {"command": command, "inputs": {str(path): digest(path) for path in stage.inputs}}
         entry = self.state["stages"].get(stage.name)
         try:
-            reusable = entry and entry["signature"] == signature and entry["output"] == self.stage_hash(stage)
+            previous_signature = (
+                {**entry["signature"], "command": content_command(entry["signature"]["command"])} if entry else None
+            )
+            reusable = entry and previous_signature == signature and entry["output"] == self.stage_hash(stage)
         except (OSError, KeyError):
             reusable = False
         if reusable:
@@ -898,6 +912,17 @@ class Builder:
         print(f"База уже собрана и проверена: {self.args.output_dir}")
         return True
 
+    def previous_configuration(self, config, code):
+        concurrency = self.state.get("execution", {}).get("concurrency", self.args.concurrency)
+        metadata_command = self.state["stages"].get("06-metadata", {}).get("signature", {}).get("command", [])
+        if "--concurrency" in metadata_command:
+            concurrency = int(metadata_command[metadata_command.index("--concurrency") + 1])
+        return {
+            **config,
+            "settings": {**config["settings"], "concurrency": concurrency},
+            "code": {**config["code"], **code},
+        }
+
     def run_locked(self, stages, fingerprint, config):
         state_path = self.work / "state.json"
         if state_path.exists():
@@ -905,15 +930,15 @@ class Builder:
             if self.state["fingerprint"] != fingerprint:
                 previous_fingerprints = set()
                 for previous_code in METADATA_RESUME_PREVIOUS_CODE.values():
-                    previous_config = {
-                        **config, "code": {**config["code"], **GRAPH_REWRITE_PREVIOUS_CODE, **previous_code}
-                    }
+                    previous_config = self.previous_configuration(
+                        config, {**GRAPH_REWRITE_PREVIOUS_CODE, **previous_code}
+                    )
                     previous_fingerprints.add(hashlib.sha256(json.dumps(previous_config, sort_keys=True).encode()).hexdigest())
                 compatible_metadata_fix = (
                     self.state["fingerprint"] in previous_fingerprints
                     and set(self.state["stages"]) <= {stage.name for stage in stages if stage.name < "06-metadata"}
                 )
-                previous_graph_config = {**config, "code": {**config["code"], **GRAPH_REWRITE_PREVIOUS_CODE}}
+                previous_graph_config = self.previous_configuration(config, GRAPH_REWRITE_PREVIOUS_CODE)
                 previous_graph_fingerprint = hashlib.sha256(
                     json.dumps(previous_graph_config, sort_keys=True).encode()
                 ).hexdigest()
@@ -921,12 +946,29 @@ class Builder:
                     self.state["fingerprint"] == previous_graph_fingerprint
                     and set(self.state["stages"]) <= {stage.name for stage in stages if stage.name < "10-graph"}
                 )
-                if self.state["stages"] and not (compatible_metadata_fix or compatible_graph_fix):
+                previous_concurrency_config = self.previous_configuration(
+                    config, {"driver": CONCURRENCY_PREVIOUS_DRIVER}
+                )
+                previous_concurrency_fingerprint = hashlib.sha256(
+                    json.dumps(previous_concurrency_config, sort_keys=True).encode()
+                ).hexdigest()
+                compatible_concurrency_fix = (
+                    self.state["fingerprint"] == previous_concurrency_fingerprint
+                    and set(self.state["stages"]) <= {stage.name for stage in stages if stage.name < "10-graph"}
+                )
+                if self.state["stages"] and not (
+                    compatible_metadata_fix or compatible_graph_fix or compatible_concurrency_fix
+                ):
                     raise BuildError(
                         "Параметры, код или входные файлы изменились. Продолжение возможно с прежними параметрами; иначе используйте новый --output-dir."
                     )
-                if compatible_metadata_fix or compatible_graph_fix:
-                    if compatible_graph_fix:
+                if compatible_metadata_fix or compatible_graph_fix or compatible_concurrency_fix:
+                    if compatible_concurrency_fix:
+                        print(
+                            f"[ОБНОВЛЕНИЕ] Параллелизм {self.args.concurrency}; сохраняю этапы 01–09 и кэш ответов LLM.",
+                            flush=True,
+                        )
+                    elif compatible_graph_fix:
                         print(
                             "[ОБНОВЛЕНИЕ] Ускорено раскрытие аббревиатур; сохраняю этапы 01–09 и кэш ответов LLM.",
                             flush=True,
@@ -943,6 +985,8 @@ class Builder:
         else:
             self.state = {"fingerprint": fingerprint, "stages": {}}
             atomic_json(state_path, self.state)
+        self.state["execution"] = {"concurrency": self.args.concurrency}
+        atomic_json(state_path, self.state)
         for directory in (self.work / "stages", self.work / "logs", self.bundle / "knowledge"):
             directory.mkdir(parents=True, exist_ok=True)
         for stage in stages:
@@ -961,7 +1005,8 @@ class Builder:
             if path.is_file() and "llm_debug" not in path.parts and path.name != "build_manifest.json"
         }
         atomic_json(
-            self.bundle / "build_manifest.json", {"fingerprint": fingerprint, "configuration": config, "files": files}
+            self.bundle / "build_manifest.json",
+            {"fingerprint": fingerprint, "configuration": config, "execution": self.state["execution"], "files": files},
         )
         if self.args.output_dir.exists():
             self.args.output_dir.rmdir()

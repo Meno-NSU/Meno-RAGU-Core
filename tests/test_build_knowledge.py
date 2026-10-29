@@ -197,7 +197,7 @@ def test_build_runs_real_corpus_pipeline_and_publishes_backend_bundle(inputs, se
     assert "10-graph" in executed
     assert sum(request.url.path == "/v1/chat/completions" for request in calls) == 7
     repeated = build.Builder(
-        build.parse_args(inputs + (["--no-news-dates"] if no_dates else []) + ["--log-level", "DEBUG"]),
+        build.parse_args(inputs + (["--no-news-dates"] if no_dates else []) + ["--log-level", "DEBUG", "--concurrency", "32"]),
         http_client=client,
     )
     monkeypatch.setattr(repeated, "execute", lambda *args: pytest.fail("Completed build must not execute stages"))
@@ -299,6 +299,7 @@ def test_metadata_resume_fix_migrates_only_exact_previous_build(inputs, services
     with pytest.raises(build.BuildError, match="injected interruption"):
         first.build()
     _, config = first.configuration(build.make_plan(first.args, first.sources, first.work))
+    config["settings"]["concurrency"] = first.args.concurrency
     config["code"].update(build.GRAPH_REWRITE_PREVIOUS_CODE)
     config["code"].update(build.METADATA_RESUME_PREVIOUS_CODE[version])
     if changed:
@@ -327,6 +328,7 @@ def test_metadata_resume_fix_does_not_migrate_completed_metadata(inputs, service
     with pytest.raises(build.BuildError, match="injected interruption"):
         first.build()
     _, config = first.configuration(build.make_plan(first.args, first.sources, first.work))
+    config["settings"]["concurrency"] = first.args.concurrency
     config["code"].update(build.GRAPH_REWRITE_PREVIOUS_CODE)
     config["code"].update(build.METADATA_RESUME_PREVIOUS_CODE[version])
     state_path = first.work / "state.json"
@@ -352,6 +354,7 @@ def test_graph_parallelism_update_preserves_verified_corpus_and_response_cache(
     with Cache(str(cache_path)) as cache:
         cache["previous-response"] = ("original-prompt", "original-response")
     _, config = first.configuration(build.make_plan(first.args, first.sources, first.work))
+    config["settings"]["concurrency"] = first.args.concurrency
     config["code"].update(build.GRAPH_REWRITE_PREVIOUS_CODE)
     if changed in {"inputs", "settings", "code"}:
         config[changed]["different"] = "must not migrate"
@@ -373,6 +376,64 @@ def test_graph_parallelism_update_preserves_verified_corpus_and_response_cache(
         assert executed == ["10-graph"]
     with Cache(str(cache_path)) as cache:
         assert cache["previous-response"] == ("original-prompt", "original-response")
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+@pytest.mark.parametrize("changed", [None, "inputs", "settings", "code"])
+def test_concurrency_can_change_from_8_to_32_without_repeating_metadata(inputs, services, monkeypatch, legacy, changed):
+    client, counts, requests, _ = services
+    first = build.Builder(build.parse_args([*inputs, "--concurrency", "8"]), http_client=client)
+    real_cpu_stages(first, monkeypatch, counts, [], fail="10-graph")
+    with pytest.raises(build.BuildError, match="injected interruption"):
+        first.build()
+    metadata = first.work / "stages" / "metadata.jsonl"
+    original_metadata = metadata.read_bytes()
+    cache_path = first.work / "llm-cache"
+    with Cache(str(cache_path)) as cache:
+        cache["prior-entity-response"] = ("prompt", "entities")
+    state_path = first.work / "state.json"
+    state = json.loads(state_path.read_text())
+    _, config = first.configuration(build.make_plan(first.args, first.sources, first.work))
+    if legacy:
+        config["settings"]["concurrency"] = 8
+        config["code"]["driver"] = build.CONCURRENCY_PREVIOUS_DRIVER
+        state.pop("execution")
+        for stage in build.make_plan(first.args, first.sources, first.work):
+            if stage.name in state["stages"]:
+                state["stages"][stage.name]["signature"]["command"] = stage.command
+    if changed:
+        config[changed]["different"] = "must not resume"
+    state["fingerprint"] = hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
+    state_path.write_text(json.dumps(state))
+    resumed = build.Builder(build.parse_args([*inputs, "--concurrency", "32"]), http_client=client)
+    executed = []
+    real_cpu_stages(resumed, monkeypatch, counts, executed)
+    if changed:
+        with pytest.raises(build.BuildError, match="входные файлы изменились"):
+            resumed.build()
+        assert not executed
+    else:
+        output = resumed.build()
+        assert executed == ["10-graph"]
+        assert json.loads((output / "build_manifest.json").read_text())["execution"]["concurrency"] == 32
+    assert metadata.read_bytes() == original_metadata
+    assert sum(request.url.path == "/v1/chat/completions" for request in requests) == 7
+    with Cache(str(cache_path)) as cache:
+        assert cache["prior-entity-response"] == ("prompt", "entities")
+
+
+def test_concurrency_change_still_detects_modified_input(inputs, services, monkeypatch):
+    client, counts, _, _ = services
+    first = build.Builder(build.parse_args(inputs), http_client=client)
+    real_cpu_stages(first, monkeypatch, counts, [], fail="10-graph")
+    with pytest.raises(build.BuildError, match="injected interruption"):
+        first.build()
+    with first.sources.base.open("a") as stream:
+        stream.write("\n")
+    resumed = build.Builder(build.parse_args([*inputs, "--concurrency", "32"]), http_client=client)
+    monkeypatch.setattr(resumed, "execute", lambda *args: pytest.fail("Changed input must not resume"))
+    with pytest.raises(build.BuildError, match="входные файлы изменились"):
+        resumed.build()
 
 
 def test_raw_sources_enable_preparation_stages(inputs):
