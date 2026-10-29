@@ -23,6 +23,11 @@ REPO_DIR = Path(__file__).resolve().parents[1]
 CODE_DIR = REPO_DIR / "code"
 CORPUS_NAME = "chunked_texts_about_nsu_with_metadata_and_scores.jsonl"
 YANDEX_API = "https://cloud-api.yandex.net/v1/disk/public/resources"
+GRAPH_REWRITE_PREVIOUS_CODE = {
+    "driver": "35b3a5f4de9d6541c56e45d0559df2c3072e7d9aa34e7bda8e193b30f4a6f062",
+    "prepare_graph_index.py": "74d53d3f408b1ad1273176f6888cb2cba1681a10ddfbb294abea2acd400834c1",
+    "graph_utils/graph_utils.py": "d82cb41e5641bb7801cd4cc679136ae5141c44f0c35be203baa40656b29bc5c3",
+}
 METADATA_RESUME_PREVIOUS_CODE = {
     "31cdf1e": {
         "driver": "227d547e2fc38979d07f625905010447bb8a4c1528bbbd422e0b12f6b448b5b3",
@@ -900,18 +905,34 @@ class Builder:
             if self.state["fingerprint"] != fingerprint:
                 previous_fingerprints = set()
                 for previous_code in METADATA_RESUME_PREVIOUS_CODE.values():
-                    previous_config = {**config, "code": {**config["code"], **previous_code}}
+                    previous_config = {
+                        **config, "code": {**config["code"], **GRAPH_REWRITE_PREVIOUS_CODE, **previous_code}
+                    }
                     previous_fingerprints.add(hashlib.sha256(json.dumps(previous_config, sort_keys=True).encode()).hexdigest())
                 compatible_metadata_fix = (
                     self.state["fingerprint"] in previous_fingerprints
                     and set(self.state["stages"]) <= {stage.name for stage in stages if stage.name < "06-metadata"}
                 )
-                if self.state["stages"] and not compatible_metadata_fix:
+                previous_graph_config = {**config, "code": {**config["code"], **GRAPH_REWRITE_PREVIOUS_CODE}}
+                previous_graph_fingerprint = hashlib.sha256(
+                    json.dumps(previous_graph_config, sort_keys=True).encode()
+                ).hexdigest()
+                compatible_graph_fix = (
+                    self.state["fingerprint"] == previous_graph_fingerprint
+                    and set(self.state["stages"]) <= {stage.name for stage in stages if stage.name < "10-graph"}
+                )
+                if self.state["stages"] and not (compatible_metadata_fix or compatible_graph_fix):
                     raise BuildError(
                         "Параметры, код или входные файлы изменились. Продолжение возможно с прежними параметрами; иначе используйте новый --output-dir."
                     )
-                if compatible_metadata_fix:
-                    print("[ОБНОВЛЕНИЕ] Исправлено восстановление метаданных; сохраняю подтверждённые этапы 01–05.", flush=True)
+                if compatible_metadata_fix or compatible_graph_fix:
+                    if compatible_graph_fix:
+                        print(
+                            "[ОБНОВЛЕНИЕ] Ускорено раскрытие аббревиатур; сохраняю этапы 01–09 и кэш ответов LLM.",
+                            flush=True,
+                        )
+                    else:
+                        print("[ОБНОВЛЕНИЕ] Исправлено восстановление метаданных; сохраняю подтверждённые этапы 01–05.", flush=True)
                     self.state["fingerprint"] = fingerprint
                 else:
                     print(

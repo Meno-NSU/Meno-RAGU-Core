@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from nltk.stem.snowball import SnowballStemmer
@@ -13,6 +14,7 @@ from rapidfuzz.distance import Levenshtein
 try:
     from ragu import BuilderArguments, KnowledgeGraph, LocalSearchEngine, NaiveSearchEngine, Settings, StorageArguments, TwoStageArtifactsExtractorLLM
     from ragu.chunker.types import Chunk
+    from ragu.common.logger import logger
     from ragu.graph.types import Entity, Relation
     from ragu.models.embedder import Embedder, EmbedderOpenAI
     from ragu.models.llm import LLMOpenAI
@@ -37,6 +39,7 @@ except:
 
 
 RANDOM_SEED: int = 42
+ABBREVIATION_PROGRESS_INTERVAL: float = 30.0
 CHUNK_ID_PREFIX: str = 'chunk-'
 GRAPH_MAPPING_FILE_NAME: str = 'menon_chunk_mapping.json'
 SPARSE_MODEL_LANGUAGE: str = 'russian'
@@ -517,11 +520,16 @@ class AbbreviationExpandingExtractor(TwoStageArtifactsExtractorLLM):
     grouping merges such duplicates.
     """
 
-    def __init__(self, *args, abbreviations: Optional[Dict[str, Dict[str, Any]]] = None, **kwargs):
+    def __init__(self, *args, abbreviations: Optional[Dict[str, Dict[str, Any]]] = None,
+                 rewrite_concurrency: int = 8, **kwargs):
+        if type(rewrite_concurrency) is not int or rewrite_concurrency < 1:
+            raise ValueError('rewrite_concurrency must be a positive integer.')
         super().__init__(*args, **kwargs)
         self.abbreviations = abbreviations if abbreviations is not None else {}
+        self.rewrite_concurrency = rewrite_concurrency
         self.num_rewritten_chunks = 0
         self.num_rejected_rewrites = 0
+        self.num_failed_rewrites = 0
 
     async def extract(self, chunks: List[Chunk], *args: Any, **kwargs: Any) -> Tuple[List[Entity], List[Relation]]:
         rewritten_chunks = await self._expand_abbreviations(chunks)
@@ -529,74 +537,118 @@ class AbbreviationExpandingExtractor(TwoStageArtifactsExtractorLLM):
         return canonicalize_artifacts(extracted_entities, extracted_relations)
 
     async def _expand_abbreviations(self, chunks: List[Chunk]) -> List[Chunk]:
-        if len(self.abbreviations) == 0:
+        if len(self.abbreviations) == 0 or not chunks:
             return list(chunks)
-        result_chunks: List[Chunk] = []
-        for cur_chunk in chunks:
-            candidates = find_abbreviation_candidates(cur_chunk.content, self.abbreviations)
-            if len(candidates) == 0:
-                result_chunks.append(cur_chunk)
-                continue
-            occurrences = count_abbreviation_occurrences(cur_chunk.content, self.abbreviations)
-            dictionary_lines = []
-            expected_edit_cost = 0
-            expansion_stems = []
-            for cur_abbr in candidates:
-                cur_record = self.abbreviations[cur_abbr]
-                dictionary_lines.append(
-                    f"{cur_record['abbreviation']} — " + '; '.join(cur_record['explanation'])
-                )
-                expected_edit_cost += occurrences.get(cur_abbr, 1) * max(
-                    0,
-                    max(len(cur_e) for cur_e in cur_record['explanation']) - len(cur_record['abbreviation'])
-                )
-                for cur_explanation in cur_record['explanation']:
-                    first_words = cur_explanation.split()
-                    if len(first_words) > 0:
-                        expansion_stems.append(RUSSIAN_STEMMER.stem(first_words[0]))
-            user_prompt = 'СЛОВАРЬ АББРЕВИАТУР:\n' + '\n'.join(dictionary_lines)
-            user_prompt += '\n\nТЕКСТ ФРАГМЕНТА:\n' + cur_chunk.content
-            rewritten_text = ''
-            try:
-                response = await self.llm.chat_completion(
-                    conversation=[
-                        {'role': 'system', 'content': ABBREVIATION_REWRITE_SYSTEM_PROMPT},
-                        {'role': 'user', 'content': user_prompt}
-                    ],
-                    output_schema=str
-                )
-                rewritten_text = str(response).strip()
-            except Exception:
-                rewritten_text = ''
-            edit_slack = max(48, round(0.10 * len(cur_chunk.content)))
-            max_rewritten_len = len(cur_chunk.content) + expected_edit_cost + edit_slack
-            is_sane = (
-                (len(rewritten_text) > 0)
-                and (0.6 * len(cur_chunk.content) <= len(rewritten_text) <= max_rewritten_len)
-                and (Levenshtein.distance(cur_chunk.content, rewritten_text)
-                     <= expected_edit_cost + edit_slack)
+        result_chunks = list(chunks)
+        pending = iter(enumerate(chunks))
+        completed = 0
+        started = time.monotonic()
+        previous_report = started
+        previous_completed = 0
+
+        def report():
+            nonlocal previous_report, previous_completed
+            now = time.monotonic()
+            rate = (completed - previous_completed) / max(now - previous_report, 1e-9)
+            logger.info(
+                'Раскрытие аббревиатур: {}/{} ({:.1f}%); принято={}, отклонено={}, ошибок={}; '
+                'темп={:.2f} фрагм/с; прошло={:.0f} с.',
+                completed, len(chunks), 100 * completed / len(chunks), self.num_rewritten_chunks,
+                self.num_rejected_rewrites, self.num_failed_rewrites, rate, now - started,
             )
-            rewritten_stems = {
-                RUSSIAN_STEMMER.stem(cur_token)
-                for cur_token in re.findall(r'\w+', rewritten_text)
-            }
-            any_expansion = any(
-                (cur_stem in rewritten_stems) for cur_stem in expansion_stems
-            )
-            if is_sane and any_expansion:
-                rewritten_chunk = Chunk(
-                    content=rewritten_text,
-                    chunk_order_idx=cur_chunk.chunk_order_idx,
-                    doc_id=cur_chunk.doc_id,
-                    num_tokens=cur_chunk.num_tokens
-                )
-                rewritten_chunk.id = cur_chunk.id
-                result_chunks.append(rewritten_chunk)
-                self.num_rewritten_chunks += 1
-            else:
-                if len(rewritten_text) > 0:
-                    self.num_rejected_rewrites += 1
-                result_chunks.append(cur_chunk)
-        print(f'Abbreviation expansion: {self.num_rewritten_chunks} chunks are rewritten, '
-              f'{self.num_rejected_rewrites} rewrites are rejected.')
+            previous_report, previous_completed = now, completed
+
+        async def worker():
+            nonlocal completed
+            for index, chunk in pending:
+                result_chunks[index] = await self._expand_one_chunk(chunk)
+                completed += 1
+                if completed % 64 == 0:
+                    await asyncio.sleep(0)
+
+        async def progress():
+            while True:
+                await asyncio.sleep(ABBREVIATION_PROGRESS_INTERVAL)
+                report()
+
+        concurrency = min(self.rewrite_concurrency, len(chunks))
+        logger.info('Раскрытие аббревиатур: {} фрагментов, параллелизм {}.', len(chunks), concurrency)
+        workers = [asyncio.create_task(worker()) for _ in range(concurrency)]
+        monitor = asyncio.create_task(progress())
+        try:
+            await asyncio.gather(*workers)
+        finally:
+            for task in [*workers, monitor]:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*workers, monitor, return_exceptions=True)
+        report()
         return result_chunks
+
+    async def _expand_one_chunk(self, cur_chunk: Chunk) -> Chunk:
+        candidates = find_abbreviation_candidates(cur_chunk.content, self.abbreviations)
+        if len(candidates) == 0:
+            return cur_chunk
+        occurrences = count_abbreviation_occurrences(cur_chunk.content, self.abbreviations)
+        dictionary_lines = []
+        expected_edit_cost = 0
+        expansion_stems = []
+        for cur_abbr in candidates:
+            cur_record = self.abbreviations[cur_abbr]
+            dictionary_lines.append(
+                f"{cur_record['abbreviation']} — " + '; '.join(cur_record['explanation'])
+            )
+            expected_edit_cost += occurrences.get(cur_abbr, 1) * max(
+                0,
+                max(len(cur_e) for cur_e in cur_record['explanation']) - len(cur_record['abbreviation'])
+            )
+            for cur_explanation in cur_record['explanation']:
+                first_words = cur_explanation.split()
+                if len(first_words) > 0:
+                    expansion_stems.append(RUSSIAN_STEMMER.stem(first_words[0]))
+        user_prompt = 'СЛОВАРЬ АББРЕВИАТУР:\n' + '\n'.join(dictionary_lines)
+        user_prompt += '\n\nТЕКСТ ФРАГМЕНТА:\n' + cur_chunk.content
+        rewritten_text = ''
+        try:
+            response = await self.llm.chat_completion(
+                conversation=[
+                    {'role': 'system', 'content': ABBREVIATION_REWRITE_SYSTEM_PROMPT},
+                    {'role': 'user', 'content': user_prompt}
+                ],
+                output_schema=str
+            )
+            rewritten_text = str(response).strip()
+        except Exception as err:
+            self.num_failed_rewrites += 1
+            logger.warning('Не удалось раскрыть аббревиатуры фрагмента {}: {}. Сохранён исходный текст.',
+                           cur_chunk.id, type(err).__name__)
+            return cur_chunk
+        if not rewritten_text:
+            self.num_failed_rewrites += 1
+            return cur_chunk
+        edit_slack = max(48, round(0.10 * len(cur_chunk.content)))
+        max_rewritten_len = len(cur_chunk.content) + expected_edit_cost + edit_slack
+        is_sane = (
+            (0.6 * len(cur_chunk.content) <= len(rewritten_text) <= max_rewritten_len)
+            and (Levenshtein.distance(cur_chunk.content, rewritten_text)
+                 <= expected_edit_cost + edit_slack)
+        )
+        rewritten_stems = {
+            RUSSIAN_STEMMER.stem(cur_token)
+            for cur_token in re.findall(r'\w+', rewritten_text)
+        }
+        any_expansion = any(
+            (cur_stem in rewritten_stems) for cur_stem in expansion_stems
+        )
+        if is_sane and any_expansion:
+            rewritten_chunk = Chunk(
+                content=rewritten_text,
+                chunk_order_idx=cur_chunk.chunk_order_idx,
+                doc_id=cur_chunk.doc_id,
+                num_tokens=cur_chunk.num_tokens
+            )
+            rewritten_chunk.id = cur_chunk.id
+            self.num_rewritten_chunks += 1
+            return rewritten_chunk
+        self.num_rejected_rewrites += 1
+        return cur_chunk

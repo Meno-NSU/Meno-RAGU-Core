@@ -346,6 +346,7 @@ def main():
             do_entity_validation=not args.no_validation,
             do_relation_validation=not args.no_validation,
             abbreviations=abbreviations,
+            rewrite_concurrency=args.rate_max_simultaneous if args.rate_max_simultaneous > 0 else 8,
         )
         info_msg = (f'The two-stage artifact extractor is prepared (ICL examples: {args.icl_examples}, '
                     f'validation: {not args.no_validation}, '

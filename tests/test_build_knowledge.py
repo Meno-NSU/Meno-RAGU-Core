@@ -9,6 +9,7 @@ from multiprocessing.pool import ThreadPool
 import httpx
 import openai
 import pytest
+from diskcache import Cache
 from tokenizers import Tokenizer, models, pre_tokenizers
 from transformers import PreTrainedTokenizerFast
 
@@ -298,6 +299,7 @@ def test_metadata_resume_fix_migrates_only_exact_previous_build(inputs, services
     with pytest.raises(build.BuildError, match="injected interruption"):
         first.build()
     _, config = first.configuration(build.make_plan(first.args, first.sources, first.work))
+    config["code"].update(build.GRAPH_REWRITE_PREVIOUS_CODE)
     config["code"].update(build.METADATA_RESUME_PREVIOUS_CODE[version])
     if changed:
         config[changed]["different"] = "must not migrate"
@@ -325,6 +327,7 @@ def test_metadata_resume_fix_does_not_migrate_completed_metadata(inputs, service
     with pytest.raises(build.BuildError, match="injected interruption"):
         first.build()
     _, config = first.configuration(build.make_plan(first.args, first.sources, first.work))
+    config["code"].update(build.GRAPH_REWRITE_PREVIOUS_CODE)
     config["code"].update(build.METADATA_RESUME_PREVIOUS_CODE[version])
     state_path = first.work / "state.json"
     state = json.loads(state_path.read_text())
@@ -334,6 +337,42 @@ def test_metadata_resume_fix_does_not_migrate_completed_metadata(inputs, service
     monkeypatch.setattr(resumed, "execute", lambda *args: pytest.fail("Completed metadata must not migrate"))
     with pytest.raises(build.BuildError, match="входные файлы изменились"):
         resumed.build()
+
+
+@pytest.mark.parametrize("changed", [None, "inputs", "settings", "code", "completed_graph"])
+def test_graph_parallelism_update_preserves_verified_corpus_and_response_cache(
+    inputs, services, monkeypatch, changed
+):
+    client, counts, _, _ = services
+    first = build.Builder(build.parse_args(inputs), http_client=client)
+    real_cpu_stages(first, monkeypatch, counts, [], fail="10-graph")
+    with pytest.raises(build.BuildError, match="injected interruption"):
+        first.build()
+    cache_path = first.work / "llm-cache"
+    with Cache(str(cache_path)) as cache:
+        cache["previous-response"] = ("original-prompt", "original-response")
+    _, config = first.configuration(build.make_plan(first.args, first.sources, first.work))
+    config["code"].update(build.GRAPH_REWRITE_PREVIOUS_CODE)
+    if changed in {"inputs", "settings", "code"}:
+        config[changed]["different"] = "must not migrate"
+    state_path = first.work / "state.json"
+    state = json.loads(state_path.read_text())
+    state["fingerprint"] = hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
+    if changed == "completed_graph":
+        state["stages"]["10-graph"] = {}
+    state_path.write_text(json.dumps(state))
+    resumed = build.Builder(build.parse_args(inputs), http_client=client)
+    executed = []
+    real_cpu_stages(resumed, monkeypatch, counts, executed)
+    if changed:
+        with pytest.raises(build.BuildError, match="входные файлы изменились"):
+            resumed.build()
+        assert not executed
+    else:
+        resumed.build()
+        assert executed == ["10-graph"]
+    with Cache(str(cache_path)) as cache:
+        assert cache["previous-response"] == ("original-prompt", "original-response")
 
 
 def test_raw_sources_enable_preparation_stages(inputs):
