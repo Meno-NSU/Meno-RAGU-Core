@@ -39,10 +39,16 @@ except ImportError as err:
 from graph_utils.graph_utils import (
     RANDOM_SEED,
     SPARSE_MODEL_LANGUAGE,
-    AbbreviationExpandingExtractor,
     build_chunk_mapping,
     collect_knowledge_base_chunks,
     save_chunk_mapping,
+)
+from graph_utils.checkpoints import (
+    CheckpointError,
+    CheckpointedExtractor,
+    CheckpointedGraphBuilder,
+    GraphCheckpoints,
+    checkpoint_configuration,
 )
 from rewriting_utils.rewriting_utils import load_abbreviations
 from tokenization_utils.tokenization_utils import load_hf_tokenizer
@@ -87,6 +93,8 @@ def main():
     parser.add_argument('-o', '--output', dest='output_dir', type=str, required=False,
                         default='../data/knowledge/ragu_graph',
                         help='The output directory for the RAGU knowledge graph.')
+    parser.add_argument('--checkpoints', dest='checkpoint_dir', type=str,
+                        help='Каталог снимков завершённых проходов графа; по умолчанию соседний с --output.')
     parser.add_argument('--sources', dest='content_sources', type=str, required=False,
                         default='summary,teachers,news,base',
                         help='The comma-separated list of content sources whose documents are '
@@ -339,7 +347,7 @@ def main():
                 raise IOError(f'The file "{abbr_fname}" does not exist!')
             abbreviations = load_abbreviations(abbr_fname)
             print(f'There are {len(abbreviations)} abbreviations for the chunk rewriting.')
-        artifact_extractor = AbbreviationExpandingExtractor(
+        artifact_extractor = CheckpointedExtractor(
             llm=llm,
             embedder=icl_embedder,
             icl_config=icl_config,
@@ -377,7 +385,20 @@ def main():
             )
         )
         try:
-            await knowledge_graph.build_from_docs(chunk_texts)
+            checkpoint_dir = args.checkpoint_dir or os.path.join(
+                os.path.dirname(os.path.abspath(graph_dir)), '.' + os.path.basename(graph_dir) + '.checkpoints'
+            )
+
+            def validate_context():
+                if llm is not None and llm.overflow_count:
+                    raise CheckpointError('Превышен контекст LLM; неполный проход графа не сохранён.')
+
+            with GraphCheckpoints(checkpoint_dir, checkpoint_configuration(args),
+                                  before_save=validate_context) as checkpoints:
+                if artifact_extractor is not None:
+                    artifact_extractor.checkpoints = checkpoints
+                knowledge_graph.pipeline = CheckpointedGraphBuilder.from_pipeline(knowledge_graph.pipeline, checkpoints)
+                await knowledge_graph.build_from_docs(chunk_texts)
             if llm is not None and llm.overflow_count:
                 raise RuntimeError(f'{llm.overflow_count} graph LLM requests exceeded the context budget. '
                                    'The graph is incomplete; review context/completion limits.')

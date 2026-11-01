@@ -32,7 +32,8 @@ def test_indexing_keys_come_from_environment_and_cli_has_priority(monkeypatch, e
     monkeypatch.setenv('QDRANT_API_KEY', 'environment-qdrant-key')
     arguments = ['prepare_graph_index.py', '-i', 'corpus.jsonl', '-r', 'mapping.json', '-e', 'bge-m3', '--vector_only']
     arguments += ['--llm_tokenizer', '/models/graph-tokenizer', '--embedder_tokenizer', '/models/bge-m3',
-                  '--llm_context_tokens', '32768', '--embedder_tokens', '4096', '--log_level', 'DEBUG']
+                  '--llm_context_tokens', '32768', '--embedder_tokens', '4096', '--log_level', 'DEBUG',
+                  '--checkpoints', '/data/graph-checkpoints']
     if explicit:
         arguments += ['--key', 'cli-llm-key', '--embedder_key', 'cli-embedding-key', '--qdrant_key', 'cli-qdrant-key']
     monkeypatch.setattr(sys, 'argv', arguments)
@@ -58,6 +59,7 @@ def test_indexing_keys_come_from_environment_and_cli_has_priority(monkeypatch, e
     assert parsed[0].llm_context_tokens == 32768
     assert parsed[0].embedder_tokens == 4096
     assert parsed[0].log_level == 'DEBUG'
+    assert parsed[0].checkpoint_dir == '/data/graph-checkpoints'
 
 
 @pytest.mark.parametrize('prompt_tokens, allowed', [(7, True), (8, False)])

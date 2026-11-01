@@ -23,6 +23,10 @@ REPO_DIR = Path(__file__).resolve().parents[1]
 CODE_DIR = REPO_DIR / "code"
 CORPUS_NAME = "chunked_texts_about_nsu_with_metadata_and_scores.jsonl"
 YANDEX_API = "https://cloud-api.yandex.net/v1/disk/public/resources"
+CHECKPOINT_PREVIOUS_CODE = {
+    "driver": "5ccec11e676a401d1ccf6408f5cf61bd1112f8d4be2fab19225132eda9bea8be",
+    "prepare_graph_index.py": "d9d6312f21a251b8146fbb7bd75d12d8882a10107d4c616d420148d11b51e85e",
+}
 CONCURRENCY_PREVIOUS_DRIVER = "a9b9b56ef9ccd63a8db264ababf047fe661fcdce0f1296a77cfb5e8706cf1645"
 GRAPH_REWRITE_PREVIOUS_CODE = {
     "driver": "35b3a5f4de9d6541c56e45d0559df2c3072e7d9aa34e7bda8e193b30f4a6f062",
@@ -596,6 +600,8 @@ def make_plan(args, sources, work):
                 args.log_level,
                 "--cache",
                 str(work / "llm-cache"),
+                "--checkpoints",
+                str(work / "graph-checkpoints"),
                 "--chunk_header",
                 args.chunk_header,
                 "--chunk_header_sources",
@@ -920,8 +926,13 @@ class Builder:
         return {
             **config,
             "settings": {**config["settings"], "concurrency": concurrency},
-            "code": {**config["code"], **code},
+            "code": {**self.pre_checkpoint_code(config), **code},
         }
+
+    @staticmethod
+    def pre_checkpoint_code(config):
+        code = {key: value for key, value in config["code"].items() if key != "graph_utils/checkpoints.py"}
+        return {**code, **CHECKPOINT_PREVIOUS_CODE}
 
     def run_locked(self, stages, fingerprint, config):
         state_path = self.work / "state.json"
@@ -956,14 +967,28 @@ class Builder:
                     self.state["fingerprint"] == previous_concurrency_fingerprint
                     and set(self.state["stages"]) <= {stage.name for stage in stages if stage.name < "10-graph"}
                 )
+                previous_checkpoint_config = {**config, "code": self.pre_checkpoint_code(config)}
+                previous_checkpoint_fingerprint = hashlib.sha256(
+                    json.dumps(previous_checkpoint_config, sort_keys=True).encode()
+                ).hexdigest()
+                compatible_checkpoint_fix = (
+                    self.state["fingerprint"] == previous_checkpoint_fingerprint
+                    and set(self.state["stages"]) <= {stage.name for stage in stages if stage.name < "10-graph"}
+                )
                 if self.state["stages"] and not (
-                    compatible_metadata_fix or compatible_graph_fix or compatible_concurrency_fix
+                    compatible_metadata_fix or compatible_graph_fix or compatible_concurrency_fix or compatible_checkpoint_fix
                 ):
                     raise BuildError(
                         "Параметры, код или входные файлы изменились. Продолжение возможно с прежними параметрами; иначе используйте новый --output-dir."
                     )
-                if compatible_metadata_fix or compatible_graph_fix or compatible_concurrency_fix:
-                    if compatible_concurrency_fix:
+                if compatible_metadata_fix or compatible_graph_fix or compatible_concurrency_fix or compatible_checkpoint_fix:
+                    if compatible_checkpoint_fix:
+                        print(
+                            "[ОБНОВЛЕНИЕ] Добавлены чекпоинты проходов графа; сохраняю этапы 01–09 и LLM-кэш. "
+                            "При первом запуске прежние проходы один раз восстанавливаются из кэша.",
+                            flush=True,
+                        )
+                    elif compatible_concurrency_fix:
                         print(
                             f"[ОБНОВЛЕНИЕ] Параллелизм {self.args.concurrency}; сохраняю этапы 01–09 и кэш ответов LLM.",
                             flush=True,
