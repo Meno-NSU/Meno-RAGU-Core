@@ -12,6 +12,7 @@ from graph_utils.checkpoints import (
     CheckpointError,
     GraphCheckpoints,
     checkpoint_configuration,
+    previous_summary_configuration,
 )
 from ragu import KnowledgeGraph, Settings, StorageArguments
 from ragu.chunker.types import Chunk
@@ -286,6 +287,31 @@ def test_configuration_mismatch_refuses_existing_checkpoints(tmp_path):
         with GraphCheckpoints(tmp_path, {'source': 'changed'}):
             pytest.fail('Must not reuse changed inputs')
     assert (tmp_path / 'manifest.json').read_bytes() == manifest
+
+
+@pytest.mark.parametrize('changed', [None, 'settings', 'files', 'code'])
+def test_summary_budget_upgrade_preserves_01_to_06_and_invalidates_only_later_snapshots(tmp_path, changed):
+    configuration = {'settings': {'model': 'gemma'}, 'files': {'source': 'unchanged'},
+                     'code': {'graph_utils/bounded_summaries.py': 'new-helper', 'other-helper': 'unchanged'}}
+    previous = previous_summary_configuration(configuration)
+    with GraphCheckpoints(tmp_path, previous) as store:
+        store.save('06-artifacts', ([], []), (Entity, Relation))
+        store.save('07-entity-summaries', ([],), (Entity,))
+        core_path = tmp_path / store.manifest['stages']['06-artifacts']['file']
+        summary_path = tmp_path / store.manifest['stages']['07-entity-summaries']['file']
+    before = (tmp_path / 'manifest.json').read_bytes()
+    if changed:
+        configuration[changed]['different'] = 'must not migrate'
+        with pytest.raises(CheckpointError, match='Изменились входы'):
+            with GraphCheckpoints(tmp_path, configuration):
+                pytest.fail('Changed content must not migrate')
+        assert (tmp_path / 'manifest.json').read_bytes() == before
+    else:
+        with GraphCheckpoints(tmp_path, configuration) as store:
+            assert set(store.manifest['stages']) == {'06-artifacts'}
+            assert store.load('06-artifacts', (Entity, Relation)) == ([], [])
+        assert (tmp_path / 'manifest.before-summary-budget.json').read_bytes() == before
+        assert core_path.exists() and summary_path.exists()
 
 
 def test_corrupted_manifest_fails_before_running_any_pass(tmp_path):

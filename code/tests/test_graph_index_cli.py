@@ -84,3 +84,24 @@ def test_graph_llm_checks_context_including_completion_budget(prompt_tokens, all
             asyncio.run(llm.chat_completion(conversation))
         assert llm.overflow_count == 1
         client.chat_completion.assert_not_awaited()
+
+
+def test_context_guard_distinguishes_oversized_input_from_completion_budget_and_reuses_counts():
+    import asyncio
+
+    class Tokenizer:
+        calls = 0
+
+        def apply_chat_template(self, *args, **kwargs):
+            self.calls += 1
+            return range(20)
+
+    tokenizer = Tokenizer()
+    llm = ContextBudgetLLM(client=AsyncMock(), model_name='model', tokenizer=tokenizer,
+                           context_tokens=10, completion_tokens=3)
+    conversation = [{'role': 'user', 'content': 'query'}]
+    assert llm.count_prompt_tokens(conversation) == 20
+    with pytest.raises(ValueError, match='input alone exceeds'):
+        asyncio.run(llm.chat_completion(conversation))
+    assert tokenizer.calls == 1
+    llm.client.chat_completion.assert_not_awaited()

@@ -481,6 +481,39 @@ def test_concurrency_change_still_detects_modified_input(inputs, services, monke
         resumed.build()
 
 
+@pytest.mark.parametrize("changed", [None, "inputs", "settings", "code", "completed_graph"])
+def test_summary_budget_upgrade_preserves_corpus_and_existing_graph_snapshots(inputs, services, monkeypatch, changed):
+    client, counts, _, _ = services
+    first = build.Builder(build.parse_args(inputs), http_client=client)
+    real_cpu_stages(first, monkeypatch, counts, [], fail="10-graph")
+    with pytest.raises(build.BuildError, match="injected interruption"):
+        first.build()
+    _, config = first.configuration(build.make_plan(first.args, first.sources, first.work))
+    config["code"] = first.pre_summary_code(config)
+    if changed in {"inputs", "settings", "code"}:
+        config[changed]["different"] = "must not migrate"
+    state_path = first.work / "state.json"
+    state = json.loads(state_path.read_text())
+    state["fingerprint"] = hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
+    if changed == "completed_graph":
+        state["stages"]["10-graph"] = {}
+    state_path.write_text(json.dumps(state))
+    checkpoint = first.work / "graph-checkpoints" / "06-artifacts.jsonl"
+    checkpoint.parent.mkdir()
+    checkpoint.write_text('existing extraction snapshot')
+    resumed = build.Builder(build.parse_args(inputs), http_client=client)
+    executed = []
+    real_cpu_stages(resumed, monkeypatch, counts, executed)
+    if changed:
+        with pytest.raises(build.BuildError, match="входные файлы изменились"):
+            resumed.build()
+        assert executed == []
+    else:
+        resumed.build()
+        assert executed == ["10-graph"]
+    assert checkpoint.read_text() == 'existing extraction snapshot'
+
+
 def test_raw_sources_enable_preparation_stages(inputs):
     args = build.parse_args(inputs)
     source = args.input_dir / "data" / "source"

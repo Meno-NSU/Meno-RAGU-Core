@@ -15,7 +15,19 @@ from ragu.common.prompts.default_models import EntitiesExtractionModel, Relation
 from ragu.graph.graph_builder_pipeline import InMemoryGraphBuilder
 from ragu.graph.types import Community, CommunitySummary, Entity, Relation
 
+from graph_utils.bounded_summaries import install_budgeted_summarizers
 from graph_utils.graph_utils import AbbreviationExpandingExtractor
+
+SUMMARY_PREVIOUS_CODE = {
+    'prepare_graph_index.py': 'd7dc69817e82634f3484eafeae227fdca25fb042592a38799d000fefe6aebd3a',
+    'graph_utils/checkpoints.py': '3a7154bfe94215a2a00038a32fcc8bde56e96d0923536a6173ff172b7b0d86a7',
+}
+
+
+def previous_summary_configuration(configuration):
+    code = {key: value for key, value in configuration.get('code', {}).items()
+            if key != 'graph_utils/bounded_summaries.py'}
+    return {**configuration, 'code': {**code, **SUMMARY_PREVIOUS_CODE}}
 
 
 class CheckpointError(RuntimeError):
@@ -114,7 +126,20 @@ class GraphCheckpoints:
                 except ValidationError as exc:
                     raise CheckpointError('Повреждён манифест чекпоинтов графа.') from exc
                 if self.manifest['fingerprint'] != self.fingerprint:
-                    raise CheckpointError('Изменились входы, код или параметры графа; чекпоинты оставлены без изменений.')
+                    old = previous_summary_configuration(self.configuration)
+                    old_fingerprint = hashlib.sha256(json.dumps(old, sort_keys=True).encode()).hexdigest()
+                    if self.manifest['fingerprint'] != old_fingerprint:
+                        raise CheckpointError('Изменились входы, код или параметры графа; чекпоинты оставлены без изменений.')
+                    backup = self.directory / 'manifest.before-summary-budget.json'
+                    if not backup.exists():
+                        self.publish_metadata(backup, self.manifest)
+                    upgraded = {
+                        **self.manifest, 'fingerprint': self.fingerprint,
+                        'stages': {name: entry for name, entry in self.manifest['stages'].items() if name < '07-'},
+                    }
+                    self.publish_metadata(path, upgraded)
+                    self.manifest = upgraded
+                    logger.info('[ГРАФ: ОБНОВЛЕНИЕ] Сохраняю снимки 01–06; обобщение 07–11 учитывает контекст LLM.')
             return self
         except BaseException:
             self.__exit__(None, None, None)
@@ -141,6 +166,21 @@ class GraphCheckpoints:
             os.fsync(descriptor)
         finally:
             os.close(descriptor)
+
+    def publish_metadata(self, path, value):
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=self.directory,
+                                             suffix='.part', delete=False) as stream:
+                temporary = Path(stream.name)
+                json.dump(value, stream, ensure_ascii=False, indent=2)
+                stream.flush()
+                os.fsync(stream.fileno())
+            temporary.replace(path)
+            self.sync_directory()
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
 
     def load(self, stage, types):
         entry = self.manifest['stages'].get(stage)
@@ -215,14 +255,7 @@ class GraphCheckpoints:
                 'missing': sum(item is None for group in groups for item in group),
                 'dependencies': self.dependencies(stage),
             }
-            with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=self.directory,
-                                             suffix='.part', delete=False) as stream:
-                temporary = Path(stream.name)
-                json.dump(self.manifest, stream, ensure_ascii=False, indent=2)
-                stream.flush()
-                os.fsync(stream.fileno())
-            temporary.replace(self.directory / 'manifest.json')
-            self.sync_directory()
+            self.publish_metadata(self.directory / 'manifest.json', self.manifest)
         finally:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
@@ -340,6 +373,7 @@ class CheckpointedGraphBuilder(InMemoryGraphBuilder):
             additional_pipeline=pipeline.additional_pipeline, language=pipeline.language,
         )
         result.checkpoints = checkpoints
+        install_budgeted_summarizers(result)
         return result
 
     async def extract_graph(self, chunks):

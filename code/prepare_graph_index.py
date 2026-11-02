@@ -1,7 +1,9 @@
 from argparse import ArgumentParser
+from collections import OrderedDict
 import asyncio
 import codecs
 import gc
+import hashlib
 import json
 import networkx as nx
 import os
@@ -67,17 +69,34 @@ class ContextBudgetLLM(LLMOpenAI):
         self.context_tokens = context_tokens
         self.completion_tokens = completion_tokens
         self.overflow_count = 0
+        self._prompt_counts = OrderedDict()
 
-    async def chat_completion(self, conversation, output_schema=str, **kwargs):
-        prompt_tokens = len(self.tokenizer.apply_chat_template(
+    def count_prompt_tokens(self, conversation):
+        key = hashlib.sha256(json.dumps(conversation, sort_keys=True).encode()).digest()
+        if key in self._prompt_counts:
+            self._prompt_counts.move_to_end(key)
+            return self._prompt_counts[key]
+        count = len(self.tokenizer.apply_chat_template(
             conversation, tokenize=True, add_generation_prompt=True
         ))
+        self._prompt_counts[key] = count
+        if len(self._prompt_counts) > 65536:
+            self._prompt_counts.popitem(last=False)
+        return count
+
+    async def chat_completion(self, conversation, output_schema=str, **kwargs):
+        prompt_tokens = self.count_prompt_tokens(conversation)
         if prompt_tokens + self.completion_tokens > self.context_tokens:
             self.overflow_count += 1
+            hint = (
+                'The input alone exceeds the context; split or summarize it before sending. '
+                'Changing max_completion_tokens cannot fit this input.'
+                if prompt_tokens > self.context_tokens else
+                'Increase --llm_context_tokens to the served model limit or reduce --max_completion_tokens.'
+            )
             raise ValueError(
                 f'Graph LLM prompt needs {prompt_tokens} tokens plus {self.completion_tokens} completion tokens, '
-                f'but the configured context is {self.context_tokens}. Increase --llm_context_tokens '
-                'to the served model limit or reduce --max_completion_tokens.'
+                f'but the configured context is {self.context_tokens}. {hint}'
             )
         return await super().chat_completion(conversation, output_schema=output_schema, **kwargs)
 
