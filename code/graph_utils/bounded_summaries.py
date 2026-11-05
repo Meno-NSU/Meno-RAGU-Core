@@ -1,6 +1,9 @@
 import asyncio
+import time
 from dataclasses import replace
 
+from openai import LengthFinishReasonError
+from pydantic import ValidationError
 from ragu.common.logger import logger
 from ragu.common.prompts.default_models import ClusterSummarizationModel
 from ragu.common.prompts.messages import render
@@ -20,6 +23,61 @@ class SummaryBudget:
 
     def size(self, conversation):
         return self.llm.count_prompt_tokens(conversation)
+
+    @staticmethod
+    def split(text):
+        middle = len(text) // 2
+        boundary = text.rfind('\n', len(text) // 4, middle + 1)
+        if boundary < 0:
+            boundary = text.rfind(' ', len(text) // 4, middle + 1)
+        middle = min(len(text) - 1, max(1, boundary + 1 if boundary >= 0 else middle))
+        return text[:middle], text[middle:]
+
+    async def recover(self, text, renderer, schema, field, *, label, depth=0):
+        conversation = renderer(text)
+        error = 'Уточнение промпта не помещается в контекст.'
+        for attempt in range(1, 3):
+            prompt = [*conversation, {'role': 'user', 'content': (
+                f'Верни краткий ответ по заданной JSON-схеме. Каждое текстовое поле — не более '
+                f'{1000 // attempt} символов, каждый список — не более 5 пунктов. '
+                'Выдели основные факты без повторов, формул и рассуждений.'
+            )}]
+            if self.size(prompt) > self.limit:
+                break
+            logger.warning('[ГРАФ: ПОВТОР ОБОБЩЕНИЯ] {}: уровень {}, попытка {}/2; запрашиваю краткий ответ.',
+                           label, depth, attempt)
+            try:
+                result = await self.llm.chat_completion(prompt, output_schema=schema, temperature=0.2)
+                if isinstance(getattr(result, field, None), str) and getattr(result, field).strip():
+                    return result
+                error = 'Модель вернула пустое описание.'
+            except (LengthFinishReasonError, ValidationError) as exc:
+                error = type(exc).__name__
+        if depth >= 4 or len(text) <= 1:
+            raise SummaryBudgetError(f'Не удалось обобщить {label} после ограниченных повторов: {error}')
+        logger.warning('[ГРАФ: ПОВТОР ОБОБЩЕНИЯ] {}: {} Разбиваю материал на две меньшие части; уровень {}.',
+                       label, error, depth + 1)
+        results = [await self.recover(part, renderer, schema, field, label=label, depth=depth + 1)
+                   for part in self.split(text)]
+        material = '\n'.join(getattr(result, field) for result in results)
+        if self.size(renderer(material)) >= self.size(conversation):
+            raise SummaryBudgetError(f'Повторное обобщение {label} не сокращает материал; результат не сохранён.')
+        return await self.recover(material, renderer, schema, field, label=label, depth=depth + 1)
+
+    async def batch(self, conversations, schema, field, *, recover, desc=None):
+        responses = await self.llm.batch_chat_completion(
+            conversations, output_schema=schema, continue_on_error=True, desc=desc,
+        )
+        if len(responses) != len(conversations):
+            raise SummaryBudgetError('Потеряна часть ответов при обобщении графа.')
+        failed = [index for index, response in enumerate(responses)
+                  if not isinstance(getattr(response, field, None), str) or not getattr(response, field).strip()]
+
+        async def retry(index):
+            responses[index] = await recover(index)
+
+        await self.parallel(failed, retry)
+        return responses
 
     async def reduce(self, text, renderer, schema, field, *, label, final_renderer=None):
         final_renderer = final_renderer or renderer
@@ -44,16 +102,15 @@ class SummaryBudget:
                     continue
                 if len(part) <= 1:
                     raise SummaryBudgetError(f'Невозможно разбить материал {label} в пределах контекста.')
-                middle = len(part) // 2
-                boundary = part.rfind('\n', len(part) // 4, middle + 1)
-                if boundary < 0:
-                    boundary = part.rfind(' ', len(part) // 4, middle + 1)
-                middle = min(len(part) - 1, max(1, boundary + 1 if boundary >= 0 else middle))
-                pending.extend((part[middle:], part[:middle]))
+                pending.extend(reversed(self.split(part)))
             logger.info('[ГРАФ: ОБОБЩЕНИЕ] {}: уровень {}, частей {}.', label, level, len(parts))
-            responses = await self.llm.batch_chat_completion(
-                [renderer(part) for part in parts], output_schema=schema,
-                continue_on_error=False, desc=f'Обобщение больших описаний: {label}',
+
+            async def recover(index, parts=parts):
+                return await self.recover(parts[index], renderer, schema, field, label=label)
+
+            responses = await self.batch(
+                [renderer(part) for part in parts], schema, field, recover=recover,
+                desc=f'Обобщение больших описаний: {label}',
             )
             if len(responses) != len(parts):
                 raise SummaryBudgetError(f'Потеряна часть ответа при обобщении {label}.')
@@ -108,18 +165,38 @@ class BudgetedEntitySummarizer(EntitySummarizer):
     async def summarize_entities(self, grouped_entities_df):
         if not self.use_llm_summarization:
             return await super().summarize_entities(grouped_entities_df)
-        for index, row in grouped_entities_df.iterrows():
+        started = reported = time.monotonic()
+        total = len(grouped_entities_df)
+        logger.info('[ГРАФ: ОПИСАНИЯ СУЩНОСТЕЙ] Подготовка {} групп описаний.', total)
+        for completed, (index, row) in enumerate(grouped_entities_df.iterrows(), 1):
             grouped_entities_df.loc[index, 'description'] = await self._summarize_by_cluster_if_needed(row['description'])
+            now = time.monotonic()
+            if now - reported >= 30 or completed == total:
+                logger.info('[ГРАФ: ОПИСАНИЯ СУЩНОСТЕЙ] {}/{} групп; прошло {:.0f} с.',
+                            completed, total, now - started)
+                reported = now
         mask = grouped_entities_df['duplicate_count'].to_numpy() > self.summarize_only_if_more_than
         singles = [Entity(**row) for _, row in grouped_entities_df.loc[~mask].drop('duplicate_count', axis=1).iterrows()]
         multiples = [Entity(**row) for _, row in grouped_entities_df.loc[mask].drop('duplicate_count', axis=1).iterrows()]
         instruction = self.get_prompt('entity_summarizer')
-        await SummaryBudget(self.llm).descriptions(singles + multiples, instruction, 'entity', self.language)
+        budget = SummaryBudget(self.llm)
+        await budget.descriptions(singles + multiples, instruction, 'entity', self.language)
         if multiples:
             conversations = render(instruction.messages, entity=multiples, language=self.language)
-            responses = await self.llm.batch_chat_completion(
+
+            async def recover(index):
+                entity = multiples[index]
+
+                def renderer(text):
+                    return render(instruction.messages, entity=[replace(entity, description=text)],
+                                  language=self.language)[0].to_openai()
+
+                return await budget.recover(entity.description, renderer, instruction.pydantic_model,
+                                            'description', label=entity.entity_name)
+
+            responses = await budget.batch(
                 [conversation.to_openai() for conversation in conversations],
-                output_schema=instruction.pydantic_model, continue_on_error=True, desc='Entity summarization',
+                instruction.pydantic_model, 'description', recover=recover, desc='Entity summarization',
             )
             for entity, response in zip(multiples, responses, strict=True):
                 if response is not None and getattr(response, 'description', None) is not None:
@@ -135,12 +212,24 @@ class BudgetedRelationSummarizer(RelationSummarizer):
         singles = [Relation(**row) for _, row in grouped_relations_df.loc[~mask].drop('duplicate_count', axis=1).iterrows()]
         multiples = [Relation(**row) for _, row in grouped_relations_df.loc[mask].drop('duplicate_count', axis=1).iterrows()]
         instruction = self.get_prompt('relation_summarizer')
-        await SummaryBudget(self.llm).descriptions(singles + multiples, instruction, 'relation', self.language)
+        budget = SummaryBudget(self.llm)
+        await budget.descriptions(singles + multiples, instruction, 'relation', self.language)
         if multiples:
             conversations = render(instruction.messages, relation=multiples, language=self.language)
-            responses = await self.llm.batch_chat_completion(
+
+            async def recover(index):
+                relation = multiples[index]
+
+                def renderer(text):
+                    return render(instruction.messages, relation=[replace(relation, description=text)],
+                                  language=self.language)[0].to_openai()
+
+                return await budget.recover(relation.description, renderer, instruction.pydantic_model,
+                                            'description', label=f'{relation.subject_name} → {relation.object_name}')
+
+            responses = await budget.batch(
                 [conversation.to_openai() for conversation in conversations],
-                output_schema=instruction.pydantic_model, continue_on_error=True,
+                instruction.pydantic_model, 'description', recover=recover, desc='Relation summarization',
             )
             for relation, response in zip(multiples, responses, strict=True):
                 if response is not None and getattr(response, 'description', None) is not None:
@@ -161,20 +250,26 @@ class BudgetedCommunitySummarizer(CommunitySummarizer):
             return render(instruction.messages, community=[community], language=self.language)[0].to_openai()
 
         conversations = [conversation(community) for community in ordered]
+        materials = {}
         budget = SummaryBudget(self.llm)
         oversized = [index for index, value in enumerate(conversations) if budget.size(value) > budget.limit]
 
-        async def reduce(index):
-            community = ordered[index]
-            text = '\n'.join(
+        def material(community):
+            return '\n'.join(
                 [f'Entity: {entity.entity_name}, description: {entity.description}' for entity in community.entities]
                 + [f'{relation.subject_name} -> {relation.object_name}, relations description: {relation.description}'
                    for relation in community.relations]
             )
 
-            def final_renderer(material):
-                entity = Entity('Материалы сообщества', 'SUMMARY', material, [])
+        def report_renderer(community):
+            def renderer(text):
+                entity = Entity('Материалы сообщества', 'SUMMARY', text, [])
                 return conversation(replace(community, entities=[entity], relations=[]))
+            return renderer
+
+        async def reduce(index):
+            community = ordered[index]
+            final_renderer = report_renderer(community)
 
             def renderer(material):
                 return [{'role': 'user', 'content': (
@@ -182,16 +277,22 @@ class BudgetedCommunitySummarizer(CommunitySummarizer):
                     'не добавляй отсутствующие сведения. Пиши по-русски. Верни JSON с полем content.\n\n' + material
                 )}]
 
-            material = await budget.reduce(
-                text, renderer, ClusterSummarizationModel, 'content',
+            materials[index] = await budget.reduce(
+                material(community), renderer, ClusterSummarizationModel, 'content',
                 label=community.id, final_renderer=final_renderer,
             )
-            conversations[index] = final_renderer(material)
+            conversations[index] = final_renderer(materials[index])
 
         await budget.parallel(oversized, reduce)
-        responses = await self.llm.batch_chat_completion(
-            conversations, output_schema=instruction.pydantic_model, continue_on_error=True,
-            desc='Summarized communities',
+
+        async def recover_report(index):
+            community = ordered[index]
+            text = materials[index] if index in materials else material(community)
+            return await budget.recover(text, report_renderer(community), instruction.pydantic_model,
+                                        'summary', label=community.id)
+
+        responses = await budget.batch(
+            conversations, instruction.pydantic_model, 'summary', recover=recover_report, desc='Summarized communities',
         )
         output = []
         for community, response in zip(ordered, responses, strict=True):

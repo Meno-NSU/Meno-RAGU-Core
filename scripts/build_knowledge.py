@@ -23,6 +23,11 @@ REPO_DIR = Path(__file__).resolve().parents[1]
 CODE_DIR = REPO_DIR / "code"
 CORPUS_NAME = "chunked_texts_about_nsu_with_metadata_and_scores.jsonl"
 YANDEX_API = "https://cloud-api.yandex.net/v1/disk/public/resources"
+COMPLETION_PREVIOUS_CODE = {
+    "driver": "14b01b6ff3477607452c9306da8c953b6c3f33a0c6c102e7343563b162c0cb5e",
+    "graph_utils/checkpoints.py": "ee05701c77cb59a463acc8bec85386fdfbb4e62e4c5c4e72333f244fffa7932f",
+    "graph_utils/bounded_summaries.py": "f287246bfefc15b88c24e3725773a77594a7a6c6800123772cb9449d9eb26b71",
+}
 SUMMARY_PREVIOUS_CODE = {
     "driver": "a22f79301dad4feb4b16810f2fcd0e6105869e813db2f3e9706d82a771e776c3",
     "prepare_graph_index.py": "d7dc69817e82634f3484eafeae227fdca25fb042592a38799d000fefe6aebd3a",
@@ -945,6 +950,10 @@ class Builder:
         code = {key: value for key, value in config["code"].items() if key != "graph_utils/bounded_summaries.py"}
         return {**code, **SUMMARY_PREVIOUS_CODE}
 
+    @staticmethod
+    def pre_completion_code(config):
+        return {**config["code"], **COMPLETION_PREVIOUS_CODE}
+
     def run_locked(self, stages, fingerprint, config):
         state_path = self.work / "state.json"
         if state_path.exists():
@@ -993,16 +1002,28 @@ class Builder:
                     ).hexdigest()
                     and set(self.state["stages"]) <= {stage.name for stage in stages if stage.name < "10-graph"}
                 )
+                previous_completion_config = {**config, "code": self.pre_completion_code(config)}
+                compatible_completion_fix = (
+                    self.state["fingerprint"] == hashlib.sha256(
+                        json.dumps(previous_completion_config, sort_keys=True).encode()
+                    ).hexdigest()
+                    and set(self.state["stages"]) <= {stage.name for stage in stages if stage.name < "10-graph"}
+                )
                 if self.state["stages"] and not (
                     compatible_metadata_fix or compatible_graph_fix or compatible_concurrency_fix
-                    or compatible_checkpoint_fix or compatible_summary_fix
+                    or compatible_checkpoint_fix or compatible_summary_fix or compatible_completion_fix
                 ):
                     raise BuildError(
                         "Параметры, код или входные файлы изменились. Продолжение возможно с прежними параметрами; иначе используйте новый --output-dir."
                     )
                 if (compatible_metadata_fix or compatible_graph_fix or compatible_concurrency_fix
-                        or compatible_checkpoint_fix or compatible_summary_fix):
-                    if compatible_summary_fix:
+                        or compatible_checkpoint_fix or compatible_summary_fix or compatible_completion_fix):
+                    if compatible_completion_fix:
+                        print(
+                            "[ОБНОВЛЕНИЕ] Добавлены повторы оборванных обобщений; "
+                            "сохраняю корпус, LLM-кэш и снимки извлечения графа 01–06.", flush=True,
+                        )
+                    elif compatible_summary_fix:
                         print(
                             "[ОБНОВЛЕНИЕ] Обобщение больших описаний учитывает контекст LLM; "
                             "сохраняю корпус, LLM-кэш и снимки извлечения графа 01–06.", flush=True,

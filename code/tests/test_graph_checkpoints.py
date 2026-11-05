@@ -12,6 +12,7 @@ from graph_utils.checkpoints import (
     CheckpointError,
     GraphCheckpoints,
     checkpoint_configuration,
+    previous_completion_configuration,
     previous_summary_configuration,
 )
 from ragu import KnowledgeGraph, Settings, StorageArguments
@@ -290,10 +291,12 @@ def test_configuration_mismatch_refuses_existing_checkpoints(tmp_path):
 
 
 @pytest.mark.parametrize('changed', [None, 'settings', 'files', 'code'])
-def test_summary_budget_upgrade_preserves_01_to_06_and_invalidates_only_later_snapshots(tmp_path, changed):
+@pytest.mark.parametrize('upgrade', ['budget', 'completion'])
+def test_summary_budget_upgrade_preserves_01_to_06_and_invalidates_only_later_snapshots(tmp_path, changed, upgrade):
     configuration = {'settings': {'model': 'gemma'}, 'files': {'source': 'unchanged'},
                      'code': {'graph_utils/bounded_summaries.py': 'new-helper', 'other-helper': 'unchanged'}}
-    previous = previous_summary_configuration(configuration)
+    previous = (previous_summary_configuration(configuration) if upgrade == 'budget'
+                else previous_completion_configuration(configuration))
     with GraphCheckpoints(tmp_path, previous) as store:
         store.save('06-artifacts', ([], []), (Entity, Relation))
         store.save('07-entity-summaries', ([],), (Entity,))
@@ -310,7 +313,8 @@ def test_summary_budget_upgrade_preserves_01_to_06_and_invalidates_only_later_sn
         with GraphCheckpoints(tmp_path, configuration) as store:
             assert set(store.manifest['stages']) == {'06-artifacts'}
             assert store.load('06-artifacts', (Entity, Relation)) == ([], [])
-        assert (tmp_path / 'manifest.before-summary-budget.json').read_bytes() == before
+        backup = 'manifest.before-summary-budget.json' if upgrade == 'budget' else 'manifest.before-summary-retries.json'
+        assert (tmp_path / backup).read_bytes() == before
         assert core_path.exists() and summary_path.exists()
 
 

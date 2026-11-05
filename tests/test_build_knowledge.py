@@ -482,14 +482,15 @@ def test_concurrency_change_still_detects_modified_input(inputs, services, monke
 
 
 @pytest.mark.parametrize("changed", [None, "inputs", "settings", "code", "completed_graph"])
-def test_summary_budget_upgrade_preserves_corpus_and_existing_graph_snapshots(inputs, services, monkeypatch, changed):
+@pytest.mark.parametrize("upgrade", ["budget", "completion"])
+def test_summary_budget_upgrade_preserves_corpus_and_existing_graph_snapshots(inputs, services, monkeypatch, changed, upgrade):
     client, counts, _, _ = services
     first = build.Builder(build.parse_args(inputs), http_client=client)
     real_cpu_stages(first, monkeypatch, counts, [], fail="10-graph")
     with pytest.raises(build.BuildError, match="injected interruption"):
         first.build()
     _, config = first.configuration(build.make_plan(first.args, first.sources, first.work))
-    config["code"] = first.pre_summary_code(config)
+    config["code"] = first.pre_summary_code(config) if upgrade == "budget" else first.pre_completion_code(config)
     if changed in {"inputs", "settings", "code"}:
         config[changed]["different"] = "must not migrate"
     state_path = first.work / "state.json"

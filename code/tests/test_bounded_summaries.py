@@ -1,6 +1,7 @@
 import asyncio
 import dataclasses
 import json
+from collections import Counter
 
 import httpx
 import pytest
@@ -16,6 +17,7 @@ from graph_utils.checkpoints import (
     CheckpointedExtractor,
     CheckpointedGraphBuilder,
     GraphCheckpoints,
+    previous_completion_configuration,
     previous_summary_configuration,
 )
 from openai import AsyncOpenAI
@@ -119,12 +121,13 @@ def test_625k_input_is_reduced_over_multiple_levels_without_increasing_60k_conte
     asyncio.run(run())
 
 
-def test_upgrade_restores_extracted_graph_and_bounds_summary_without_repeating_extraction(tmp_path):
+@pytest.mark.parametrize('upgrade', [previous_summary_configuration, previous_completion_configuration])
+def test_upgrade_restores_extracted_graph_and_bounds_summary_without_repeating_extraction(tmp_path, upgrade):
     async def run():
         chunk = Chunk('НГУ', 0, 'doc-0')
         entities = [Entity('НГУ', 'ORGANIZATION', 'x' * 5000, [chunk.id])]
         configuration = {'code': {'graph_utils/bounded_summaries.py': 'new'}}
-        with GraphCheckpoints(tmp_path, previous_summary_configuration(configuration)) as old:
+        with GraphCheckpoints(tmp_path, upgrade(configuration)) as old:
             old.save('06-artifacts', (entities, []), (Entity, Relation))
             original = old.manifest['stages']['06-artifacts']['sha256']
         client = Client()
@@ -145,6 +148,108 @@ def test_upgrade_restores_extracted_graph_and_bounds_summary_without_repeating_e
             count = len(client.requests)
             await graph.extract_graph([chunk])
             assert len(client.requests) == count
+    asyncio.run(run())
+
+
+def test_truncated_partial_summary_is_split_and_successful_siblings_remain_in_real_cache(tmp_path):
+    async def run():
+        successes = Counter()
+        failures = []
+
+        async def respond(request):
+            payload = json.loads(request.content)
+            prompt = payload['messages']
+            text = prompt[0]['content']
+            truncated = 'bad' in text and (len(prompt) == 1 or len(text) > 10000)
+            assert payload['max_completion_tokens'] == 6144
+            if truncated:
+                failures.append(text)
+            else:
+                successes[json.dumps(payload, sort_keys=True)] += 1
+            return httpx.Response(200, json={
+                'id': 'test', 'object': 'chat.completion', 'created': 1, 'model': 'graph-model',
+                'usage': {'completion_tokens': 6144 if truncated else 20, 'prompt_tokens': len(text),
+                          'total_tokens': len(text) + (6144 if truncated else 20)},
+                'choices': [{'index': 0, 'finish_reason': 'length' if truncated else 'stop', 'message': {
+                    'role': 'assistant', 'content': '{"description":"' if truncated
+                    else response(EntityDescriptionModel).model_dump_json(),
+                }}],
+            })
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http:
+            api = AsyncOpenAI(base_url='http://llm.test/v1', api_key='EMPTY', http_client=http)
+            with Cache(str(tmp_path / 'llm-cache')) as cache:
+                client = CachedAsyncOpenAI(client=api, cache=cache, max_completion_tokens=6144)
+                llm = model(client, context=60000, completion=6144)
+                def renderer(text):
+                    return [{'role': 'user', 'content': text}]
+                text = 'good ' * 8000 + 'bad ' * 10000
+                previous_successes = None
+                for _ in range(2):
+                    result = await SummaryBudget(llm).reduce(
+                        text, renderer, EntityDescriptionModel, 'description', label='4',
+                    )
+                    assert result.strip() and llm.overflow_count == 0
+                    if previous_successes is not None:
+                        assert successes == previous_successes
+                    previous_successes = successes.copy()
+                assert failures
+                assert successes
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('kind', ['entity', 'relation', 'community'])
+def test_final_summary_retries_only_failed_items_and_preserves_artifact_references(kind):
+    async def run():
+        client = Client()
+        original = client.chat_completion
+        completed = []
+
+        async def fail_initial(model_name, conversation, output_schema, **kwargs):
+            if 'не более' not in conversation[-1]['content']:
+                return None
+            completed.append(conversation)
+            return await original(model_name, conversation, output_schema, **kwargs)
+
+        client.chat_completion = fail_initial
+        llm = model(client, context=60000)
+        entities, relations = artifacts('Исходное описание')
+        if kind == 'entity':
+            result = await BudgetedEntitySummarizer(llm, summarize_only_if_more_than=0).run(entities)
+            assert set(result[0].source_chunk_id) == {'chunk-a', 'chunk-b'}
+            assert result[0].entity_name == 'НГУ'
+        elif kind == 'relation':
+            result = await BudgetedRelationSummarizer(llm, summarize_only_if_more_than=0).run(relations)
+            assert set(result[0].source_chunk_id) == {'chunk-a', 'chunk-b'}
+            assert (result[0].subject_id, result[0].object_id) == ('person', 'nsu')
+        else:
+            community = Community(0, 7, entities, relations)
+            result = await BudgetedCommunitySummarizer(llm).summarize([community])
+            assert result[0].id == community.id
+        assert len(result) == len(completed) == 1
+        assert llm.overflow_count == 0
+    asyncio.run(run())
+
+
+def test_unrecoverable_summary_does_not_publish_a_completed_graph_checkpoint(tmp_path):
+    async def run():
+        client = Client('')
+        llm = model(client, context=60000)
+        with GraphCheckpoints(tmp_path, {}) as store:
+            chunk = Chunk('НГУ', 0, 'doc-0')
+            entities, _ = artifacts('Описание')
+            store.save('06-artifacts', (entities, []), (Entity, Relation))
+            extractor = CheckpointedExtractor(llm=llm, ontology=None)
+            extractor.checkpoints = store
+            parent = InMemoryGraphBuilder(
+                llm=llm, embedder=object(), artifact_extractor=extractor,
+                build_parameters=BuilderArguments(use_clustering=False, make_community_summary=False,
+                                                summarize_only_if_more_than=0),
+            )
+            graph = CheckpointedGraphBuilder.from_pipeline(parent, store)
+            with pytest.raises(SummaryBudgetError):
+                await graph.extract_graph([chunk])
+            assert set(store.manifest['stages']) == {'06-artifacts'}
     asyncio.run(run())
 
 

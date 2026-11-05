@@ -22,6 +22,14 @@ SUMMARY_PREVIOUS_CODE = {
     'prepare_graph_index.py': 'd7dc69817e82634f3484eafeae227fdca25fb042592a38799d000fefe6aebd3a',
     'graph_utils/checkpoints.py': '3a7154bfe94215a2a00038a32fcc8bde56e96d0923536a6173ff172b7b0d86a7',
 }
+COMPLETION_PREVIOUS_CODE = {
+    'graph_utils/checkpoints.py': 'ee05701c77cb59a463acc8bec85386fdfbb4e62e4c5c4e72333f244fffa7932f',
+    'graph_utils/bounded_summaries.py': 'f287246bfefc15b88c24e3725773a77594a7a6c6800123772cb9449d9eb26b71',
+}
+
+
+def previous_completion_configuration(configuration):
+    return {**configuration, 'code': {**configuration.get('code', {}), **COMPLETION_PREVIOUS_CODE}}
 
 
 def previous_summary_configuration(configuration):
@@ -126,11 +134,16 @@ class GraphCheckpoints:
                 except ValidationError as exc:
                     raise CheckpointError('Повреждён манифест чекпоинтов графа.') from exc
                 if self.manifest['fingerprint'] != self.fingerprint:
-                    old = previous_summary_configuration(self.configuration)
-                    old_fingerprint = hashlib.sha256(json.dumps(old, sort_keys=True).encode()).hexdigest()
-                    if self.manifest['fingerprint'] != old_fingerprint:
+                    previous = (previous_summary_configuration(self.configuration),
+                                previous_completion_configuration(self.configuration))
+                    fingerprints = [hashlib.sha256(json.dumps(old, sort_keys=True).encode()).hexdigest()
+                                    for old in previous]
+                    if self.manifest['fingerprint'] not in fingerprints:
                         raise CheckpointError('Изменились входы, код или параметры графа; чекпоинты оставлены без изменений.')
-                    backup = self.directory / 'manifest.before-summary-budget.json'
+                    backup_name = ('manifest.before-summary-budget.json'
+                                   if self.manifest['fingerprint'] == fingerprints[0]
+                                   else 'manifest.before-summary-retries.json')
+                    backup = self.directory / backup_name
                     if not backup.exists():
                         self.publish_metadata(backup, self.manifest)
                     upgraded = {
@@ -139,7 +152,8 @@ class GraphCheckpoints:
                     }
                     self.publish_metadata(path, upgraded)
                     self.manifest = upgraded
-                    logger.info('[ГРАФ: ОБНОВЛЕНИЕ] Сохраняю снимки 01–06; обобщение 07–11 учитывает контекст LLM.')
+                    logger.info('[ГРАФ: ОБНОВЛЕНИЕ] Сохраняю снимки 01–06; обобщение 07–11 учитывает '
+                                'контекст LLM и повторяет оборванные ответы.')
             return self
         except BaseException:
             self.__exit__(None, None, None)
