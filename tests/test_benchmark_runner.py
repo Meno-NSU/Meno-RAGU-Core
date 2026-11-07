@@ -144,6 +144,18 @@ async def test_failed_readonly_preflight_prevents_all_generation_requests(tmp_pa
 
 
 @pytest.mark.asyncio
+async def test_unready_backend_reports_readiness_instead_of_token_failure(tmp_path, server):
+    args = _arguments(tmp_path)
+    server["preflight_status"] = 503
+    with pytest.raises(ValueError, match="Backend пока не готов") as error:
+        await collect(args)
+    assert "BENCH_API_TOKEN" not in str(error.value)
+    assert "stand_resources_load_failed" in str(error.value)
+    assert [request.method for request in server["requests"]] == ["GET"]
+    assert not args.output_dir.exists()
+
+
+@pytest.mark.asyncio
 async def test_collection_resume_changes_concurrency_without_repeating_successes(tmp_path, server):
     args = _arguments(tmp_path)
     assert await collect(args) == 0

@@ -98,6 +98,12 @@ async def collect(args) -> int:
         limits=httpx.Limits(max_connections=max(args.concurrencies.values()) + 4),
     ) as client:
         preflight = await client.get("v1/benchmark/config")
+        if preflight.status_code == 503:
+            raise ValueError(
+                "Backend пока не готов к бенчмарку (HTTP 503). "
+                "Проверьте /readyz и журнал core, особенно stand_resources_load_failed. "
+                "Запросы генерации не отправлены."
+            )
         if preflight.status_code != 200 or preflight.headers.get("X-Bench-Mode") != "1":
             raise ValueError(
                 f"Проверка режима измерений не пройдена (HTTP {preflight.status_code}). "
