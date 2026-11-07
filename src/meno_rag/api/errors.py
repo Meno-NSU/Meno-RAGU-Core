@@ -30,6 +30,7 @@ from meno_rag.llm.openrouter_errors import (
     OpenRouterUnreachableError,
     OpenRouterUpstreamError,
 )
+from meno_rag.stand.resources import GraphSearchTimeoutError
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ _USER_MSG_MODEL_UNREACHABLE = (
 )
 _USER_MSG_CORE_UNAVAILABLE = "Нет доступной локальной модели для подготовки запроса. Попробуйте позже."
 _USER_MSG_TIMEOUT = "Модель не ответила вовремя. Попробуйте ещё раз или выберите модель полегче."
+_USER_MSG_GRAPH_TIMEOUT = "Поиск по графу знаний превысил время ожидания. Попробуйте повторить запрос позже."
 _USER_MSG_UPSTREAM_5XX = "Сервер модели вернул ошибку. Попробуйте повторить запрос или выберите другую модель."
 _USER_MSG_NETWORK = "Не удалось связаться с моделью из-за сетевой ошибки. Попробуйте повторить запрос."
 _USER_MSG_BAD_REQUEST = (
@@ -164,8 +166,17 @@ def classify_error(exc: BaseException) -> ClassifiedError:
             http_status=503,
         )
 
+    if isinstance(exc, GraphSearchTimeoutError):
+        return ClassifiedError(
+            code="graph_search_timeout",
+            message=str(exc),
+            user_message=_USER_MSG_GRAPH_TIMEOUT,
+            retryable=True,
+            http_status=504,
+        )
+
     # httpx-level transient failures (vLLM upstream).
-    if isinstance(exc, httpx.TimeoutException):
+    if isinstance(exc, (httpx.TimeoutException, TimeoutError)):
         return ClassifiedError(
             code="transient_timeout",
             message=f"Upstream LLM timed out: {exc}",

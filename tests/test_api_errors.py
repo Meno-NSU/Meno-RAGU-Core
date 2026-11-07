@@ -19,6 +19,7 @@ from meno_rag.llm.openrouter_errors import (
     OpenRouterUnreachableError,
     OpenRouterUpstreamError,
 )
+from meno_rag.stand.resources import GraphSearchTimeoutError
 
 
 def _httpx_status_error(status: int, body: str = "") -> httpx.HTTPStatusError:
@@ -92,6 +93,18 @@ def _httpx_status_error(status: int, body: str = "") -> httpx.HTTPStatusError:
         ),
         (
             lambda: httpx.TimeoutException("timeout"),
+            "transient_timeout",
+            True,
+            504,
+        ),
+        (
+            lambda: GraphSearchTimeoutError("Graph retrieval exceeded 120 seconds."),
+            "graph_search_timeout",
+            True,
+            504,
+        ),
+        (
+            lambda: TimeoutError(),
             "transient_timeout",
             True,
             504,

@@ -9,7 +9,11 @@ that does not hold can turn them off without a code change.
 
 from __future__ import annotations
 
+import json
+import logging
+
 import pytest
+import structlog
 
 from meno_rag import logging_config
 from meno_rag.config import Settings
@@ -58,3 +62,16 @@ def test_configure_logging_carries_the_setting():
 
 def test_default_is_on_so_debugging_keeps_working():
     assert Settings().log_content_previews is True
+
+
+def test_exception_logging_includes_traceback_in_json(caplog):
+    logging_config.configure_logging("INFO", content_previews=False)
+    with caplog.at_level(logging.ERROR):
+        try:
+            raise TimeoutError("graph deadline")
+        except TimeoutError:
+            structlog.get_logger(__name__).exception("graph_failed")
+    record = json.loads(caplog.records[-1].message)
+    assert "Traceback" in record["exception"]
+    assert "TimeoutError: graph deadline" in record["exception"]
+    assert "exc_info" not in record

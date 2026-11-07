@@ -2,16 +2,24 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from typing import Any
 
+import structlog
 from nltk.stem.snowball import SnowballStemmer
 
 from meno_rag.config import Settings
 from meno_rag.stand.rewriting import load_abbreviations
+
+logger = structlog.get_logger(__name__)
+
+
+class GraphSearchTimeoutError(TimeoutError):
+    pass
 
 
 class GraphRuntime:
@@ -39,6 +47,7 @@ class GraphRuntime:
             engine_reranker_name=self.settings.engine_reranker_model,
             engine_reranker_url=self.settings.engine_reranker_url,
             engine_reranker_key=self.settings.engine_reranker_api_key,
+            max_related_candidates=self.settings.graph_related_candidates,
         )
         try:
             self.engines.event_loop.run_until_complete(self._validate_collections())
@@ -78,10 +87,19 @@ class GraphRuntime:
             local_rerank_top_k=self.settings.engine_rerank_top_k if self.settings.engine_reranker_model else None,
             naive_rerank_top_k=self.settings.engine_rerank_top_k if self.settings.engine_reranker_model else None,
         )
-        return await asyncio.wait_for(
-            asyncio.wrap_future(asyncio.run_coroutine_threadsafe(fn(), self.engines.event_loop)),
-            timeout=self.settings.graph_timeout_seconds,
-        )
+        started = time.perf_counter()
+        logger.info("graph_search_started", local_top_k=self.settings.graph_top_k, naive_top_k=self.settings.top_k)
+        try:
+            result = await asyncio.wait_for(
+                asyncio.wrap_future(asyncio.run_coroutine_threadsafe(fn(), self.engines.event_loop)),
+                timeout=self.settings.graph_timeout_seconds,
+            )
+        except TimeoutError as exc:
+            raise GraphSearchTimeoutError(
+                f"Graph retrieval exceeded {self.settings.graph_timeout_seconds:g} seconds."
+            ) from exc
+        logger.info("graph_search_finished", duration_ms=round((time.perf_counter() - started) * 1000, 2))
+        return result
 
     async def aclose(self):
         if self.engines is not None:

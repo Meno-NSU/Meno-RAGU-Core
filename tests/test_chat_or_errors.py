@@ -55,3 +55,17 @@ def test_503_when_or_model_is_unreachable(client_with_or):
     assert r.status_code == 503
     body = r.json()
     assert body["error"]["code"] == "model_unreachable"
+
+
+def test_graph_deadline_returns_504_with_specific_error_code(client_with_or):
+    from meno_rag.stand.resources import GraphSearchTimeoutError
+
+    client_with_or.app.state.pipeline.prepare.side_effect = GraphSearchTimeoutError(
+        "Graph retrieval exceeded 120 seconds."
+    )
+    response = client_with_or.post(
+        "/v1/chat/completions",
+        json={"model": "menon-1", "messages": [{"role": "user", "content": "test"}]},
+    )
+    assert response.status_code == 504
+    assert response.json()["error"]["code"] == "graph_search_timeout"

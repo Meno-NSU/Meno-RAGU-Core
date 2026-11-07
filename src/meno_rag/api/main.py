@@ -891,6 +891,7 @@ async def _non_stream_response(
             "chat_non_stream_failed",
             request_id=completion_id,
             error=str(exc),
+            error_type=type(exc).__name__,
             error_code=classified.code,
             error_stage=stage,
         )
@@ -1119,6 +1120,7 @@ async def _stream_response(
             "chat_stream_failed",
             request_id=completion_id,
             error=str(exc),
+            error_type=type(exc).__name__,
             error_code=classified.code,
             error_stage=stage,
         )

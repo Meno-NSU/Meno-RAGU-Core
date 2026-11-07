@@ -30,6 +30,7 @@ except ImportError as err:
                       'the graph-based search. Please install it first.') from err
 
 from search_utils.search_utils import combine_relevant_chunks
+from graph_utils.local_search import EfficientLocalSearchEngine
 
 try:
     from context_utils.context_utils import global_chunk_index_to_local
@@ -345,7 +346,8 @@ def load_graph_engines(graph_dir: str, embedder_name: str,
                        qdrant_location: Optional[str] = None,
                        engine_reranker_name: Optional[str] = None,
                        engine_reranker_url: Optional[str] = None, engine_reranker_key: Optional[str] = None,
-                       embedder: Optional[Embedder] = None, scorer: Optional[Scorer] = None
+                       embedder: Optional[Embedder] = None, scorer: Optional[Scorer] = None,
+                       max_related_candidates: Optional[int] = None
                        ) -> GraphSearchEngines:
     if not os.path.isdir(graph_dir):
         raise IOError(f'The directory "{graph_dir}" does not exist!')
@@ -394,10 +396,11 @@ def load_graph_engines(graph_dir: str, embedder_name: str,
             vdb_storage_kwargs=vdb_storage_kwargs
         )
     )
-    local_engine = LocalSearchEngine(
+    local_engine = EfficientLocalSearchEngine(
         llm=dummy_llm, knowledge_graph=knowledge_graph, embedder=embedder,
         sparse_embedder=sparse_embedder, reranker=scorer
     )
+    local_engine.max_related_candidates = max_related_candidates
     naive_engine = NaiveSearchEngine(
         llm=dummy_llm, knowledge_graph=knowledge_graph, embedder=embedder,
         sparse_embedder=sparse_embedder, reranker=scorer

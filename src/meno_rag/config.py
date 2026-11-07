@@ -220,6 +220,7 @@ class Settings(BaseSettings):
     graph_top_k: int = Field(default=20, gt=0, validation_alias="GRAPH_TOP_K")
     engine_rerank_top_k: int = Field(default=30, gt=0, validation_alias="ENGINE_RERANK_TOP_K")
     graph_timeout_seconds: float = Field(default=120.0, gt=0, validation_alias="GRAPH_TIMEOUT_SECONDS")
+    graph_related_candidates: int = Field(default=200, ge=0, validation_alias="GRAPH_RELATED_CANDIDATES")
 
     @property
     def graph_dir(self) -> Path:
