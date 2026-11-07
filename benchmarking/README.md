@@ -161,31 +161,90 @@ API не может определить скрытую замену весов 
 
 ## Второй проход — судья и RAGAS
 
-Запускайте после полного сбора ответов обеих моделей и замены Gemma на судью.
-Потребуются только сохранённые результаты, HTTP API судьи и BGE-M3. Backend,
-Qdrant, Meno Lite и прежняя Gemma для оценки не нужны.
+После замены Gemma на судью потребуются сохранённые результаты, HTTP API судьи
+и BGE-M3. Backend, Qdrant, Meno Lite и прежняя Gemma для оценки не нужны.
+Для текущего сбора из 1907 успешных ответов используйте `--allow-partial`.
+Если один ответ Meno отсутствует, отчёт покажет 953 доступных ответа из 954,
+а для Gemma — 954 из 954. Отсутствующий ответ не получает оценок и не считается
+ошибкой судьи. Во время оценки каталог исходного сбора сохраняйте неизменным,
+поскольку его контрольная сумма входит в идентификатор эксперимента.
 
-В команде замените `JUDGE_MODEL_ID` и `JUDGE_WEIGHTS_REVISION` фактическими
-именем и версией судьи. Новая версия судьи получает новый каталог оценок.
-При необходимости ключи задаются через `JUDGE_API_KEY` и `EMBEDDER_API_KEY`
-в окружении. Для продолжения используйте прежние значения и каталог.
-Перед полной оценкой добавьте `--limit 1` к этой команде и используйте отдельное
-имя tmux-сессии, например `meno-ragas-smoke`. Это проверит все пять метрик на
-одном сохранённом ответе каждой модели. После проверки запустите ту же команду
-без `--limit 1`; уже полученные оценки сохраняются.
+Судья `qwen3.8-27b` работает на прежнем Everest endpoint. Для H100 можно
+перевести веса в FP8 через `--quantization fp8` и увеличить окно, если это
+поддерживает конфигурация модели. Начальная настройка — `--max-model-len 32768`
+и `--max-num-seqs 4`. Квантование меняет численные результаты судьи; задайте
+отдельную версию `qwen3.8-27b-fp8-v1` и сохраняйте её на протяжении оценки.
+Резерв ответа RAGAS остаётся 4096 токенов. Проверка самых длинных контекстов
+покажет, достаточно ли увеличенного окна.
+
+Следующие команды предназначены для судьи, уже запущенного в FP8 с окном 32768.
+Для прежнего FP16-сервиса укажите окно 15000 и отдельные имя версии и каталог.
+Под root обновите только репозиторий сборщика. Вначале выполните `sudo -i`
+отдельной командой и дождитесь приглашения root.
+
+```bash
+export PATH="/root/.local/bin:$PATH"
+cd /home/rsolikhov/meno_ragu_stand
+git pull --ff-only
+
+benchmarking/run_tmux.sh --session meno-ragas-smoke \
+  --log-file /home/rsolikhov/logs/benchmark-ragas.log \
+  evaluate \
+  --collection-dir /home/rsolikhov/benchmarks/nsu-v1/collection \
+  --output-dir /home/rsolikhov/benchmarks/nsu-v1/judge-qwen38-27b-fp8-v1 \
+  --judge-url http://everest.nsu.ru:9022/v1 \
+  --judge-model qwen3.8-27b \
+  --judge-revision qwen3.8-27b-fp8-v1 \
+  --judge-context-tokens 32768 \
+  --embedder-url http://127.0.0.1:8001/v1 \
+  --embedder-model BAAI/bge-m3 \
+  --max-tokens 4096 \
+  --concurrency 4 \
+  --allow-partial \
+  --sample-order longest-context-first \
+  --limit 1 \
+  --attempts 1
+```
+
+Подключение к сессии root — `tmux attach -t meno-ragas-smoke`. Для отсоединения
+нажмите `Ctrl+B`, затем `D`. Проверка считает пять метрик для одного ответа
+каждой модели — 10 оценок. `--limit` применяется отдельно к каждой модели,
+в том числе при пропусках в наборе. Порядок `longest-context-first` выбирает
+ответы с наибольшей суммарной длиной блоков доказательств в символах.
+Фактическое число токенов проверяется отдельно перед каждым вызовом судьи.
+
+Если появляется `judge_context_length_exceeded`, увеличьте окно сервиса судьи
+до размера, поддерживаемого моделью и доступной памятью. Нужный размер указан
+в ошибке. Доказательства не обрезаются. После успешной проверки запустите полный
+проход с тем же каталогом; готовые оценки будут пропущены.
 
 ```bash
 benchmarking/run_tmux.sh --session meno-ragas \
   --log-file /home/rsolikhov/logs/benchmark-ragas.log \
   evaluate \
   --collection-dir /home/rsolikhov/benchmarks/nsu-v1/collection \
-  --output-dir /home/rsolikhov/benchmarks/nsu-v1/judge-v1 \
+  --output-dir /home/rsolikhov/benchmarks/nsu-v1/judge-qwen38-27b-fp8-v1 \
   --judge-url http://everest.nsu.ru:9022/v1 \
-  --judge-model JUDGE_MODEL_ID \
-  --judge-revision JUDGE_WEIGHTS_REVISION \
+  --judge-model qwen3.8-27b \
+  --judge-revision qwen3.8-27b-fp8-v1 \
+  --judge-context-tokens 32768 \
   --embedder-url http://127.0.0.1:8001/v1 \
-  --concurrency 16
+  --embedder-model BAAI/bge-m3 \
+  --max-tokens 4096 \
+  --concurrency 4 \
+  --allow-partial
 ```
+
+Проверка окна использует готовые сообщения после добавления Instructor JSON-схемы
+и параметры chat template, резервирует `--max-tokens` и 32 служебных токена.
+Применяется меньшее из указанного и объявленного `/tokenize` окна. Ошибка
+токенизатора блокирует соответствующий вызов; приблизительный подсчёт и
+автоматическая обрезка контекста не применяются. Результаты проверок сохраняются
+в `details.budget_checks`, ответы судьи и usage — в `details.http_calls`.
+Увеличение окна, изменение порядка, лимита вопросов или параллелизма сохраняет
+готовые оценки. Параметры генерации, имя модели, версия весов, набор метрик и
+исходные ответы должны остаться прежними. Ключи API задаются через
+`JUDGE_API_KEY` и `EMBEDDER_API_KEY` в окружении.
 
 Судья должен поддерживать JSON-ответы в OpenAI-совместимом API. По умолчанию
 передаётся `chat_template_kwargs.enable_thinking=false`; `--enable-thinking`

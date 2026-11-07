@@ -46,6 +46,7 @@ def parser() -> argparse.ArgumentParser:
     judge.add_argument("--judge-url", required=True)
     judge.add_argument("--judge-model", required=True)
     judge.add_argument("--judge-revision", required=True, help="Метка версии весов/настроек судьи для защиты кэша.")
+    judge.add_argument("--judge-context-tokens", type=positive, help="Проверять фактические запросы через /tokenize с указанным пределом окна.")
     judge.add_argument("--judge-api-key", default=os.environ.get("JUDGE_API_KEY", "EMPTY"), help=argparse.SUPPRESS)
     judge.add_argument("--embedder-url", default="http://127.0.0.1:8001/v1")
     judge.add_argument("--embedder-model", default="BAAI/bge-m3")
@@ -54,12 +55,13 @@ def parser() -> argparse.ArgumentParser:
     judge.add_argument("--metrics", nargs="+")
     judge.add_argument("--enable-thinking", action="store_true")
     judge.add_argument("--allow-partial", action="store_true")
+    judge.add_argument("--sample-order", choices=["dataset", "longest-context-first"], default="dataset")
     judge.add_argument("--max-tokens", type=positive, default=4096)
     for command in (capture, judge):
         command.add_argument("--output-dir", type=Path, required=True)
         command.add_argument("--timeout", type=positive, default=600)
         command.add_argument("--attempts", type=positive, default=3)
-        command.add_argument("--limit", type=positive, help="Первые N вопросов для пробного запуска.")
+        command.add_argument("--limit", type=positive, help="Не более N вопросов каждой модели для пробного запуска.")
         command.add_argument("--log-level", choices=["INFO", "DEBUG"], default="INFO")
     return root
 

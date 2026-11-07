@@ -5,6 +5,7 @@ import gzip
 import json
 import sqlite3
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -104,12 +105,16 @@ class Store:
                     "details": json.loads(gzip.decompress(payload)) if payload else None,
                 }
 
-    def content_digest(self) -> str:
+    def content_digest(self, progress: Callable[[int], None] | None = None) -> str:
         import hashlib
 
         hasher = hashlib.sha256()
-        for key, payload in self.db.execute("SELECT key,payload FROM jobs WHERE status='complete' ORDER BY key"):
+        for count, (key, payload) in enumerate(
+            self.db.execute("SELECT key,payload FROM jobs WHERE status='complete' ORDER BY key"), start=1,
+        ):
             hasher.update(canonical([key, digest(json.loads(gzip.decompress(payload)))]).encode())
+            if progress is not None and count % 100 == 0:
+                progress(count)
         return hasher.hexdigest()
 
     def counts(self) -> dict[str, int]:

@@ -356,6 +356,7 @@ def _evaluation_arguments(collection_args, tmp_path, **overrides):
         "judge_api_key": "judge-secret", "embedder_api_key": "embedder-secret",
         "max_tokens": 4096, "timeout": 30, "enable_thinking": False, "allow_partial": False,
         "metrics": ["faithfulness", "factual_correctness"], "limit": None, "concurrency": 2, "attempts": 1,
+        "sample_order": "dataset", "judge_context_tokens": None,
     }
     return SimpleNamespace(**{**values, **overrides})
 
@@ -483,6 +484,152 @@ async def test_duplicate_metrics_rejected_before_judge_is_opened(tmp_path, fake_
         await evaluate(args)
     assert fake_judge["opens"] == 0
     assert fake_judge["calls"] == []
+
+
+def _collection_with_missing_model_index(tmp_path):
+    args = _arguments(tmp_path)
+    args.dataset.write_text(json.dumps([
+        {"question": f"QUESTION_{index}", "ground_truth": f"SECRET_REFERENCE_{index}"} for index in range(5)
+    ]), encoding="utf-8")
+    dataset_hash, samples = load_dataset(args.dataset)
+    models = ["meno-lite", "gemma-4-12B-it"]
+    context_sizes = {
+        "meno-lite": {1: [10], 2: [20, 20], 3: [35], 4: [5]},
+        "gemma-4-12B-it": {0: [60], 1: [10], 2: [20, 30], 3: [30], 4: [5]},
+    }
+    with Store(args.output_dir) as store:
+        store.bind({"kind": "collection", "dataset_size": len(samples), "dataset_sha256": dataset_hash,
+                    "models": models})
+        for model in models:
+            for sample in reversed(samples):
+                if sample["index"] not in context_sizes[model]:
+                    continue
+                row = {
+                    "model": model, **sample, "response": "Generated answer.", "status": "complete",
+                    "retrieved_contexts": ["x" * size for size in context_sizes[model][sample["index"]]],
+                }
+                row["capture_sha256"] = digest(row)
+                key = model + ":" + sample["sample_id"]
+                store.start(key, {"model": model, **sample})
+                store.complete(key, row)
+    return args
+
+
+@pytest.mark.asyncio
+async def test_evaluation_limit_selects_n_per_model_when_one_dataset_index_is_missing(tmp_path, fake_judge):
+    from benchmarking.evaluate import evaluate
+
+    collection_args = _collection_with_missing_model_index(tmp_path)
+    args = _evaluation_arguments(
+        collection_args, tmp_path, allow_partial=True, limit=2, metrics=["faithfulness"], concurrency=1,
+    )
+    fake_judge["fail"] = False
+    assert await evaluate(args) == 0
+    indices = {model: [sample["index"] for _metric, sample in fake_judge["calls"] if sample["model"] == model]
+               for model in ("meno-lite", "gemma-4-12B-it")}
+    assert indices == {"meno-lite": [1, 2], "gemma-4-12B-it": [0, 1]}
+
+
+@pytest.mark.asyncio
+async def test_longest_context_smoke_selects_largest_combined_evidence_per_model(tmp_path, fake_judge):
+    from benchmarking.evaluate import evaluate
+
+    collection_args = _collection_with_missing_model_index(tmp_path)
+    args = _evaluation_arguments(
+        collection_args, tmp_path, allow_partial=True, limit=1, metrics=["faithfulness"], concurrency=1,
+        sample_order="longest-context-first", judge_context_tokens=15000,
+    )
+    fake_judge["fail"] = False
+    assert await evaluate(args) == 0
+    assert [(sample["model"], sample["index"]) for _metric, sample in fake_judge["calls"]] == [
+        ("meno-lite", 2), ("gemma-4-12B-it", 0),
+    ]
+    assert [sum(len(text) for text in sample["retrieved_contexts"]) for _metric, sample in fake_judge["calls"]] == [40, 60]
+
+
+@pytest.mark.asyncio
+async def test_dataset_sample_order_uses_index_instead_of_checkpoint_key_order(tmp_path, fake_judge):
+    from benchmarking.evaluate import evaluate
+
+    collection_args = _collection_with_missing_model_index(tmp_path)
+    args = _evaluation_arguments(
+        collection_args, tmp_path, allow_partial=True, metrics=["faithfulness"], concurrency=1,
+        sample_order="dataset",
+    )
+    fake_judge["fail"] = False
+    assert await evaluate(args) == 0
+    assert [(sample["model"], sample["index"]) for _metric, sample in fake_judge["calls"]] == [
+        *(('meno-lite', index) for index in range(1, 5)),
+        *(('gemma-4-12B-it', index) for index in range(5)),
+    ]
+    summary = json.loads((args.output_dir / "summary.json").read_text())
+    meno = summary["models"]["meno-lite"]["faithfulness"]
+    gemma = summary["models"]["gemma-4-12B-it"]["faithfulness"]
+    assert (meno["dataset_size"], meno["scored"], meno["coverage"]) == (5, 4, 4 / 5)
+    assert (gemma["dataset_size"], gemma["scored"], gemma["coverage"]) == (5, 5, 1.0)
+    assert meno["available_answers"] == 4 and meno["missing_answers"] == 1
+    assert gemma["available_answers"] == 5 and gemma["missing_answers"] == 0
+
+
+@pytest.mark.asyncio
+async def test_evaluation_order_limit_and_context_guard_changes_resume_without_repeating_scores(tmp_path, fake_judge):
+    from benchmarking.evaluate import evaluate
+
+    collection_args = _collection_with_missing_model_index(tmp_path)
+    args = _evaluation_arguments(
+        collection_args, tmp_path, allow_partial=True, limit=1, metrics=["faithfulness"], concurrency=1,
+        sample_order="longest-context-first", judge_context_tokens=15000,
+    )
+    fake_judge["fail"] = False
+    assert await evaluate(args) == 0
+    with Store(args.output_dir, readonly=True) as store:
+        original_config = store.metadata("config")
+        original_scores = {(row["model"], row["sample_id"]): row for row in store.records()}
+        assert len(original_scores) == 2
+    args.sample_order = "dataset"
+    args.limit = 2
+    args.judge_context_tokens = 30000
+    assert await evaluate(args) == 0
+    assert len(fake_judge["calls"]) == 4
+    args.limit = None
+    args.sample_order = "longest-context-first"
+    args.judge_context_tokens = None
+    assert await evaluate(args) == 0
+    assert len(fake_judge["calls"]) == 9
+    evaluated = Counter((sample["model"], sample["sample_id"]) for _metric, sample in fake_judge["calls"])
+    assert all(count == 1 for count in evaluated.values())
+    with Store(args.output_dir, readonly=True) as store:
+        assert store.counts() == {"complete": 9}
+        assert store.metadata("config") == original_config
+        for row in store.records():
+            key = (row["model"], row["sample_id"])
+            if key in original_scores:
+                assert row == original_scores[key]
+
+
+def test_evaluation_partial_coverage_reports_953_of_954_without_counting_missing_answer_as_score(tmp_path):
+    from benchmarking.evaluate import export_evaluation
+
+    class PartialScoreStore:
+        directory = tmp_path
+
+        @staticmethod
+        def metadata(_name):
+            return {"metrics": ["faithfulness"], "available_samples": {"meno-lite": 953, "gemma-4-12B-it": 954}}
+
+        @staticmethod
+        def records(*, failures=False):
+            for model, count in (("meno-lite", 953), ("gemma-4-12B-it", 954)):
+                for index in range(count):
+                    yield {"model": model, "index": index, "metric": "faithfulness", "status": "complete", "score": 0.75}
+
+    report = export_evaluation(PartialScoreStore(), ["meno-lite", "gemma-4-12B-it"], 954)
+    meno = report["models"]["meno-lite"]["faithfulness"]
+    gemma = report["models"]["gemma-4-12B-it"]["faithfulness"]
+    assert (meno["scored"], meno["dataset_size"], meno["coverage"]) == (953, 954, 953 / 954)
+    assert (meno["available_answers"], meno["missing_answers"]) == (953, 1)
+    assert meno["failed_or_interrupted"] == 0 and meno["mean"] == 0.75
+    assert (gemma["scored"], gemma["coverage"], gemma["available_answers"], gemma["missing_answers"]) == (954, 1.0, 954, 0)
 
 
 @pytest.mark.asyncio
