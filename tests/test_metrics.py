@@ -136,7 +136,7 @@ class _FakeOutcome:
 
 
 class _FakeNonStreamPipeline:
-    async def prepare(self, *, messages, runtime, stage_sink=None, capture_trace=False):
+    async def prepare(self, *, messages, runtime, stage_sink=None, capture_trace=False, generation_max_tokens=None):
         return _FakeOutcome()
 
     async def generate_text(self, *, outcome, runtime, max_tokens, temperature):
@@ -144,7 +144,7 @@ class _FakeNonStreamPipeline:
 
 
 class _FakeStreamPipeline:
-    async def prepare(self, *, messages, runtime, stage_sink=None, capture_trace=False):
+    async def prepare(self, *, messages, runtime, stage_sink=None, capture_trace=False, generation_max_tokens=None):
         return _FakeOutcome()
 
     async def stream_text(self, *, outcome, runtime, max_tokens, temperature):

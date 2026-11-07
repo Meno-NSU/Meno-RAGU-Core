@@ -21,6 +21,17 @@ class LLMRouter:
         self._vllm = vllm
         self._openrouter = openrouter
 
+    async def tokenize_messages(
+        self, *, runtime: ModelRuntime, messages: list[dict[str, str]],
+        chat_template_kwargs: dict[str, Any] | None = None,
+    ) -> tuple[int, int] | None:
+        if runtime.provider != "vllm":
+            return None
+        return await self._vllm.tokenize_messages(
+            base_url=runtime.base_url, model=runtime.model_id, messages=messages,
+            chat_template_kwargs=chat_template_kwargs,
+        )
+
     async def chat_completion(
         self, *, runtime: ModelRuntime, messages: list[dict[str, str]], stage: str = "unknown", **kwargs: Any
     ) -> dict[str, Any]:

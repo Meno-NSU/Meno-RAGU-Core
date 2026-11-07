@@ -855,7 +855,8 @@ async def _non_stream_response(
     if not bench:
         metrics_mod.inc_chat_in_flight()
     try:
-        outcome = await pipeline.prepare(messages=payload.messages, runtime=runtime, capture_trace=capture_trace)
+        outcome = await pipeline.prepare(messages=payload.messages, runtime=runtime, capture_trace=capture_trace,
+                                         generation_max_tokens=max_tokens)
         gen_started = time.perf_counter()
         answer = await pipeline.generate_text(
             outcome=outcome, runtime=runtime, max_tokens=max_tokens, temperature=temperature
@@ -995,7 +996,8 @@ async def _stream_response(
         await stage_queue.put(event)
 
     prepare_task = asyncio.create_task(
-        pipeline.prepare(messages=payload.messages, runtime=runtime, stage_sink=sink, capture_trace=capture_trace)
+        pipeline.prepare(messages=payload.messages, runtime=runtime, stage_sink=sink, capture_trace=capture_trace,
+                         generation_max_tokens=max_tokens)
     )
     outcome = None
     try:

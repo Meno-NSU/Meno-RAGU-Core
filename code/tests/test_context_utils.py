@@ -1,5 +1,7 @@
-import pytest
+from copy import deepcopy
 
+import pytest
+from context_utils import context_utils
 from context_utils.context_utils import (
     build_reverse_chunk_index,
     format_document_reference,
@@ -164,6 +166,60 @@ class TestPrepareContext:
 
 
 class TestGraphElements:
+    def test_default_rendering_preserves_complete_source_titles_and_order(self):
+        documents, chunk_mapping = _make_documents()
+        item = {'kind': 'entity', 'name': 'НГУ', 'type': 'ORG',
+                'description': 'Учебное заведение', 'sources': [1, 0, 1]}
+        expected = (
+            '**Элемент графа знаний: сущность.**\n\n'
+            '**Название:** НГУ (тип: ORG).\n\n'
+            '**Описание:** Учебное заведение.\n\n'
+            '**Встречается во фрагментах документов:** Институт информационных технологий; '
+            'Расписание занятий Иванова И.И..'
+        )
+        assert graph_element_to_text(item, documents, chunk_mapping) == expected
+        assert graph_element_to_text(item, documents, chunk_mapping, max_source_titles=None) == expected
+
+    def test_zero_title_limit_skips_source_lookup_and_preserves_element(self, monkeypatch):
+        def unexpected_lookup(*args):
+            raise AssertionError('Sources must not be accessed for reranking.')
+
+        monkeypatch.setattr(context_utils, 'global_chunk_index_to_local', unexpected_lookup)
+        item = {'kind': 'entity', 'name': 'НГУ', 'type': 'ORG',
+                'description': 'Учебное заведение', 'sources': ['invalid', None, -1000]}
+        original = deepcopy(item)
+        text = graph_element_to_text(item, [], {}, max_source_titles=0)
+        assert '**Название:** НГУ (тип: ORG).' in text
+        assert '**Описание:** Учебное заведение.' in text
+        assert 'Встречается во фрагментах документов' not in text
+        assert item == original
+
+    def test_title_limit_counts_unique_titles_and_stops_scanning_sources(self, monkeypatch):
+        titles = ['НГУ', ' НГУ ', 'ФИТ', 'ФИТ', 'ММФ', 'ФЕН', 'ГГФ', 'Следующий документ']
+        documents = [{'doc_title': title, 'chunks': [{}]} for title in titles]
+        mapping = {str(index): {'doc_index': index, 'local_chunk_index': 0}
+                   for index in range(len(titles))}
+        item = {'kind': 'entity', 'name': 'НГУ', 'type': 'ORG',
+                'description': 'Учебное заведение', 'sources': list(range(len(titles)))}
+        original = deepcopy(item)
+        calls = []
+        lookup = context_utils.global_chunk_index_to_local
+
+        def track_lookup(source, *args):
+            calls.append(source)
+            return lookup(source, *args)
+
+        monkeypatch.setattr(context_utils, 'global_chunk_index_to_local', track_lookup)
+        text = graph_element_to_text(item, documents, mapping, max_source_titles=5)
+        assert text.endswith('**Встречается во фрагментах документов:** НГУ; ФИТ; ММФ; ФЕН; ГГФ.')
+        assert 'Следующий документ' not in text
+        assert calls == list(range(7))
+        assert item == original
+
+    def test_negative_title_limit_is_rejected(self):
+        with pytest.raises(ValueError, match='nonnegative'):
+            graph_element_to_text({}, [], {}, max_source_titles=-1)
+
     def test_entity_rendering_contains_name_type_and_sources(self):
         documents, chunk_mapping = _make_documents()
         item = {'key': 'e1', 'kind': 'entity', 'name': 'Иванов Иван', 'type': 'PER',

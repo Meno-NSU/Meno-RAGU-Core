@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+import httpx
 import structlog
 
 from meno_rag.api.events import StageEvent, StageName, StageStatus
@@ -97,6 +98,7 @@ class StandRagPipeline:
         runtime: PipelineRuntime,
         stage_sink: StageSink | None = None,
         capture_trace: bool = False,
+        generation_max_tokens: int | None = None,
     ) -> PipelineOutcome:
         question, history = extract_question_and_history(messages)
         prepared_dialogue_history = prepare_dialogue_history(
@@ -188,18 +190,26 @@ class StandRagPipeline:
         )
 
         fewshots_for_prompt = [example for example, _score in selected_fewshots]
-        qa_user_prompt = prepare_prompt_for_question_answering(
-            user_question=question,
-            dialogue_history=prepared_dialogue_history,
-            context=context,
-            abbr_dict=self.resources.abbreviations,
-            stemmer=self.resources.stemmer,
-            fewshots=fewshots_for_prompt or None,
-        )
-        qa_messages = [
-            {"role": "system", "content": system_prompt_with_datetime(datetime.now())},
-            {"role": "user", "content": qa_user_prompt},
-        ]
+        system_prompt = system_prompt_with_datetime(datetime.now())
+
+        def qa_prompt(context):
+            user_prompt = prepare_prompt_for_question_answering(
+                user_question=question, dialogue_history=prepared_dialogue_history, context=context,
+                abbr_dict=self.resources.abbreviations, stemmer=self.resources.stemmer,
+                fewshots=fewshots_for_prompt or None,
+            )
+            return [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+
+        qa_messages = qa_prompt(context)
+        completion_tokens = generation_max_tokens or self.settings.max_output_tokens
+        while not await self._prompt_fits(qa_messages, runtime.generation, completion_tokens):
+            if context_budget == 0:
+                raise ValueError("Вопрос, история и инструкции не помещаются в контекст выбранной модели.")
+            context_budget //= 2
+            context, sources = self._assemble_context(reranked_global_chunks, budget_override=context_budget)
+            qa_messages = qa_prompt(context)
+            logger.warning("qa_context_budget_reduced", model_id=runtime.generation.model_id,
+                           budget_chars=context_budget, reserved_output_tokens=completion_tokens)
 
         if StageName.ABBREVIATION_EXPANSION in stage_details:
             stage_details[StageName.ABBREVIATION_EXPANSION]["original"] = question
@@ -345,6 +355,8 @@ class StandRagPipeline:
         if not input_messages:
             return []
         sampling = RewriteSampling()
+        if not await self._prompt_fits(input_messages, runtime, sampling.max_tokens):
+            raise ValueError("Вопрос, история и инструкции переписывания не помещаются в контекст модели.")
         async with self.rewrite_semaphore:
             rewritten = await self.llm_router.chat_completion_text(
                 runtime=runtime,
@@ -486,6 +498,28 @@ class StandRagPipeline:
         prompt = build_prompt(
             user_question, dialogue_history, cur_doc, self.resources.abbreviations, self.resources.stemmer
         )
+        if not await self._prompt_fits(prompt, runtime, 20, chat_template_kwargs={"enable_thinking": False}):
+            overhead = build_prompt(
+                user_question, dialogue_history, " ", self.resources.abbreviations, self.resources.stemmer,
+            )
+            if not await self._prompt_fits(overhead, runtime, 20, chat_template_kwargs={"enable_thinking": False}):
+                raise ValueError("Вопрос, история и инструкции реранкера не помещаются в контекст модели.")
+            if len(cur_doc) <= 1:
+                raise ValueError("Вопрос, история и инструкции реранкера не помещаются в контекст модели.")
+            middle = len(cur_doc) // 2
+            boundary = cur_doc.rfind(" ", len(cur_doc) // 4, middle + 1)
+            if boundary >= 0:
+                middle = boundary + 1
+            middle = min(len(cur_doc) - 1, max(1, middle))
+            logger.warning("rerank_document_split", model_id=runtime.model_id, chunk_id=chunk_id,
+                           document_chars=len(cur_doc))
+            first = await self._score_document_with_llm(
+                user_question, dialogue_history, cur_doc[:middle], runtime, chunk_id,
+            )
+            second = await self._score_document_with_llm(
+                user_question, dialogue_history, cur_doc[middle:], runtime, chunk_id,
+            )
+            return max(first, second)
         sampling = RerankSampling()
         # `chat_template_kwargs.enable_thinking=False` is the Qwen3 convention
         # for skipping the `<think>...</think>` preamble in the chat template.
@@ -520,6 +554,10 @@ class StandRagPipeline:
                 _log_rerank_choice(response, chunk_id=chunk_id, model_id=runtime.model_id)
                 return score_from_logprobs(response["choices"][0])
             except Exception as exc:
+                if isinstance(exc, httpx.RequestError):
+                    raise
+                if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code >= 500:
+                    raise
                 logger.warning("rerank_guided_choice_failed", chunk_id=chunk_id, error=str(exc))
                 # JSON fallback needs a multi-token budget for the {"label": "X"} envelope.
                 # Matches meno_stand rerank_utils.py:106-129.
@@ -541,6 +579,20 @@ class StandRagPipeline:
                     timeout=self.settings.rerank_timeout_seconds,
                 )
                 return score_from_json_response(str(response["choices"][0]["message"]["content"]))
+
+    async def _prompt_fits(self, messages, runtime, completion_tokens, *, chat_template_kwargs=None):
+        tokenizer = getattr(self.llm_router, "tokenize_messages", None)
+        if tokenizer is None:
+            return True
+        budget = await tokenizer(runtime=runtime, messages=messages, chat_template_kwargs=chat_template_kwargs)
+        if budget is None:
+            return True
+        count, context = budget
+        fits = count + completion_tokens + 32 <= context
+        if not fits:
+            logger.warning("llm_prompt_over_budget", model_id=runtime.model_id, prompt_tokens=count,
+                           context_length=context, reserved_output_tokens=completion_tokens)
+        return fits
 
     def _assemble_context(
         self, chunks: list[tuple[int, float]], budget_override: int | None = None
@@ -567,7 +619,7 @@ class StandRagPipeline:
         for idx, (doc_text, source) in enumerate(zip(prepared_context, prepared_sources, strict=False)):
             piece = f"==========\nDOCUMENT {idx + 1}\n==========\n\n{doc_text.strip()}"
             extra = len(piece) + (sep_chars if kept_context else 0)
-            if kept_context and total + extra > budget:
+            if total + extra > budget:
                 logger.warning(
                     "qa_context_truncated",
                     budget_chars=budget,

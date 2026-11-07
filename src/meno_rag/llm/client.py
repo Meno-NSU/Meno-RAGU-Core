@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -31,6 +32,7 @@ class VLLMClient:
         self._http = http_client
         self.api_key = api_key
         self.endpoint_api_keys = endpoint_api_keys or {}
+        self._tokenization_unavailable: set[str] = set()
 
     async def chat_completion(
         self,
@@ -64,16 +66,64 @@ class VLLMClient:
         if extra_body:
             payload.update(extra_body)
 
-        response = await self._http.post(
-            self._url(base_url, "chat/completions"),
-            headers=self._headers(base_url),
-            json=payload,
-            timeout=timeout,
+        response = await self._post_json(
+            base_url, self._url(base_url, "chat/completions"), payload, timeout,
         )
         response.raise_for_status()
         data = response.json()
-        _log_vllm_completion(model=model, base_url=base_url, data=data)
+        _log_vllm_completion(
+            model=model, base_url=base_url, data=data,
+            intentional_single_token=payload.get("max_tokens") == 1 and payload.get("logprobs") is True,
+        )
         return data
+
+    async def _post_json(
+        self, base_url: str, url: str, payload: dict[str, Any], timeout: float,
+    ) -> httpx.Response:
+        attempts = 1 if payload.get("stream") else 3
+        for attempt in range(attempts):
+            try:
+                return await self._http.post(
+                    url, headers=self._headers(base_url), json=payload, timeout=timeout,
+                )
+            except (httpx.ReadError, httpx.RemoteProtocolError, httpx.ConnectError) as exc:
+                if attempt == attempts - 1:
+                    raise
+                logger.warning(
+                    "vllm_transport_retry", base_url=base_url, attempt=attempt + 1,
+                    error_type=type(exc).__name__,
+                )
+                await asyncio.sleep(0.25 * 2**attempt)
+        raise AssertionError("Unreachable retry state")
+
+    async def tokenize_messages(
+        self,
+        *,
+        base_url: str,
+        model: str,
+        messages: list[dict[str, str]],
+        chat_template_kwargs: dict[str, Any] | None = None,
+        timeout: float = 30.0,
+    ) -> tuple[int, int] | None:
+        endpoint = base_url.rstrip("/").removesuffix("/v1")
+        if endpoint in self._tokenization_unavailable:
+            return None
+        payload: dict[str, Any] = {
+            "model": model, "messages": messages, "add_generation_prompt": True,
+        }
+        if chat_template_kwargs is not None:
+            payload["chat_template_kwargs"] = chat_template_kwargs
+        response = await self._post_json(base_url, f"{endpoint}/tokenize", payload, timeout)
+        if response.status_code in {404, 405}:
+            self._tokenization_unavailable.add(endpoint)
+            logger.info("vllm_tokenization_unavailable", base_url=base_url)
+            return None
+        response.raise_for_status()
+        data = response.json()
+        count, limit = data.get("count"), data.get("max_model_len")
+        if type(count) is not int or count <= 0 or type(limit) is not int or limit <= 0:
+            raise ValueError("Служба токенизации не вернула корректное число токенов и размер контекста.")
+        return count, limit
 
     async def chat_completion_text(self, **kwargs: Any) -> str:
         data = await self.chat_completion(stream=False, **kwargs)
@@ -169,7 +219,9 @@ class VLLMClient:
         return results
 
 
-def _log_vllm_completion(*, model: str, base_url: str, data: dict[str, Any]) -> None:
+def _log_vllm_completion(
+    *, model: str, base_url: str, data: dict[str, Any], intentional_single_token: bool = False,
+) -> None:
     try:
         choice = (data.get("choices") or [{}])[0]
         message = choice.get("message") or {}
@@ -191,7 +243,7 @@ def _log_vllm_completion(*, model: str, base_url: str, data: dict[str, Any]) -> 
         # before naturally stopping — answer was cut mid-sentence. Surface as
         # a WARNING so operators see it (and so the user can correlate a UI
         # report of "truncated answer" with logs).
-        if finish_reason == "length":
+        if finish_reason == "length" and not intentional_single_token:
             log.warning(
                 "generation_truncated",
                 content_chars=len(visible),

@@ -68,6 +68,7 @@ class VLLMRegistry:
                             "created": model.get("created", int(time.time())),
                             "owned_by": model.get("owned_by", "vllm"),
                             "endpoint": base_url,
+                            "context_length": model.get("max_model_len") or model.get("context_length"),
                         }
                     )
                 logger.info("vllm_models_discovered", endpoint=base_url, count=len(body.get("data", [])))

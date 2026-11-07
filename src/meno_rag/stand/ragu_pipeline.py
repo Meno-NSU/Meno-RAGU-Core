@@ -63,10 +63,18 @@ class RaguRagPipeline(StandRagPipeline):
         async def score(candidate):
             if candidate.chunk_id is not None:
                 return await self._score_chunk_with_llm(user_question, dialogue_history, candidate.chunk_id, runtime)
-            text = graph_element_to_text(candidate.element, self.resources.documents, self.resources.chunk_mapping)
+            text = graph_element_to_text(candidate.element, self.resources.documents,
+                                         self.resources.chunk_mapping, max_source_titles=0)
             return await self._score_document_with_llm(user_question, dialogue_history, text, runtime, candidate.key)
 
-        values = await asyncio.gather(*(score(c) for c in unique.values()))
+        tasks = [asyncio.create_task(score(candidate)) for candidate in unique.values()]
+        try:
+            values = await asyncio.gather(*tasks)
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
         scores = dict(zip(unique, values, strict=True))
         selected: dict[str, tuple[Candidate, float]] = {}
         for batch in batches:
@@ -115,6 +123,17 @@ class RaguRagPipeline(StandRagPipeline):
         used = 0
         heading = "**ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ**"
         for element in elements:
+            references = []
+            documents = set()
+            for chunk_id in element.get("sources", []):
+                mapping = self.resources.chunk_mapping.get(str(chunk_id))
+                if mapping is None or mapping["doc_index"] in documents:
+                    continue
+                documents.add(mapping["doc_index"])
+                references.append(chunk_id)
+                if len(references) == self.settings.graph_source_documents:
+                    break
+            element = dict(element, sources=references)
             text = graph_element_to_text(element, self.resources.documents, self.resources.chunk_mapping)
             cost = len(text) + 2 + (len(heading) + 2 if not blocks else 0)
             if used + cost > budget:

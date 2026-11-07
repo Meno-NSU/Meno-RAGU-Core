@@ -199,18 +199,26 @@ def prepare_context(indices_of_relevant_chunks: List[int], scores_of_relevant_ch
 
 def graph_element_to_text(item: Dict[str, Any],
                           documents: List[Dict[str, Union[str, float, List[Dict[str, int]]]]],
-                          chunk_mapping: Dict[str, Dict[str, int]]) -> str:
+                          chunk_mapping: Dict[str, Dict[str, int]],
+                          max_source_titles: int | None = None) -> str:
+    if max_source_titles is not None and max_source_titles < 0:
+        raise ValueError('The source title limit must be nonnegative.')
     source_titles = []
-    for cur_global_index in item.get('sources', []):
-        try:
-            document_index, _ = global_chunk_index_to_local(cur_global_index, documents, chunk_mapping)
-        except ValueError:
-            continue
-        cur_title = ' '.join(documents[document_index]['doc_title'].strip().split()).strip()
-        if len(cur_title) == 0:
-            cur_title = 'Документ без названия.'
-        if cur_title not in source_titles:
-            source_titles.append(cur_title)
+    seen_titles = set()
+    if max_source_titles != 0:
+        for cur_global_index in item.get('sources', []):
+            try:
+                document_index, _ = global_chunk_index_to_local(cur_global_index, documents, chunk_mapping)
+            except ValueError:
+                continue
+            cur_title = ' '.join(documents[document_index]['doc_title'].strip().split()).strip()
+            if len(cur_title) == 0:
+                cur_title = 'Документ без названия.'
+            if cur_title not in seen_titles:
+                seen_titles.add(cur_title)
+                source_titles.append(cur_title)
+                if max_source_titles is not None and len(source_titles) >= max_source_titles:
+                    break
     if item.get('kind') == 'relation':
         new_element_description = '**Элемент графа знаний: связь.**\n\n'
         new_element_description += (f"**Связь:** {item.get('subject')} "
