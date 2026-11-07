@@ -42,6 +42,7 @@ class RagasConfig:
     temperature: float = 0.0
     timeout: float = 180.0
     disable_thinking: bool = True
+    judge_context_tokens: int | None = None
 
     def __post_init__(self) -> None:
         for name in ("judge_url", "embedder_url"):
@@ -60,6 +61,10 @@ class RagasConfig:
             raise ValueError("temperature must be finite and nonnegative")
         if not math.isfinite(self.timeout) or self.timeout <= 0:
             raise ValueError("timeout must be finite and positive")
+        if self.judge_context_tokens is not None and (
+            type(self.judge_context_tokens) is not int or self.judge_context_tokens < 1
+        ):
+            raise ValueError("judge_context_tokens must be a positive integer")
 
     def fingerprint_payload(self) -> dict[str, Any]:
         return fingerprint_payload(self)
@@ -164,6 +169,7 @@ class RagasAdapter:
         self._http_clients: list[Any] = []
         self._sdk_clients: list[Any] = []
         self._caches: list[Any] = []
+        self._budget_guard: Any = None
 
     @property
     def fingerprint_payload(self) -> dict[str, Any]:
@@ -174,6 +180,13 @@ class RagasAdapter:
             raise RuntimeError("RagasAdapter is already open")
         components = _load_components()
         try:
+            if self.config.judge_context_tokens is not None:
+                from benchmarking.judge_budget import JudgeBudgetGuard
+
+                self._budget_guard = JudgeBudgetGuard(
+                    self.config.judge_url, self.config.judge_api_key,
+                    self.config.judge_context_tokens, self.config.timeout,
+                )
             judge_cache = self._make_cache(components, "judge", _judge_payload(self.config))
             embedding_cache = self._make_cache(components, "embeddings", _embedding_payload(self.config))
             judge_client = self._make_client(components, self.config.judge_url, self.config.judge_api_key, True)
@@ -223,6 +236,20 @@ class RagasAdapter:
     def _make_client(self, components: dict[str, Any], url: str, api_key: str, judge: bool) -> Any:
         async def request_hook(request: Any) -> None:
             request.extensions["meno_benchmark_started"] = time.monotonic()
+            if judge and self._budget_guard is not None and request.url.path.endswith("/chat/completions"):
+                from benchmarking.judge_budget import JudgeContextError
+
+                records = _CALL_RECORDS.get()
+                try:
+                    checked = await self._budget_guard.check(json.loads(request.content))
+                except JudgeContextError as exc:
+                    if records is not None:
+                        records.append({"kind": "judge_budget", "error": self._redact(str(exc)),
+                                        **self._redact(exc.details)})
+                    raise
+                else:
+                    if records is not None:
+                        records.append({"kind": "judge_budget", **checked})
 
         async def response_hook(response: Any) -> None:
             records = _CALL_RECORDS.get()
@@ -302,8 +329,13 @@ class RagasAdapter:
         except RagasMetricError:
             raise
         except Exception as exc:
+            budget_errors = [record for record in records if record.get("kind") == "judge_budget" and record.get("error")]
+            message = (
+                f"RAGAS {metric_name}: {budget_errors[-1]['error']}" if budget_errors
+                else self._redact(f"RAGAS {metric_name} failed: {type(exc).__name__}: {exc}")
+            )
             raise RagasMetricError(
-                self._redact(f"RAGAS {metric_name} failed: {type(exc).__name__}: {exc}"),
+                message,
                 metric_name=metric_name, details=self._details(records, started),
             ) from exc
         finally:
@@ -335,13 +367,17 @@ class RagasAdapter:
         return {
             "ragas_version": RAGAS_VERSION,
             "elapsed_seconds": time.monotonic() - started,
-            "http_calls": records,
+            "http_calls": [record for record in records if record.get("kind") != "judge_budget"],
+            "budget_checks": [record for record in records if record.get("kind") == "judge_budget"],
             "usage": usage,
             "usage_scope": "uncached_http_calls_only",
         }
 
     async def aclose(self) -> None:
         self._metrics = None
+        if self._budget_guard is not None:
+            await self._budget_guard.aclose()
+            self._budget_guard = None
         while self._sdk_clients:
             await self._sdk_clients.pop().close()
         while self._http_clients:

@@ -255,8 +255,63 @@ async def test_adapter_requires_open_context(config):
         await RagasAdapter(config).score("faithfulness", sample())
 
 
+async def test_judge_budget_rejection_is_checkpointable_without_generation(config, fake_components, monkeypatch):
+    from benchmarking import judge_budget
+
+    guards = []
+
+    class Guard:
+        def __init__(self, *args):
+            self.closed = False
+            self.payloads = []
+            guards.append(self)
+
+        async def check(self, payload):
+            self.payloads.append(payload)
+            raise judge_budget.JudgeContextError(
+                "Судье нужно 18000 токенов, доступно 15000.",
+                details={"code": "judge_context_length_exceeded", "prompt_tokens": 18000, "context_limit": 15000},
+            )
+
+        async def aclose(self):
+            self.closed = True
+
+    monkeypatch.setattr(judge_budget, "JudgeBudgetGuard", Guard)
+    guarded = replace(config, judge_context_tokens=15000)
+    assert guarded.fingerprint_payload() == config.fingerprint_payload()
+    async with RagasAdapter(guarded) as adapter:
+        with pytest.raises(RagasMetricError, match="18000 токенов") as failure:
+            await adapter.score("faithfulness", sample())
+    assert failure.value.details["http_calls"] == []
+    assert failure.value.details["budget_checks"][0]["code"] == "judge_context_length_exceeded"
+    assert guards[0].payloads[0]["messages"][0]["content"] == sample()["user_input"]
+    assert guards[0].closed
+
+
 @pytest.mark.skipif(importlib.util.find_spec("ragas") is None, reason="RAGAS evaluation extra is not installed")
-async def test_actual_ragas_metrics_and_disk_cache_without_model_network(config, monkeypatch):
+@pytest.mark.parametrize("guarded", [False, True])
+async def test_actual_ragas_metrics_and_disk_cache_without_model_network(config, monkeypatch, guarded):
+    from benchmarking import judge_budget
+
+    budget_payloads = []
+
+    class Guard:
+        def __init__(self, *args):
+            pass
+
+        async def check(self, payload):
+            budget_payloads.append(payload)
+            assert payload["max_tokens"] == 4096
+            assert payload["chat_template_kwargs"] == {"enable_thinking": False}
+            assert "schema" in json.dumps(payload["messages"]).lower()
+            return {"prompt_tokens": 100, "context_limit": 15000, "reserved": 4096}
+
+        async def aclose(self):
+            pass
+
+    if guarded:
+        config = replace(config, judge_context_tokens=15000)
+        monkeypatch.setattr(judge_budget, "JudgeBudgetGuard", Guard)
     components = module._load_components()
     transport_calls = []
 
@@ -303,6 +358,8 @@ async def test_actual_ragas_metrics_and_disk_cache_without_model_network(config,
             assert result["score"] == pytest.approx(1.0)
     assert transport_calls
     assert any(request.url.path.endswith("/embeddings") for request in transport_calls)
+    if guarded:
+        assert budget_payloads
     first_pass_count = len(transport_calls)
     async with RagasAdapter(config) as adapter:
         for name in adapter.metric_names:
