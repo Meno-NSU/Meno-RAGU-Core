@@ -17,6 +17,8 @@ production-репозиторий не изменяется и не нужен �
 контрольные суммы и ограничения сравнения зафиксированы в
 [манифесте NSU v1](benchmarking/MANIFEST.md). Машиночитаемый snapshot —
 [benchmarking/manifest.json](benchmarking/manifest.json).
+Для сравнения с иной реализацией RAG подготовлена
+[отдельная инструкция](benchmarking/README_OTHER_PIPELINE.md).
 
 Каталог `benchmarking/` содержит исходный `benchmark_1000_verified.json`
 (фактически 954 вопроса с эталонными ответами), отдельное окружение RAGAS 0.4.3
