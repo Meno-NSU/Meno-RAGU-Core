@@ -14,6 +14,10 @@ COPY legal ./legal
 COPY alembic ./alembic
 COPY alembic.ini ./
 RUN uv sync --frozen --no-dev && mkdir -p var && chown -R meno:meno var
+COPY vendor/tiktoken/o200k_base.tiktoken /opt/meno/tiktoken-cache/fb374d419588a4632f3f557e76b4b70aebbca790
+COPY vendor/tiktoken/LICENSE /opt/meno/tiktoken-cache/LICENSE
+ENV TIKTOKEN_CACHE_DIR=/opt/meno/tiktoken-cache
 USER meno
+RUN --network=none python -c "import tiktoken; encoding = tiktoken.encoding_for_model('gpt-4o'); text = 'Проверка НГУ'; assert encoding.decode(encoding.encode(text)) == text"
 EXPOSE 9006
 CMD ["meno-rag-api"]
