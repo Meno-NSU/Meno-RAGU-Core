@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import time
@@ -92,10 +93,12 @@ async def collect(args) -> int:
     selected = samples[:args.limit] if args.limit else samples
     token = bench_token(args.backend_env)
     headers = {"Authorization": f"Bearer {token}"}
+    parallel_models = getattr(args, "parallel_models", False)
+    connections = sum(args.concurrencies.values()) if parallel_models else max(args.concurrencies.values())
     async with httpx.AsyncClient(
         base_url=args.backend_url.rstrip("/") + "/", headers=headers,
         timeout=args.timeout, trust_env=False,
-        limits=httpx.Limits(max_connections=max(args.concurrencies.values()) + 4),
+        limits=httpx.Limits(max_connections=connections + 4),
     ) as client:
         preflight = await client.get("v1/benchmark/config")
         if preflight.status_code == 503:
@@ -151,8 +154,13 @@ async def collect(args) -> int:
         }
         with Store(args.output_dir) as store:
             store.bind(config)
+            log.info(
+                "Модели %s; лимиты полных запросов RAG: %s",
+                "обрабатываются одновременно" if parallel_models else "обрабатываются последовательно",
+                args.concurrencies,
+            )
             try:
-                for model in args.models:
+                async def run_model(model: str) -> None:
                     jobs = [(f"{model}:{s['sample_id']}", {"model": model, **s}) for s in selected]
 
                     async def operation(sample: dict) -> dict:
@@ -187,6 +195,17 @@ async def collect(args) -> int:
                         store, jobs, operation, concurrency=args.concurrencies[model], attempts=args.attempts,
                         label=f"Ответы {model}",
                     )
+
+                if parallel_models:
+                    try:
+                        async with asyncio.TaskGroup() as group:
+                            for model in args.models:
+                                group.create_task(run_model(model))
+                    except* Exception as errors:
+                        raise errors.exceptions[0] from None
+                else:
+                    for model in args.models:
+                        await run_model(model)
             finally:
                 export_collection(store, args.models, len(samples))
             expected = len(selected) * len(args.models)

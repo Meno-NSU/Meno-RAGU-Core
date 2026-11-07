@@ -38,6 +38,7 @@ def parser() -> argparse.ArgumentParser:
     capture.add_argument("--models", nargs="+", default=["meno-lite", "gemma-4-12B-it"])
     capture.add_argument("--model-revision", action="append", default=[], metavar="МОДЕЛЬ=ВЕРСИЯ")
     capture.add_argument("--model-concurrency", action="append", default=[], metavar="МОДЕЛЬ=ЧИСЛО")
+    capture.add_argument("--parallel-models", action="store_true", help="Обрабатывать модели одновременно с независимыми лимитами.")
     capture.add_argument("--temperature", type=float, default=0.0)
     capture.add_argument("--max-tokens", type=positive, default=4096)
     judge = commands.add_parser("evaluate", help="Оценить сохранённые ответы, не вызывая RAG.")

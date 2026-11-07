@@ -522,3 +522,235 @@ async def test_cancellation_keeps_completed_jobs_and_resume_retries_only_unfinis
         attempts = dict(store.db.execute("SELECT job_key,COUNT(*) FROM attempts GROUP BY job_key"))
         assert attempts == {"0": 1, "1": 2, "2": 1}
     assert Counter(calls) == Counter({0: 1, 1: 2, 2: 1})
+
+
+@pytest.fixture
+def dual_model_server(monkeypatch):
+    monkeypatch.setenv("BENCH_API_TOKEN", "benchmark-secret")
+    original_client = httpx.AsyncClient
+    original_export = collect_module.export_collection
+    original_close = Store.close
+    models = ("meno-lite", "gemma-4-12B-it")
+    state = {
+        "models": models, "posts": Counter(), "active": Counter(), "maximum": Counter(), "cancelled": set(),
+        "finished": set(), "status_codes": {}, "hook": None, "exports": 0, "client_limits": [],
+    }
+
+    async def handler(request):
+        assert request.headers["Authorization"] == "Bearer benchmark-secret"
+        if request.method == "GET":
+            if request.url.path == "/v1/benchmark/config":
+                payload = _preflight()
+                payload["identity"]["models"] = [{"id": model} for model in models]
+                return httpx.Response(200, json=payload, headers={"X-Bench-Mode": "1"})
+            assert request.url.path == "/v1/models"
+            return httpx.Response(200, json={"data": [
+                {"id": model, "endpoint": f"http://{index}-llm", "context_length": 16384}
+                for index, model in enumerate(models)
+            ]})
+        assert request.method == "POST" and request.url.path == "/v1/chat/completions"
+        assert request.headers["X-Benchmark-Fingerprint"] == "backend-v1"
+        payload = json.loads(request.content)
+        model = payload["model"]
+        question = payload["messages"][0]["content"]
+        key = (model, question)
+        assert model in models
+        assert "SECRET_REFERENCE" not in request.content.decode()
+        state["posts"][key] += 1
+        state["active"][model] += 1
+        state["maximum"][model] = max(state["maximum"][model], state["active"][model])
+        try:
+            if state["hook"] is not None:
+                await state["hook"](model, question)
+            else:
+                await asyncio.sleep(0)
+            status = state["status_codes"].get(key, 200)
+            if status != 200:
+                return httpx.Response(status, json={"error": "backend changed"})
+            response = _response(question)
+            response["model"] = model
+            response["pipeline_trace"]["runtime"] = {
+                "core": {"model_id": model}, "generation": {"model_id": model},
+            }
+            return httpx.Response(200, json=response,
+                                  headers={"X-Bench-Mode": "1", "X-Benchmark-Fingerprint": "backend-v1"})
+        except asyncio.CancelledError:
+            state["cancelled"].add(key)
+            await asyncio.sleep(0)
+            raise
+        finally:
+            state["active"][model] -= 1
+            state["finished"].add(key)
+
+    def client_factory(**kwargs):
+        state["client_limits"].append(kwargs["limits"].max_connections)
+        return original_client(transport=httpx.MockTransport(handler), **kwargs)
+
+    def guarded_export(*args, **kwargs):
+        assert not any(state["active"].values()), "Export must wait for all model-group request cleanup"
+        state["exports"] += 1
+        return original_export(*args, **kwargs)
+
+    def guarded_close(store):
+        assert not any(state["active"].values()), "Checkpoint store must not close while a request remains active"
+        return original_close(store)
+
+    monkeypatch.setattr(collect_module.httpx, "AsyncClient", client_factory)
+    monkeypatch.setattr(collect_module, "export_collection", guarded_export)
+    monkeypatch.setattr(Store, "close", guarded_close)
+    return state
+
+
+def _dual_arguments(tmp_path, *, parallel=True, limit=None):
+    args = _arguments(
+        tmp_path, models=["meno-lite", "gemma-4-12B-it"],
+        model_revisions={"meno-lite": "meno-v1", "gemma-4-12B-it": "gemma-v1"},
+        concurrencies={"meno-lite": 1, "gemma-4-12B-it": 2}, parallel_models=parallel, limit=limit,
+    )
+    args.dataset.write_text(json.dumps([
+        {"question": f"QUESTION_{index}", "ground_truth": f"SECRET_REFERENCE_{index}"} for index in range(4)
+    ]), encoding="utf-8")
+    return args
+
+
+@pytest.mark.asyncio
+async def test_parallel_models_overlap_and_respect_independent_request_caps(tmp_path, dual_model_server):
+    state = dual_model_server
+    args = _dual_arguments(tmp_path)
+    meno_started = asyncio.Event()
+    gemma_at_capacity = asyncio.Event()
+    release = asyncio.Event()
+
+    async def blocked(model, _question):
+        if model == "meno-lite":
+            meno_started.set()
+        elif state["active"][model] == 2:
+            gemma_at_capacity.set()
+        await release.wait()
+
+    state["hook"] = blocked
+    task = asyncio.create_task(collect(args))
+    try:
+        await asyncio.wait_for(asyncio.gather(meno_started.wait(), gemma_at_capacity.wait()), timeout=2)
+        assert state["active"] == Counter({"meno-lite": 1, "gemma-4-12B-it": 2})
+    finally:
+        release.set()
+        result = await asyncio.wait_for(task, timeout=2)
+    assert result == 0
+    assert state["maximum"] == Counter({"meno-lite": 1, "gemma-4-12B-it": 2})
+    assert state["client_limits"] == [7]
+    with Store(args.output_dir, readonly=True) as store:
+        assert store.counts() == {"complete": 8}
+        assert Counter(row["model"] for row in store.records()) == Counter(dict.fromkeys(state["models"], 4))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("initial_limit", [None, 1])
+async def test_sequential_to_parallel_resume_preserves_fingerprint_and_completed_model_captures(
+    tmp_path, dual_model_server, initial_limit,
+):
+    state = dual_model_server
+    args = _dual_arguments(tmp_path, parallel=False, limit=initial_limit)
+    assert await collect(args) == 0
+    with Store(args.output_dir, readonly=True) as store:
+        before_config = store.metadata("config")
+        before = {(row["model"], row["sample_id"]): row for row in store.records()}
+    args.parallel_models = True
+    args.limit = None
+    args.concurrencies = {"meno-lite": 2, "gemma-4-12B-it": 1}
+    assert await collect(args) == 0
+    assert state["posts"] == Counter({(model, f"QUESTION_{index}"): 1
+                                      for model in state["models"] for index in range(4)})
+    with Store(args.output_dir, readonly=True) as store:
+        assert store.metadata("config") == before_config
+        assert "parallel_models" not in before_config and "concurrencies" not in before_config
+        assert store.counts() == {"complete": 8}
+        for row in store.records():
+            key = (row["model"], row["sample_id"])
+            if key in before:
+                assert row == before[key]
+            assert row["raw_response"]["pipeline_trace"]["runtime"]["generation"]["model_id"] == row["model"]
+
+
+def _contains_fatal(exception):
+    if isinstance(exception, FatalRunError):
+        return True
+    if isinstance(exception, BaseExceptionGroup):
+        return any(_contains_fatal(child) for child in exception.exceptions)
+    return False
+
+
+@pytest.mark.asyncio
+async def test_fatal_model_group_cancels_other_group_before_export_and_preserves_completed_sibling(
+    tmp_path, dual_model_server,
+):
+    state = dual_model_server
+    args = _dual_arguments(tmp_path)
+    args.concurrencies = {"meno-lite": 1, "gemma-4-12B-it": 1}
+    meno_blocked = asyncio.Event()
+
+    async def hook(model, question):
+        if model == "meno-lite" and question == "QUESTION_1":
+            meno_blocked.set()
+            await asyncio.Future()
+        if model == "gemma-4-12B-it":
+            await meno_blocked.wait()
+
+    state["hook"] = hook
+    state["status_codes"] = {("gemma-4-12B-it", "QUESTION_0"): 409}
+    with pytest.raises((FatalRunError, BaseExceptionGroup)) as error:
+        await asyncio.wait_for(collect(args), timeout=2)
+    assert _contains_fatal(error.value)
+    assert ("meno-lite", "QUESTION_1") in state["cancelled"]
+    assert not any(state["active"].values())
+    assert state["exports"] == 1
+    with Store(args.output_dir, readonly=True) as store:
+        assert store.counts() == {"complete": 1, "failed": 1, "running": 1}
+        saved = next(store.records())
+        assert (saved["model"], saved["question"]) == ("meno-lite", "QUESTION_0")
+    state["status_codes"] = {}
+    state["hook"] = None
+    assert await collect(args) == 0
+    assert state["posts"][("meno-lite", "QUESTION_0")] == 1
+    with Store(args.output_dir, readonly=True) as store:
+        assert store.counts() == {"complete": 8}
+        assert next(row for row in store.records() if row["capture_sha256"] == saved["capture_sha256"]) == saved
+
+
+@pytest.mark.asyncio
+async def test_parallel_collection_cancellation_awaits_both_groups_and_resumes_only_unfinished(
+    tmp_path, dual_model_server,
+):
+    state = dual_model_server
+    args = _dual_arguments(tmp_path)
+    blocked = {model: asyncio.Event() for model in state["models"]}
+
+    async def hook(model, question):
+        if question != "QUESTION_0":
+            blocked[model].set()
+            await asyncio.Future()
+
+    state["hook"] = hook
+    task = asyncio.create_task(collect(args))
+    try:
+        await asyncio.wait_for(asyncio.gather(*(event.wait() for event in blocked.values())), timeout=2)
+    finally:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    assert not any(state["active"].values())
+    assert state["exports"] == 1
+    assert {model for model, _question in state["cancelled"]} == set(state["models"])
+    with Store(args.output_dir, readonly=True) as store:
+        completed = {(row["model"], row["sample_id"]): row for row in store.records()}
+        assert len(completed) == 2
+        assert {row["question"] for row in completed.values()} == {"QUESTION_0"}
+    state["hook"] = None
+    assert await collect(args) == 0
+    assert all(state["posts"][(model, "QUESTION_0")] == 1 for model in state["models"])
+    with Store(args.output_dir, readonly=True) as store:
+        assert store.counts() == {"complete": 8}
+        for row in store.records():
+            key = (row["model"], row["sample_id"])
+            if key in completed:
+                assert row == completed[key]
