@@ -654,7 +654,7 @@ async def list_knowledge_bases(request: Request):
             {
                 "id": KB_ID,
                 "name": KB_NAME,
-                "description": "Legacy-compatible RAG: FRIDA + FAISS, BM25, LLM rerank, stand prompts.",
+                "description": "Граф знаний RAGU: поиск по сущностям и связям, гибридный поиск bge-m3/BM25 и переранжирование.",
                 "supported_rag_engines": [RAG_ENGINE_ID],
                 "available": available,
             }

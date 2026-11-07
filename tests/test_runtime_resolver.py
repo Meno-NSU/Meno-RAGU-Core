@@ -12,27 +12,34 @@ from meno_rag.llm.status import InMemoryModelStatusStore
 
 
 @pytest.mark.asyncio
-async def test_vllm_selection_returns_uniform_runtime():
+@pytest.mark.parametrize('model_id,endpoint', [
+    ('meno-lite', 'http://127.0.0.1:9020'),
+    ('gemma-4-12B-it', 'http://everest.nsu.ru:9022'),
+])
+async def test_vllm_selection_returns_uniform_runtime(model_id, endpoint):
     vllm_registry = AsyncMock()
-    vllm_registry.list_models = AsyncMock(return_value=[{"id": "menon-1", "endpoint": "http://v"}])
-    vllm_registry.resolve_model = AsyncMock(return_value=("menon-1", "http://v/v1"))
+    vllm_registry.list_models = AsyncMock(return_value=[{"id": model_id, "endpoint": endpoint}])
+    vllm_registry.resolve_model = AsyncMock(return_value=(model_id, f'{endpoint}/v1'))
     or_registry = AsyncMock()
     or_registry.list_models = AsyncMock(return_value=[])
     status_store = InMemoryModelStatusStore(backoff_seconds=60, backoff_max_seconds=3600)
 
     rt = await resolve_pipeline_runtime(
-        requested_model="menon-1",
+        requested_model=model_id,
         vllm_registry=vllm_registry,
         openrouter_registry=or_registry,
         status_store=status_store,
         rag_rewrite_rerank_model=None,
         openrouter_base_url="http://or/v1",
-        configured_default=None,
-        vllm_endpoint_list=["http://v"],
+        configured_default='meno-lite',
+        vllm_endpoint_list=['http://127.0.0.1:9020', 'http://everest.nsu.ru:9022'],
     )
     assert rt.core.provider == "vllm"
     assert rt.generation.provider == "vllm"
-    assert rt.generation.model_id == "menon-1"
+    assert rt.core is rt.generation
+    assert rt.generation.model_id == model_id
+    assert rt.generation.base_url == f'{endpoint}/v1'
+    vllm_registry.resolve_model.assert_awaited_once_with(model_id, 'meno-lite')
 
 
 @pytest.mark.asyncio
