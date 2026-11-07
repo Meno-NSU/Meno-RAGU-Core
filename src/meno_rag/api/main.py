@@ -20,6 +20,7 @@ from sqlalchemy import text
 
 from meno_rag.api import arena, auth, feedback, guest, history, legal, privacy
 from meno_rag.api import bench as bench_mod
+from meno_rag.api import benchmark_config as benchmark_config_mod
 from meno_rag.api import metrics as metrics_mod
 from meno_rag.api.admission import AdmissionController
 from meno_rag.api.errors import ClassifiedError, classify_error
@@ -281,6 +282,7 @@ async def lifespan(app: FastAPI):
     app.state.bench_admission = AdmissionController(settings.bench_max_concurrent)
     app.state.retrieval_executor = retrieval_executor
     app.state.trace_writer = trace_writer
+    app.state.benchmark_provenance = None
 
     yield
 
@@ -318,6 +320,8 @@ def create_app() -> FastAPI:
     app.include_router(legal.router)
     app.include_router(privacy.router)
     app.include_router(feedback.router)
+    app.include_router(benchmark_config_mod.router)
+    app.middleware("http")(benchmark_config_mod.benchmark_guard)
     # api.leaderboard is deliberately NOT mounted — the contributor board published
     # nicknames and per-user activity to every visitor, which is distribution of personal
     # data and needs its own art. 10.1 152-ФЗ consent. The module stays for a possible
@@ -964,6 +968,11 @@ async def _non_stream_response(
         trace = getattr(outcome, "trace", None)
         if trace is not None:
             response["pipeline_trace"] = trace
+            generation = trace.get("generation")
+            if isinstance(generation, dict):
+                response["choices"][0]["finish_reason"] = generation.get("finish_reason")
+                if isinstance(generation.get("usage"), dict):
+                    response["usage"] = generation["usage"]
     return response
 
 

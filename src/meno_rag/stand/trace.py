@@ -9,7 +9,9 @@ on unknown ids so capture can never break a successful response.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 from meno_rag.stand.context import global_chunk_index_to_text, normalize_urls
 
@@ -48,6 +50,22 @@ def _chunk_meta(
     return {"title": title, "url": url, "text": text}
 
 
+def _fused_chunk_pairs(batch: dict[str, Any]) -> list[tuple[int, float]]:
+    if "pool" in batch:
+        return [(item.chunk_id, item.score) for item in batch["pool"] if item.chunk_id is not None]
+    return batch.get("candidates", [])
+
+
+def model_runtime_trace(runtime: Any) -> dict[str, str]:
+    endpoint = urlsplit(runtime.base_url)
+    host = endpoint.netloc.rsplit("@", 1)[-1]
+    return {
+        "model_id": runtime.model_id,
+        "provider": runtime.provider,
+        "base_url": urlunsplit((endpoint.scheme, host, endpoint.path, "", "")),
+    }
+
+
 def build_pipeline_trace(
     *,
     question: str,
@@ -59,6 +77,13 @@ def build_pipeline_trace(
     qa_messages: list[dict[str, str]],
     documents: list[dict[str, Any]],
     chunk_mapping: dict[str, dict[str, int]],
+    final_context: str = "",
+    final_evidence: list[dict[str, Any]] | None = None,
+    sources: list[dict[str, str]] | None = None,
+    graph_trace: dict[str, Any] | None = None,
+    runtime: dict[str, Any] | None = None,
+    prepared_dialogue_history: str = "",
+    stage_details: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     retrieval = {
         "per_query": [
@@ -66,13 +91,14 @@ def build_pipeline_trace(
                 "query": batch["query"],
                 "dense": _rank_entries(batch.get("dense", []), "score"),
                 "lexical": _rank_entries(batch.get("lexical", []), "score"),
+                **({"graph": deepcopy(batch["graph"])} if "graph" in batch else {}),
             }
             for batch in retrieval_batches
         ]
     }
     fusion = {
         "per_query": [
-            {"query": batch["query"], "candidates": _rank_entries(batch.get("candidates", []), "fused_score")}
+            {"query": batch["query"], "candidates": _rank_entries(_fused_chunk_pairs(batch), "fused_score")}
             for batch in fused_batches
         ]
     }
@@ -80,7 +106,7 @@ def build_pipeline_trace(
     # Best (max) fused retrieval score per chunk, across rewrite queries.
     fused_by_id: dict[int, float] = {}
     for batch in fused_batches:
-        for cid, score in batch.get("candidates", []):
+        for cid, score in _fused_chunk_pairs(batch):
             fused_by_id[int(cid)] = max(fused_by_id.get(int(cid), float("-inf")), float(score))
 
     merged_by_id = {int(cid): float(score) for cid, score in reranked_chunks}
@@ -106,18 +132,32 @@ def build_pipeline_trace(
     for batch in retrieval_batches:
         chunk_ids.update(int(cid) for cid, _ in batch.get("dense", []))
         chunk_ids.update(int(cid) for cid, _ in batch.get("lexical", []))
+        chunk_ids.update(int(cid) for cid, _ in batch.get("graph", {}).get("chunks", []))
     chunk_ids.update(fused_by_id)
     chunk_ids.update(int(cid) for cid in candidate_scores)
     chunk_ids.update(merged_by_id)
 
     chunks = {str(cid): _chunk_meta(cid, documents, chunk_mapping) for cid in sorted(chunk_ids)}
 
-    return {
+    evidence = deepcopy(final_evidence or [])
+    trace = {
+        "schema_version": 2,
         "question": question,
+        "prepared_dialogue_history": prepared_dialogue_history,
         "search_queries": list(search_queries),
         "retrieval": retrieval,
         "fusion": fusion,
         "rerank": {"scored_candidates": len(candidate_scores), "candidates": candidates},
         "prompt": _extract_prompt(qa_messages),
         "chunks": chunks,
+        "qa_messages": deepcopy(qa_messages),
+        "final_context": final_context,
+        "final_evidence": evidence,
+        "retrieved_contexts": [item["text"] for item in evidence],
+        "sources": deepcopy(sources or []),
+        "runtime": deepcopy(runtime or {}),
+        "stage_details": deepcopy(stage_details or {}),
     }
+    if graph_trace is not None:
+        trace["graph"] = deepcopy(graph_trace)
+    return trace

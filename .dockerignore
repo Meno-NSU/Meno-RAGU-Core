@@ -8,3 +8,4 @@ data
 pictures
 .pytest_cache
 **/__pycache__
+benchmarking

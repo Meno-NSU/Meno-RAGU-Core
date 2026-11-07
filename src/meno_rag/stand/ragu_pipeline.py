@@ -85,6 +85,7 @@ class RaguRagPipeline(StandRagPipeline):
                 if previous is None or merged > previous[1]:
                     selected[candidate.key] = (candidate, merged)
         kept = sorted(selected.values(), key=lambda p: (-p[1], p[0].key))[: self.settings.max_context_chunks]
+        kept_by_key = {candidate.key: (rank, merged) for rank, (candidate, merged) in enumerate(kept)}
         chunks = [(c.chunk_id, merged) for c, merged in kept if c.chunk_id is not None]
         elements = [dict(c.element, score=merged) for c, merged in kept if c.element is not None]
         graph_trace = {
@@ -93,9 +94,12 @@ class RaguRagPipeline(StandRagPipeline):
                 for b in fused_batches
             ],
             "rerank": [
-                {**self._trace_candidate(c), "rerank_score": scores[key], "kept": key in {v.key for v, _ in kept}}
+                {**self._trace_candidate(c), "rerank_score": scores[key], "kept": key in kept_by_key,
+                 "rank": kept_by_key[key][0] if key in kept_by_key else None,
+                 "merged_score": kept_by_key[key][1] if key in kept_by_key else None}
                 for key, c in unique.items()
             ],
+            "selected": [{**self._trace_candidate(c), "merged_score": merged} for c, merged in kept],
             "selected_elements": elements,
         }
         return GraphSelection(
@@ -120,6 +124,8 @@ class RaguRagPipeline(StandRagPipeline):
         elements = getattr(chunks, "elements", [])
         blocks = []
         kept_elements = []
+        graph_evidence = []
+        capture_evidence = getattr(chunks, "capture_evidence", False)
         used = 0
         heading = "**ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ**"
         for element in elements:
@@ -140,12 +146,40 @@ class RaguRagPipeline(StandRagPipeline):
                 continue
             blocks.append(text)
             kept_elements.append(element)
+            if capture_evidence:
+                source_references = []
+                source_rows = []
+                for chunk_id in references:
+                    mapping = self.resources.chunk_mapping[str(chunk_id)]
+                    document = self.resources.documents[mapping["doc_index"]]
+                    urls = normalize_urls(document.get("url"))
+                    source_references.append({
+                        "chunk_id": chunk_id, "document_index": mapping["doc_index"],
+                        "local_chunk_index": mapping["local_chunk_index"],
+                        "title": document.get("doc_title", ""), "urls": urls,
+                    })
+                    source_rows.extend({"document_title": document.get("doc_title", ""), "source_url": url}
+                                       for url in urls or [""])
+                graph_evidence.append({
+                    "kind": element.get("kind", "entity"), "element_key": element.get("key"),
+                    "text": text, "chunk_ids": list(references), "sources": source_rows,
+                    "source_references": source_references,
+                })
             used += cost
         graph_context = heading + "\n\n" + "\n\n".join(blocks) if blocks else ""
         remaining = max(0, budget - len(graph_context) - (2 if graph_context else 0))
         context, sources = super()._assemble_context(chunks, budget_override=remaining) if remaining else ("", [])
         if len(context) > remaining:
             context, sources = "", []
+            if capture_evidence:
+                chunks.final_evidence = []
+        if capture_evidence:
+            offset = (len(context) + 2 if context else 0) + len(heading) + 2
+            for evidence in graph_evidence:
+                evidence["context_start"] = offset
+                evidence["context_end"] = offset + len(evidence["text"])
+                offset = evidence["context_end"] + 2
+            chunks.final_evidence = (chunks.final_evidence or []) + graph_evidence if remaining else graph_evidence
         if graph_context:
             context = "\n\n".join(p for p in (context, graph_context) if p)
         seen = {(s["document_title"], s["source_url"]) for s in sources}

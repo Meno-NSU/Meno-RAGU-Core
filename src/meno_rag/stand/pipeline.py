@@ -6,9 +6,10 @@ import functools
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 import httpx
 import structlog
@@ -18,7 +19,7 @@ from meno_rag.config import Settings
 from meno_rag.llm.think_detector import has_thinking
 from meno_rag.logging_config import preview_field
 from meno_rag.schemas import ChatMessage, PipelineOutcome
-from meno_rag.stand.context import flatten_sources, normalize_urls, prepare_context
+from meno_rag.stand.context import flatten_sources, normalize_urls, prepare_context, prepare_relevant_documents
 from meno_rag.stand.dialogue_history import prepare_dialogue_history
 from meno_rag.stand.qa import prepare_prompt_for_question_answering, system_prompt_with_datetime
 from meno_rag.stand.rerank import (
@@ -36,7 +37,7 @@ from meno_rag.stand.rewriting import (
 )
 from meno_rag.stand.sampling import QaSampling, RerankSampling, RewriteSampling
 from meno_rag.stand.search import combine_relevant_chunks
-from meno_rag.stand.trace import build_pipeline_trace
+from meno_rag.stand.trace import build_pipeline_trace, model_runtime_trace
 
 logger = structlog.get_logger(__name__)
 
@@ -175,6 +176,10 @@ class StandRagPipeline:
             stage_details,
             model_id=runtime.core.model_id,
         )
+        if capture_trace:
+            if not isinstance(reranked_global_chunks, _RerankOutput):
+                reranked_global_chunks = _RerankOutput(reranked_global_chunks)
+            reranked_global_chunks.capture_evidence = True
 
         # Reserve the few-shot character allowance out of the QA prompt budget
         # so context + few-shots together stay within `max_qa_prompt_chars`.
@@ -235,10 +240,26 @@ class StandRagPipeline:
                 qa_messages=qa_messages,
                 documents=self.resources.documents,
                 chunk_mapping=self.resources.chunk_mapping,
+                final_context=context,
+                final_evidence=reranked_global_chunks.final_evidence,
+                sources=sources,
+                graph_trace=getattr(reranked_global_chunks, "graph_trace", None),
+                prepared_dialogue_history=prepared_dialogue_history,
+                stage_details=stage_details,
+                runtime={
+                    "core": model_runtime_trace(runtime.core),
+                    "generation": model_runtime_trace(runtime.generation),
+                    "rewrite_sampling": asdict(RewriteSampling()),
+                    "rerank_sampling": asdict(RerankSampling()),
+                    "generation_sampling_defaults": asdict(QaSampling()),
+                    "generation_max_tokens": completion_tokens,
+                    "final_context_budget_chars": context_budget,
+                    "settings": {name: getattr(self.settings, name) for name in (
+                        "max_rewrite_queries", "rerank_candidates_per_query", "rerank_top_k", "rerank_weight",
+                        "max_context_chunks", "max_qa_prompt_chars", "graph_source_documents", "min_document_quality",
+                    )},
+                },
             )
-
-        if trace is not None and hasattr(reranked_global_chunks, "graph_trace"):
-            trace["graph"] = reranked_global_chunks.graph_trace
 
         return PipelineOutcome(
             question=question,
@@ -264,16 +285,33 @@ class StandRagPipeline:
     ) -> str:
         sampling = QaSampling()
         _log_qa_prompt_size(outcome.qa_messages, runtime.generation.model_id, stream=False)
+        generation_sampling = {
+            "max_tokens": max_tokens or self.settings.max_output_tokens,
+            "temperature": sampling.temperature if temperature is None else temperature,
+            "seed": sampling.seed,
+        }
         async with self.generation_semaphore:
-            answer = await self.llm_router.chat_completion_text(
+            call = dict(
                 runtime=runtime.generation,
                 messages=outcome.qa_messages,
                 stage=StageName.GENERATION,
-                max_tokens=max_tokens or self.settings.max_output_tokens,
-                temperature=sampling.temperature if temperature is None else temperature,
-                seed=sampling.seed,
+                **generation_sampling,
                 timeout=self.settings.generation_timeout_seconds,
             )
+            if outcome.trace is None:
+                answer = await self.llm_router.chat_completion_text(**call)
+            else:
+                response = await self.llm_router.chat_completion(**call)
+                choice = response["choices"][0]
+                answer = str(choice["message"]["content"]).strip()
+                outcome.trace["generation"] = {
+                    "finish_reason": choice.get("finish_reason"),
+                    "usage": deepcopy(response.get("usage")),
+                    "upstream_model": response.get("model"),
+                    "upstream_response_id": response.get("id"),
+                    "message": deepcopy(choice["message"]),
+                    "sampling": generation_sampling,
+                }
         logger.info(
             "generation_completed",
             model_id=runtime.generation.model_id,
@@ -597,6 +635,9 @@ class StandRagPipeline:
     def _assemble_context(
         self, chunks: list[tuple[int, float]], budget_override: int | None = None
     ) -> tuple[str, list[dict[str, str]]]:
+        capture_evidence = getattr(chunks, "capture_evidence", False)
+        if capture_evidence:
+            cast(_RerankOutput, chunks).final_evidence = []
         if not chunks:
             return "", []
         prepared_context, prepared_sources = prepare_context(
@@ -616,6 +657,13 @@ class StandRagPipeline:
         kept_sources: list[dict[str, Any]] = []
         total = 0
         sep_chars = len("\n\n")
+        ordered_documents: list[int] = []
+        if capture_evidence:
+            relevant_documents = prepare_relevant_documents(
+                [item[0] for item in chunks], [item[1] for item in chunks], self.resources.documents,
+                self.resources.chunk_mapping, self.settings.min_document_quality,
+            )
+            ordered_documents = sorted(relevant_documents, key=lambda index: relevant_documents[index]["relevance"])
         for idx, (doc_text, source) in enumerate(zip(prepared_context, prepared_sources, strict=False)):
             piece = f"==========\nDOCUMENT {idx + 1}\n==========\n\n{doc_text.strip()}"
             extra = len(piece) + (sep_chars if kept_context else 0)
@@ -631,6 +679,20 @@ class StandRagPipeline:
             kept_context.append(piece)
             kept_sources.append(source)
             total += extra
+            if capture_evidence:
+                document_index = ordered_documents[idx]
+                evidence = cast(_RerankOutput, chunks).final_evidence
+                assert evidence is not None
+                evidence.append({
+                    "kind": "document",
+                    "text": piece,
+                    "context_start": total - len(piece),
+                    "context_end": total,
+                    "document_index": document_index,
+                    "chunk_ids": [int(cid) for cid, _score in chunks
+                                  if self.resources.chunk_mapping[str(cid)]["doc_index"] == document_index],
+                    "sources": flatten_sources([source]),
+                })
         context = "\n\n".join(kept_context)
         sources = flatten_sources(kept_sources)
         return context, sources
@@ -730,6 +792,8 @@ class _RerankOutput(list):
     # trace capture; None when not populated. Set on the result object so
     # concurrent requests never share state.
     candidate_scores: dict[int, float] | None = None
+    capture_evidence: bool = False
+    final_evidence: list[dict[str, Any]] | None = None
 
 
 @contextlib.asynccontextmanager
