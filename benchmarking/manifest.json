@@ -1,0 +1,455 @@
+{
+  "manifest_schema_version": 1,
+  "manifest_version": "1.0",
+  "experiment_id": "nsu-v1-meno-lite-gemma-qwen38-fp8",
+  "documented_on": "2026-11-08",
+  "timezone": "Asia/Novosibirsk",
+  "purpose": "Оценка двух полных конвейеров графового RAG с раздельным сбором ответов и судейством RAGAS, сохраняемыми по чекпоинтам.",
+  "execution_config": false,
+  "status": {
+    "collection": "complete_with_one_missing_answer",
+    "evaluation": "running_user_reported",
+    "available_result_snapshot": "smoke_only",
+    "final_results": null
+  },
+  "implementation": {
+    "repository": "https://github.com/Meno-NSU/Meno-RAGU-Core",
+    "revision": "04d0b79a1ab1f03cc4ad5207ba9ec9531ff1a53c",
+    "main_lock_sha256": "8cd374cfcf3b72597f767727f9a9e2363f0bcf8adfe3a217a3a05f311e9e184f",
+    "benchmark_lock_sha256": "a0ea4637e9c3fe6d87af16cd3a2f3b35fbe0e21804de43ed77ae6f2310b996c6",
+    "ragu_revision": "abd3f2958c186dc624bbd42560ad6e1e7033efaf",
+    "python_requires": ">=3.12",
+    "benchmark_packages": {
+      "ragas": "0.4.3",
+      "openai": "2.54.0",
+      "instructor": "1.17.0",
+      "httpx": "0.28.1",
+      "diskcache": "5.6.3",
+      "numpy": "2.5.4",
+      "pydantic": "2.14.3",
+      "langchain": "0.3.30",
+      "langchain-community": "0.3.31",
+      "langchain-core": "0.3.86",
+      "langchain-openai": "0.3.35"
+    }
+  },
+  "evidence_sources": {
+    "code_and_lock_files": "protocol_and_dependencies",
+    "operator_reports": "deployment_hardware_native_model_flags_graph_build_counts_and_full_run_start",
+    "downloaded_smoke_snapshot": "judge_outputs_embeddings_calls_scores_budgets_and_checkpoint_consistency"
+  },
+  "dataset": {
+    "path": "data/benchmark_1000_verified.json",
+    "sha256": "e85bb0b24452372ed2630a568ac91154ec524d4084375a7ac56d94dd04a87aef",
+    "bytes": 777700,
+    "samples": 954,
+    "format": "json_array",
+    "fields": [
+      "question",
+      "ground_truth"
+    ],
+    "index_base": 0,
+    "preserve_original_bytes": true,
+    "nonempty_fields_verified": true,
+    "duplicate_normalized_questions": 0,
+    "external_human_verification_protocol": null,
+    "source_document_labels": false,
+    "graph_edge_labels": false,
+    "training_overlap_audited": false,
+    "ground_truth_sent_during_collection": false
+  },
+  "knowledge": {
+    "bundle": "nsu-v1",
+    "knowledge_base_id": "nsu-ragu",
+    "resource_directory": "/home/rsolikhov/knowledge/nsu-v1",
+    "source_url": "https://disk.yandex.ru/d/XZjLjlah72eG1w",
+    "builder_llm_alias": "gemma-4-12B-it",
+    "reported_counts": {
+      "chunks": 154688,
+      "entities": 331965,
+      "relations": 847728,
+      "communities": 23540
+    },
+    "counts_source": "operator_build_log_2026-11-07",
+    "qdrant_server_version_reported": "1.17.1",
+    "qdrant_url": "http://127.0.0.1:6333",
+    "community_summaries_used_in_query_context": false,
+    "snapshot_hash_in_this_manifest": null
+  },
+  "hardware_reported": {
+    "meno": {
+      "gpu": "NVIDIA RTX A6000",
+      "vram_gb": 48,
+      "native_vllm_version": "0.32.0"
+    },
+    "everest": {
+      "gpu": "NVIDIA H100",
+      "vram_gb": 80,
+      "native_vllm_version": "0.29.0"
+    }
+  },
+  "models": {
+    "meno-lite": {
+      "role": "rewrite_llm_rerank_generation",
+      "version_label": "0.1",
+      "base_url": "http://127.0.0.1:9020/v1",
+      "weights_path_reported": "/home/m.kulakov/models/meno-lite-0.1",
+      "context_tokens_reported": 16384,
+      "weights_sha256": null
+    },
+    "gemma-4-12B-it": {
+      "role": "rewrite_llm_rerank_generation",
+      "version_label": "everest-current",
+      "base_url_during_collection": "http://everest.nsu.ru:9022/v1",
+      "context_tokens_reported": 60000,
+      "weights_sha256": null,
+      "quantization_during_collection": null,
+      "replaced_by_judge_after_collection": true
+    },
+    "BAAI/bge-m3": {
+      "roles": [
+        "dense_graph_retrieval",
+        "ragas_answer_relevancy_embeddings"
+      ],
+      "base_url": "http://127.0.0.1:8001/v1",
+      "weights_path_reported": "/home/rsolikhov/vllm/bge-m3",
+      "weights_sha256": null
+    },
+    "BAAI/bge-reranker-v2-m3": {
+      "role": "specialized_graph_search_reranker",
+      "base_url": "http://127.0.0.1:8002/v1",
+      "weights_path_reported": "/home/rsolikhov/vllm/bge-reranker-v2-m3",
+      "weights_sha256": null
+    },
+    "BM25": {
+      "role": "sparse_retrieval",
+      "implementation": "fastembed via RAGU",
+      "language": "russian"
+    }
+  },
+  "pipeline": {
+    "uniform_selected_generative_model": true,
+    "shared_knowledge": true,
+    "retrieval_modes": [
+      "local",
+      "naive"
+    ],
+    "candidate_types": [
+      "chunk",
+      "entity",
+      "relation"
+    ],
+    "local_params": {
+      "use_summary": false,
+      "use_chunks": true
+    },
+    "settings_defaults_not_runtime_attestation": {
+      "TOP_K": 50,
+      "GRAPH_TOP_K": 20,
+      "ENGINE_RERANK_TOP_K": 30,
+      "GRAPH_RELATED_CANDIDATES": 200,
+      "GRAPH_SOURCE_DOCUMENTS": 5,
+      "MAX_REWRITE_QUERIES": 8,
+      "RERANK_CANDIDATES_PER_QUERY": 40,
+      "RERANK_TOP_K": 12,
+      "RERANK_WEIGHT": 0.8,
+      "MAX_CONTEXT_CHUNKS": 12,
+      "MAX_QA_PROMPT_CHARS": 60000,
+      "MIN_DOCUMENT_QUALITY": 0,
+      "QA_FEWSHOTS_ENABLED": false
+    },
+    "effective_evidence": "post_budget_rendered_document_entity_relation_blocks_in_final_prompt_order",
+    "full_hidden_tensor_activations_saved": false
+  },
+  "collection": {
+    "base_url": "http://127.0.0.1:9007",
+    "output_directory": "/home/rsolikhov/benchmarks/nsu-v1/collection",
+    "model_order": [
+      "meno-lite",
+      "gemma-4-12B-it"
+    ],
+    "parallel_models": true,
+    "per_model_concurrency": {
+      "meno-lite": 1,
+      "gemma-4-12B-it": 8
+    },
+    "messages_per_dialogue": 1,
+    "stream": false,
+    "requested_sampling": {
+      "temperature": 0.0,
+      "max_tokens": 4096
+    },
+    "effective_sampling_authority": "raw_response.pipeline_trace.generation.sampling",
+    "api_min_output_floor_applies": true,
+    "generation_seed": 42,
+    "rewrite_sampling": {
+      "temperature": 0.1,
+      "max_tokens": 1024,
+      "seed": 42
+    },
+    "llm_rerank_sampling": {
+      "temperature": 0.0,
+      "max_tokens": 1,
+      "logprobs": true,
+      "top_logprobs": 5,
+      "seed": null
+    },
+    "json_rerank_fallback_max_tokens": 20,
+    "thinking_explicitly_disabled": {
+      "rewrite": false,
+      "llm_rerank": true,
+      "generation": false
+    },
+    "qa_system_prompt_contains_current_datetime": true,
+    "max_attempts": 3,
+    "required_finish_reason": "stop",
+    "required_trace_schema_version": 2,
+    "planned_answers": 1908,
+    "available_answers": 1907,
+    "per_model_available": {
+      "meno-lite": 953,
+      "gemma-4-12B-it": 954
+    },
+    "per_model_missing": {
+      "meno-lite": 1,
+      "gemma-4-12B-it": 0
+    },
+    "missing_meno_index": null,
+    "content_sha256": "4746397acfdb8617cca486b30f2582989662b6f7fafced0e1f8add8da30fa55c"
+  },
+  "evaluation": {
+    "judge_alias": "qwen3.8-27b",
+    "judge_revision": "qwen3.8-27b-fp8-v1",
+    "judge_base_url": "http://everest.nsu.ru:9022/v1",
+    "reported_model_directory": "/workspace/data/models/Qwen3.8-27B",
+    "weights_sha256": null,
+    "reported_vllm_args": {
+      "CUDA_VISIBLE_DEVICES": "1",
+      "host": "0.0.0.0",
+      "port": 9022,
+      "gpu_memory_utilization": 0.8,
+      "dtype": "half",
+      "max_model_len": 32768,
+      "quantization": "fp8",
+      "max_num_seqs": 25,
+      "enforce_eager": true,
+      "kv_cache_dtype_explicitly_set": false
+    },
+    "reported_environment": {
+      "VLLM_ATTENTION_BACKEND": "FLASH_ATTN",
+      "VLLM_USE_TRITON_FLASH_ATTN": "0",
+      "VLLM_TORCH_COMPILE_LEVEL": "0"
+    },
+    "sampling": {
+      "temperature": 0.0,
+      "top_p": 1.0,
+      "max_tokens": 4096,
+      "seed": null,
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      }
+    },
+    "allow_partial": true,
+    "smoke_concurrency": 4,
+    "full_run_concurrency_last_command": 8,
+    "max_attempts_smoke": 1,
+    "max_attempts_full": 3,
+    "instructor_max_retries": 2,
+    "openai_sdk_max_retries": 0,
+    "judge_context_tokens": 32768,
+    "context_margin_tokens": 32,
+    "check_actual_instructor_messages_via_tokenize": true,
+    "evidence_truncation": false,
+    "ragas_prompt_language": "english",
+    "input_translation": false,
+    "metrics": {
+      "faithfulness": {
+        "class": "Faithfulness",
+        "inputs": [
+          "user_input",
+          "response",
+          "retrieved_contexts"
+        ],
+        "uses_reference": false,
+        "uses_embeddings": false,
+        "parameters": {},
+        "aggregation_within_sample": "supported_returned_NLI_verdicts / returned_NLI_verdicts",
+        "empty_claims_or_verdicts": "undefined_metric_error"
+      },
+      "factual_correctness": {
+        "class": "FactualCorrectness",
+        "inputs": [
+          "response",
+          "reference"
+        ],
+        "uses_reference": true,
+        "uses_embeddings": false,
+        "parameters": {
+          "mode": "f1",
+          "atomicity": "low",
+          "coverage": "low",
+          "beta": 1.0
+        },
+        "aggregation_within_sample": "F1(TP=response_supported,FP=response_unsupported,FN=reference_unsupported)",
+        "round_decimals": 2
+      },
+      "answer_relevancy": {
+        "class": "AnswerRelevancy",
+        "inputs": [
+          "user_input",
+          "response"
+        ],
+        "uses_reference": false,
+        "uses_embeddings": true,
+        "parameters": {
+          "strictness": 3
+        },
+        "aggregation_within_sample": "mean(cosine(question,generated_question)) multiplied by not_all_noncommittal",
+        "duplicate_prompt_cache_behavior": "three_sequential_identical_prompts_reuse_first_cached_result",
+        "negative_cosine_possible": true
+      },
+      "context_precision": {
+        "class": "ContextPrecisionWithReference",
+        "inputs": [
+          "user_input",
+          "reference",
+          "retrieved_contexts"
+        ],
+        "uses_reference": true,
+        "uses_embeddings": false,
+        "parameters": {},
+        "aggregation_within_sample": "sum(precision_at_i * useful_i) / (sum(useful_i) + 1e-10)",
+        "ordering": "final_prompt_evidence_order"
+      },
+      "context_recall": {
+        "class": "ContextRecall",
+        "inputs": [
+          "user_input",
+          "reference",
+          "retrieved_contexts"
+        ],
+        "uses_reference": true,
+        "uses_embeddings": false,
+        "parameters": {},
+        "aggregation_within_sample": "sum(attributed) / len(returned_classifications)",
+        "empty_classifications": "undefined_metric_error"
+      }
+    },
+    "output_directory": "/home/rsolikhov/benchmarks/nsu-v1/judge-qwen38-27b-fp8-v1",
+    "planned_metric_jobs": 9535,
+    "smoke_metric_jobs_reused": 10,
+    "evaluation_fingerprint": "073822a9056023ae20545fbf547cd940935b1ac12a8e84d5d3e4e45e5b90a528"
+  },
+  "aggregation": {
+    "unit": "successful_question_metric_model",
+    "average": "arithmetic_macro_mean_per_model_and_metric",
+    "coverage_denominator": 954,
+    "nonfinite_or_exception": "failed_null_excluded_from_mean",
+    "valid_zero": "included_in_mean",
+    "range_check": "finite_only_no_clipping",
+    "missing_answer": "no_metric_job_and_reported_separately",
+    "single_composite_score": false,
+    "confidence_intervals": false,
+    "significance_testing": false,
+    "automatic_paired_intersection": false
+  },
+  "checkpointing": {
+    "database": "checkpoints.sqlite3",
+    "journal_mode": "WAL",
+    "synchronous": "FULL",
+    "commit_granularity_collection": [
+      "model",
+      "sample_id"
+    ],
+    "commit_granularity_evaluation": [
+      "model",
+      "sample_id",
+      "metric"
+    ],
+    "payload_compression": "gzip",
+    "atomic_exports": true,
+    "resume_skips": "complete_jobs",
+    "retries": "failed_or_running_jobs",
+    "separate_judge_embedding_caches": true,
+    "resumable_execution_settings": [
+      "concurrency",
+      "timeout",
+      "attempts",
+      "sample_order",
+      "limit",
+      "judge_context_tokens"
+    ],
+    "collection_must_remain_immutable_during_evaluation": true,
+    "telemetry_disabled": true
+  },
+  "smoke_snapshot": {
+    "artifact_directory_name": "judge-qwen38-27b-fp8-v1",
+    "summary_file_sha256": "253e225de2971a9e00d580cbbc12752c8e88a51da2e28072235246ae2f744644",
+    "started_at": "2026-11-08T02:20:44.027750+07:00",
+    "finished_at": "2026-11-08T02:21:28.584774+07:00",
+    "metric_execution_seconds": 44.55702304840088,
+    "complete_jobs": 10,
+    "failed_jobs": 0,
+    "judge_http_calls": 40,
+    "embedding_http_calls": 4,
+    "judge_finish_reason": "stop",
+    "max_prompt_tokens": 7414,
+    "max_prompt_plus_output_plus_margin": 11542,
+    "tokenizer_counts_match_usage": true,
+    "samples": {
+      "meno-lite": {
+        "index": 477,
+        "sample_id": "794c98852f3267ae2a8d4ce419e3e16ab4d195fdab6f067a6a3b20a71932a839",
+        "context_characters": 22474,
+        "evidence_blocks": 12,
+        "document_blocks": 10,
+        "graph_blocks": 2
+      },
+      "gemma-4-12B-it": {
+        "index": 258,
+        "sample_id": "a36f4823de9480eb55b08a6924f3e899aa44c48800ac9283d71a2bff0452f73d",
+        "context_characters": 21279,
+        "evidence_blocks": 12,
+        "document_blocks": 12,
+        "graph_blocks": 0
+      }
+    },
+    "scores": {
+      "meno-lite": {
+        "answer_relevancy": 0.7725058867637961,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "factual_correctness": 0.0,
+        "faithfulness": 0.2
+      },
+      "gemma-4-12B-it": {
+        "answer_relevancy": 0.0,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "factual_correctness": 0.0,
+        "faithfulness": 1.0
+      }
+    },
+    "is_final_benchmark_result": false
+  },
+  "limitations": [
+    "Контрольные суммы весов и chat template не предоставлены.",
+    "Метки оператора идентифицируют развёртывания, но не удостоверяют байты весов.",
+    "Конвейеры моделей могут различаться переписанными запросами, доказательствами и контекстными окнами.",
+    "Описания графа подготавливались с помощью Gemma.",
+    "RAGAS получает эффективные текстовые доказательства без отдельной разметки правильности графа.",
+    "Английские промпты метрик могут приводить к переводу промежуточных утверждений и вопросов.",
+    "AnswerRelevancy strictness=3 использует одинаковый кэшируемый запрос при temperature=0.",
+    "Бинарность вердиктов и соответствие размеров списков утверждений жёстко не проверяются типами RAGAS.",
+    "Доступные наборы вопросов моделей различаются; парное сравнение требует отдельного пересечения.",
+    "Smoke содержит два разных вопроса с длинными контекстами и не является репрезентативной оценкой качества.",
+    "Полная оценка продолжается, итоговые средние ещё не доступны."
+  ],
+  "references": {
+    "faithfulness": "https://github.com/vibrantlabsai/ragas/blob/v0.4.3/src/ragas/metrics/collections/faithfulness/metric.py",
+    "factual_correctness": "https://github.com/vibrantlabsai/ragas/blob/v0.4.3/src/ragas/metrics/collections/factual_correctness/metric.py",
+    "answer_relevancy": "https://github.com/vibrantlabsai/ragas/blob/v0.4.3/src/ragas/metrics/collections/answer_relevancy/metric.py",
+    "context_precision": "https://github.com/vibrantlabsai/ragas/blob/v0.4.3/src/ragas/metrics/collections/context_precision/metric.py",
+    "context_recall": "https://github.com/vibrantlabsai/ragas/blob/v0.4.3/src/ragas/metrics/collections/context_recall/metric.py"
+  }
+}
