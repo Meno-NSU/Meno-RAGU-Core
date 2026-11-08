@@ -1,6 +1,6 @@
 {
   "manifest_schema_version": 1,
-  "manifest_version": "1.0",
+  "manifest_version": "1.1",
   "experiment_id": "nsu-v1-meno-lite-gemma-qwen38-fp8",
   "documented_on": "2026-11-08",
   "timezone": "Asia/Novosibirsk",
@@ -8,9 +8,10 @@
   "execution_config": false,
   "status": {
     "collection": "complete_with_one_missing_answer",
-    "evaluation": "running_user_reported",
-    "available_result_snapshot": "smoke_only",
-    "final_results": null
+    "evaluation": "complete_with_one_failed_metric",
+    "available_result_snapshot": "first_full_run",
+    "final_results": "results/nsu-v1/README.md",
+    "analysis": "results/nsu-v1/analysis.json"
   },
   "implementation": {
     "repository": "https://github.com/Meno-NSU/Meno-RAGU-Core",
@@ -35,8 +36,9 @@
   },
   "evidence_sources": {
     "code_and_lock_files": "protocol_and_dependencies",
-    "operator_reports": "deployment_hardware_native_model_flags_graph_build_counts_and_full_run_start",
-    "downloaded_smoke_snapshot": "judge_outputs_embeddings_calls_scores_budgets_and_checkpoint_consistency"
+    "operator_reports": "deployment_hardware_native_model_flags_graph_build_counts_and_collection_run",
+    "downloaded_smoke_snapshot": "judge_outputs_embeddings_calls_scores_budgets_and_checkpoint_consistency",
+    "downloaded_full_snapshot": "9534_complete_metric_jobs_one_failed_job_recorded_judge_payloads_and_checkpoint_attempt_history"
   },
   "dataset": {
     "path": "data/benchmark_1000_verified.json",
@@ -214,7 +216,7 @@
       "meno-lite": 1,
       "gemma-4-12B-it": 0
     },
-    "missing_meno_index": null,
+    "missing_meno_index": 785,
     "content_sha256": "4746397acfdb8617cca486b30f2582989662b6f7fafced0e1f8add8da30fa55c"
   },
   "evaluation": {
@@ -232,7 +234,8 @@
       "max_model_len": 32768,
       "quantization": "fp8",
       "max_num_seqs": 25,
-      "enforce_eager": true,
+      "enforce_eager": null,
+      "enforce_eager_evidence": "not_reported_in_final_fp8_32768_command",
       "kv_cache_dtype_explicitly_set": false
     },
     "reported_environment": {
@@ -338,7 +341,21 @@
     "output_directory": "/home/rsolikhov/benchmarks/nsu-v1/judge-qwen38-27b-fp8-v1",
     "planned_metric_jobs": 9535,
     "smoke_metric_jobs_reused": 10,
-    "evaluation_fingerprint": "073822a9056023ae20545fbf547cd940935b1ac12a8e84d5d3e4e45e5b90a528"
+    "evaluation_fingerprint": "073822a9056023ae20545fbf547cd940935b1ac12a8e84d5d3e4e45e5b90a528",
+    "complete_metric_jobs": 9534,
+    "failed_metric_jobs": 1,
+    "failed_jobs": [
+      {
+        "model": "gemma-4-12B-it",
+        "metric": "factual_correctness",
+        "index": 205,
+        "sample_id": "4048ad9312a5ba065074cf3d36c61eddea82e214c5f9f4bf366b4f86deabcb0c",
+        "error": "IncompleteOutputException",
+        "cause": "judge_output_token_limit",
+        "output_token_limit": 4096,
+        "score": null
+      }
+    ]
   },
   "aggregation": {
     "unit": "successful_question_metric_model",
@@ -351,7 +368,8 @@
     "single_composite_score": false,
     "confidence_intervals": false,
     "significance_testing": false,
-    "automatic_paired_intersection": false
+    "automatic_paired_intersection": false,
+    "applies_to": "runner_summary_only"
   },
   "checkpointing": {
     "database": "checkpoints.sqlite3",
@@ -443,7 +461,9 @@
     "Бинарность вердиктов и соответствие размеров списков утверждений жёстко не проверяются типами RAGAS.",
     "Доступные наборы вопросов моделей различаются; парное сравнение требует отдельного пересечения.",
     "Smoke содержит два разных вопроса с длинными контекстами и не является репрезентативной оценкой качества.",
-    "Полная оценка продолжается, итоговые средние ещё не доступны."
+    "Первый полный проход завершён: один отсутствующий ответ Meno index785 и одна окончательная ошибка Gemma factual_correctness index205; пропуски не заменяются нулями.",
+    "FactualCorrectness не получает вопрос; ручной аудит выявил ложные отрицания при неполном контексте короткого эталона и зависимости от декомпозиции утверждений.",
+    "Offline bootstrap-интервалы условны на сохранённых оценках и не учитывают ошибки или систематические смещения судьи."
   ],
   "references": {
     "faithfulness": "https://github.com/vibrantlabsai/ragas/blob/v0.4.3/src/ragas/metrics/collections/faithfulness/metric.py",
@@ -451,5 +471,154 @@
     "answer_relevancy": "https://github.com/vibrantlabsai/ragas/blob/v0.4.3/src/ragas/metrics/collections/answer_relevancy/metric.py",
     "context_precision": "https://github.com/vibrantlabsai/ragas/blob/v0.4.3/src/ragas/metrics/collections/context_precision/metric.py",
     "context_recall": "https://github.com/vibrantlabsai/ragas/blob/v0.4.3/src/ragas/metrics/collections/context_recall/metric.py"
+  },
+  "offline_analysis": {
+    "script": "analyze_results.py",
+    "report": "results/nsu-v1/README.md",
+    "machine_readable_results": "results/nsu-v1/analysis.json",
+    "changes_saved_answers_or_scores": false,
+    "paired_unit": "sample_id_successful_for_both_models_per_metric",
+    "difference": "gemma_minus_meno",
+    "paired_counts": {
+      "faithfulness": 953,
+      "factual_correctness": 952,
+      "answer_relevancy": 953,
+      "context_precision": 953,
+      "context_recall": 953
+    },
+    "confidence_intervals": {
+      "level": 0.95,
+      "repetitions": 10000,
+      "seed_reset_per_metric": 42,
+      "method": "paired_percentile",
+      "quantiles": [
+        0.025,
+        0.975
+      ],
+      "sample_order": "lexicographic_sample_id",
+      "numpy_version": "2.5.4",
+      "scope": "question_resampling_variability_conditional_on_fixed_saved_judge_scores",
+      "excludes": [
+        "judge_measurement_error",
+        "prompt_bias",
+        "reference_errors",
+        "new_generation_variability",
+        "systematic_claim_decomposition_errors"
+      ]
+    },
+    "significance_tests": false,
+    "single_composite_score": false
+  },
+  "full_snapshot": {
+    "snapshot_name": "full-2026-11-08",
+    "artifact_directory_name": "judge-qwen38-27b-fp8-v1",
+    "summary_file_sha256": "cc3e21d1b5abaf736a7c00ef27c71c64908e7d5e3087d589f5127813728a48fc",
+    "planned_metric_jobs": 9535,
+    "complete_jobs": 9534,
+    "failed_jobs": 1,
+    "exit_code_reported": 1,
+    "total_attempts": 9543,
+    "attempts_with_error": 9,
+    "distinct_jobs_with_error": 7,
+    "last_attempt_finished_at": "2026-11-08T06:49:24.143761+07:00",
+    "models": {
+      "meno-lite": {
+        "faithfulness": {
+          "mean": 0.547504347428331,
+          "scored": 953,
+          "failed_or_interrupted": 0,
+          "dataset_size": 954,
+          "coverage": 0.9989517819706499,
+          "available_answers": 953,
+          "missing_answers": 1
+        },
+        "factual_correctness": {
+          "mean": 0.21083945435466947,
+          "scored": 953,
+          "failed_or_interrupted": 0,
+          "dataset_size": 954,
+          "coverage": 0.9989517819706499,
+          "available_answers": 953,
+          "missing_answers": 1
+        },
+        "answer_relevancy": {
+          "mean": 0.7393322329217931,
+          "scored": 953,
+          "failed_or_interrupted": 0,
+          "dataset_size": 954,
+          "coverage": 0.9989517819706499,
+          "available_answers": 953,
+          "missing_answers": 1
+        },
+        "context_precision": {
+          "mean": 0.18766441635742392,
+          "scored": 953,
+          "failed_or_interrupted": 0,
+          "dataset_size": 954,
+          "coverage": 0.9989517819706499,
+          "available_answers": 953,
+          "missing_answers": 1
+        },
+        "context_recall": {
+          "mean": 0.4048356068555439,
+          "scored": 953,
+          "failed_or_interrupted": 0,
+          "dataset_size": 954,
+          "coverage": 0.9989517819706499,
+          "available_answers": 953,
+          "missing_answers": 1
+        }
+      },
+      "gemma-4-12B-it": {
+        "faithfulness": {
+          "mean": 0.8814120155958257,
+          "scored": 954,
+          "failed_or_interrupted": 0,
+          "dataset_size": 954,
+          "coverage": 1.0,
+          "available_answers": 954,
+          "missing_answers": 0
+        },
+        "factual_correctness": {
+          "mean": 0.2413536201469045,
+          "scored": 953,
+          "failed_or_interrupted": 1,
+          "dataset_size": 954,
+          "coverage": 0.9989517819706499,
+          "available_answers": 954,
+          "missing_answers": 0
+        },
+        "answer_relevancy": {
+          "mean": 0.5405153675057534,
+          "scored": 954,
+          "failed_or_interrupted": 0,
+          "dataset_size": 954,
+          "coverage": 1.0,
+          "available_answers": 954,
+          "missing_answers": 0
+        },
+        "context_precision": {
+          "mean": 0.19695326232661986,
+          "scored": 954,
+          "failed_or_interrupted": 0,
+          "dataset_size": 954,
+          "coverage": 1.0,
+          "available_answers": 954,
+          "missing_answers": 0
+        },
+        "context_recall": {
+          "mean": 0.4154150444244784,
+          "scored": 954,
+          "failed_or_interrupted": 0,
+          "dataset_size": 954,
+          "coverage": 1.0,
+          "available_answers": 954,
+          "missing_answers": 0
+        }
+      }
+    },
+    "report": "results/nsu-v1/README.md",
+    "analysis": "results/nsu-v1/analysis.json",
+    "historical_smoke_preserved": true
   }
 }

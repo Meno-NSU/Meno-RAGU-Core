@@ -1,0 +1,1185 @@
+{
+  "schema_version": 1,
+  "dataset_size": 954,
+  "config": {
+    "adapter": {
+      "embeddings": {
+        "adapter_version": 1,
+        "model": "BAAI/bge-m3",
+        "ragas_version": "0.4.3",
+        "url": "http://127.0.0.1:8001/v1"
+      },
+      "judge": {
+        "adapter_version": 1,
+        "disable_thinking": true,
+        "instructor_max_retries": 2,
+        "max_tokens": 4096,
+        "model": "qwen3.8-27b",
+        "ragas_version": "0.4.3",
+        "revision": "qwen3.8-27b-fp8-v1",
+        "temperature": 0.0,
+        "top_p": 1.0,
+        "url": "http://everest.nsu.ru:9022/v1"
+      },
+      "metrics": {
+        "answer_relevancy": {
+          "strictness": 3
+        },
+        "context_precision": {
+          "implementation": "ContextPrecisionWithReference"
+        },
+        "context_recall": {},
+        "factual_correctness": {
+          "atomicity": "low",
+          "beta": 1.0,
+          "coverage": "low",
+          "mode": "f1"
+        },
+        "faithfulness": {}
+      }
+    },
+    "available_samples": {
+      "gemma-4-12B-it": 954,
+      "meno-lite": 953
+    },
+    "collection_sha256": "4746397acfdb8617cca486b30f2582989662b6f7fafced0e1f8add8da30fa55c",
+    "dataset_sha256": "e85bb0b24452372ed2630a568ac91154ec524d4084375a7ac56d94dd04a87aef",
+    "dataset_size": 954,
+    "embeddings": {
+      "model": "BAAI/bge-m3",
+      "url": "http://127.0.0.1:8001/v1"
+    },
+    "judge": {
+      "disable_thinking": true,
+      "max_tokens": 4096,
+      "model": "qwen3.8-27b",
+      "revision": "qwen3.8-27b-fp8-v1",
+      "temperature": 0.0,
+      "url": "http://everest.nsu.ru:9022/v1"
+    },
+    "kind": "evaluation",
+    "metrics": [
+      "faithfulness",
+      "factual_correctness",
+      "answer_relevancy",
+      "context_precision",
+      "context_recall"
+    ],
+    "models": [
+      "meno-lite",
+      "gemma-4-12B-it"
+    ],
+    "schema_version": 1
+  },
+  "input_artifacts": [
+    {
+      "relative_path": "summary.json",
+      "filename": "summary.json",
+      "bytes": 4529,
+      "sha256": "cc3e21d1b5abaf736a7c00ef27c71c64908e7d5e3087d589f5127813728a48fc"
+    },
+    {
+      "relative_path": "checkpoints.sqlite3",
+      "filename": "checkpoints.sqlite3",
+      "bytes": 349618176,
+      "sha256": "64c5bafdb4a6926570f5d8e05ce2aa326bca5835761e3251c906c3c6c138ac0d"
+    },
+    {
+      "relative_path": "gemma-4-12B-it-931c01be/scores.jsonl.gz",
+      "filename": "scores.jsonl.gz",
+      "bytes": 40531830,
+      "sha256": "5a3e34d0c47850ed1dfa88b07220426cdeef6de580c9fc58c99ccccaac6dfd75"
+    },
+    {
+      "relative_path": "meno-lite-68f3bbb4/scores.jsonl.gz",
+      "filename": "scores.jsonl.gz",
+      "bytes": 40483544,
+      "sha256": "6bf79a1b54238fff8858ef3c644f5b22c7eedea3d7eb05e0d2eedced2587a858"
+    }
+  ],
+  "counts": {
+    "complete": 9534,
+    "failed": 1
+  },
+  "failed_jobs": [
+    {
+      "key": "gemma-4-12B-it:4048ad9312a5ba065074cf3d36c61eddea82e214c5f9f4bf366b4f86deabcb0c:factual_correctness",
+      "model": "gemma-4-12B-it",
+      "metric": "factual_correctness",
+      "index": 205,
+      "sample_id": "4048ad9312a5ba065074cf3d36c61eddea82e214c5f9f4bf366b4f86deabcb0c",
+      "error": "RagasMetricError: RAGAS factual_correctness failed: IncompleteOutputException: The output is incomplete due to a max_tokens length limit."
+    }
+  ],
+  "attempts": {
+    "total": 9543,
+    "with_error": 9,
+    "first_started_utc": "2026-11-07T19:20:44.027750+00:00",
+    "last_finished_utc": "2026-11-07T23:49:24.143761+00:00",
+    "last_finished_novosibirsk": "2026-11-08T06:49:24.143761+07:00",
+    "error_history": [
+      {
+        "job_key": "meno-lite:9d6a6bcbb1e77b493289d1d8aa18dc9969c8de16ba6a0cc6715b24d3d5fc03c1:faithfulness",
+        "error": "RagasMetricError: RAGAS faithfulness failed: IncompleteOutputException: The output is incomplete due to a max_tokens length limit.",
+        "started": 1794081244.7831786,
+        "finished": 1794081319.8207247
+      },
+      {
+        "job_key": "meno-lite:853434d92588ce825a6876cbee39a8d108fbddad496e3c4fd1774d1d00bcc78f:factual_correctness",
+        "error": "RagasMetricError: RAGAS factual_correctness failed: IncompleteOutputException: The output is incomplete due to a max_tokens length limit.",
+        "started": 1794081716.9751165,
+        "finished": 1794081789.9155357
+      },
+      {
+        "job_key": "meno-lite:dcc2c6d4cfde2eb5c832b0cf2c6f6b0d2a15a58f129215cd04448e91349c19b9:context_recall",
+        "error": "RagasMetricError: RAGAS context_recall failed: IncompleteOutputException: The output is incomplete due to a max_tokens length limit.",
+        "started": 1794084151.605746,
+        "finished": 1794084223.8601375
+      },
+      {
+        "job_key": "meno-lite:7750e1a9e96b361c12c5b56062ba2a6fec400d6fd2ff426834e7c2089b77215b:faithfulness",
+        "error": "RagasMetricError: RAGAS faithfulness failed: IncompleteOutputException: The output is incomplete due to a max_tokens length limit.",
+        "started": 1794086024.29682,
+        "finished": 1794086102.793385
+      },
+      {
+        "job_key": "meno-lite:eb06c30a6ad6491641491b7180a67e1332bd6da6d807ac7f2a15a871acd2f682:faithfulness",
+        "error": "RagasMetricError: RAGAS faithfulness failed: IncompleteOutputException: The output is incomplete due to a max_tokens length limit.",
+        "started": 1794087299.242972,
+        "finished": 1794087374.5604362
+      },
+      {
+        "job_key": "gemma-4-12B-it:4048ad9312a5ba065074cf3d36c61eddea82e214c5f9f4bf366b4f86deabcb0c:factual_correctness",
+        "error": "RagasMetricError: RAGAS factual_correctness failed: IncompleteOutputException: The output is incomplete due to a max_tokens length limit.",
+        "started": 1794089371.5561874,
+        "finished": 1794089462.8148541
+      },
+      {
+        "job_key": "gemma-4-12B-it:4048ad9312a5ba065074cf3d36c61eddea82e214c5f9f4bf366b4f86deabcb0c:factual_correctness",
+        "error": "RagasMetricError: RAGAS factual_correctness failed: IncompleteOutputException: The output is incomplete due to a max_tokens length limit.",
+        "started": 1794089463.8168857,
+        "finished": 1794089534.2278142
+      },
+      {
+        "job_key": "gemma-4-12B-it:4048ad9312a5ba065074cf3d36c61eddea82e214c5f9f4bf366b4f86deabcb0c:factual_correctness",
+        "error": "RagasMetricError: RAGAS factual_correctness failed: IncompleteOutputException: The output is incomplete due to a max_tokens length limit.",
+        "started": 1794089536.229069,
+        "finished": 1794089605.100084
+      },
+      {
+        "job_key": "gemma-4-12B-it:e4d45b9d90aa1153195849835aa2188123c70812387c95b08540b4c356c08f12:faithfulness",
+        "error": "RagasMetricError: RAGAS faithfulness failed: IncompleteOutputException: The output is incomplete due to a max_tokens length limit.",
+        "started": 1794090097.2701035,
+        "finished": 1794090172.140084
+      }
+    ],
+    "distinct_jobs_with_errors": 7,
+    "full_run_attempts_after_first_10_smoke": {
+      "started_utc": "2026-11-07T19:31:30.984603+00:00",
+      "finished_utc": "2026-11-07T23:49:24.143761+00:00",
+      "seconds": 15473.159157514572,
+      "assumption": "first_10_attempts_are_the_verified_smoke"
+    }
+  },
+  "all_successful_scores": {
+    "meno-lite": {
+      "faithfulness": {
+        "n": 953,
+        "mean": 0.5475043474283311,
+        "median": 0.6,
+        "zeros": 226,
+        "ones": 268,
+        "min": 0.0,
+        "max": 1.0,
+        "coverage": 0.9989517819706499
+      },
+      "factual_correctness": {
+        "n": 953,
+        "mean": 0.21083945435466947,
+        "median": 0.0,
+        "zeros": 494,
+        "ones": 12,
+        "min": 0.0,
+        "max": 1.0,
+        "coverage": 0.9989517819706499
+      },
+      "answer_relevancy": {
+        "n": 953,
+        "mean": 0.7393322329217931,
+        "median": 0.7877157613640273,
+        "zeros": 77,
+        "ones": 0,
+        "min": 0.0,
+        "max": 0.9999999999999997,
+        "coverage": 0.9989517819706499
+      },
+      "context_precision": {
+        "n": 953,
+        "mean": 0.18766441635742392,
+        "median": 0.0,
+        "zeros": 519,
+        "ones": 0,
+        "min": 0.0,
+        "max": 0.9999999999916667,
+        "coverage": 0.9989517819706499
+      },
+      "context_recall": {
+        "n": 953,
+        "mean": 0.4048356068555438,
+        "median": 0.2,
+        "zeros": 474,
+        "ones": 293,
+        "min": 0.0,
+        "max": 1.0,
+        "coverage": 0.9989517819706499
+      }
+    },
+    "gemma-4-12B-it": {
+      "faithfulness": {
+        "n": 954,
+        "mean": 0.8814120155958257,
+        "median": 0.9090909090909091,
+        "zeros": 2,
+        "ones": 428,
+        "min": 0.0,
+        "max": 1.0,
+        "coverage": 1.0
+      },
+      "factual_correctness": {
+        "n": 953,
+        "mean": 0.24135362014690454,
+        "median": 0.17,
+        "zeros": 415,
+        "ones": 15,
+        "min": 0.0,
+        "max": 1.0,
+        "coverage": 0.9989517819706499
+      },
+      "answer_relevancy": {
+        "n": 954,
+        "mean": 0.5405153675057532,
+        "median": 0.7205227603881303,
+        "zeros": 293,
+        "ones": 0,
+        "min": 0.0,
+        "max": 0.9999999999999987,
+        "coverage": 1.0
+      },
+      "context_precision": {
+        "n": 954,
+        "mean": 0.19695326232661986,
+        "median": 0.0,
+        "zeros": 501,
+        "ones": 0,
+        "min": 0.0,
+        "max": 0.999999999990909,
+        "coverage": 1.0
+      },
+      "context_recall": {
+        "n": 954,
+        "mean": 0.41541504442447835,
+        "median": 0.3333333333333333,
+        "zeros": 467,
+        "ones": 300,
+        "min": 0.0,
+        "max": 1.0,
+        "coverage": 1.0
+      }
+    }
+  },
+  "paired": {
+    "faithfulness": {
+      "n": 953,
+      "meno_mean": 0.5475043474283311,
+      "gemma_mean": 0.8814624654198159,
+      "gemma_minus_meno": 0.3339581179914847,
+      "delta_ci95": [
+        0.31009441752926287,
+        0.3577721619310198
+      ],
+      "gemma_wins": 638,
+      "ties": 190,
+      "meno_wins": 125
+    },
+    "factual_correctness": {
+      "n": 952,
+      "meno_mean": 0.2107563025210084,
+      "gemma_mean": 0.24160714285714288,
+      "gemma_minus_meno": 0.03085084033613445,
+      "delta_ci95": [
+        0.013171743697478987,
+        0.04834033613445378
+      ],
+      "gemma_wins": 361,
+      "ties": 298,
+      "meno_wins": 293
+    },
+    "answer_relevancy": {
+      "n": 953,
+      "meno_mean": 0.7393322329217931,
+      "gemma_mean": 0.5410825399795264,
+      "gemma_minus_meno": -0.19824969294226655,
+      "delta_ci95": [
+        -0.2227712105913866,
+        -0.17441971809992696
+      ],
+      "gemma_wins": 267,
+      "ties": 55,
+      "meno_wins": 631
+    },
+    "context_precision": {
+      "n": 953,
+      "meno_mean": 0.18766441635742392,
+      "gemma_mean": 0.1971599289187779,
+      "gemma_minus_meno": 0.009495512561353977,
+      "delta_ci95": [
+        -0.0017742540077655797,
+        0.02027900138274267
+      ],
+      "gemma_wins": 265,
+      "ties": 510,
+      "meno_wins": 178
+    },
+    "context_recall": {
+      "n": 953,
+      "meno_mean": 0.4048356068555438,
+      "gemma_mean": 0.41585094688452506,
+      "gemma_minus_meno": 0.011015340028981161,
+      "delta_ci95": [
+        -0.0018887722980062962,
+        0.023767301254184775
+      ],
+      "gemma_wins": 83,
+      "ties": 810,
+      "meno_wins": 60
+    }
+  },
+  "bootstrap": {
+    "repetitions": 10000,
+    "seed_reset_per_metric": 42,
+    "method": "paired_percentile",
+    "quantiles": [
+      0.025,
+      0.975
+    ],
+    "sample_order": "lexicographic_sample_id",
+    "numpy_version": "2.5.4"
+  },
+  "diagnostics": {
+    "meno-lite": {
+      "available_answers": 953,
+      "missing_indices": [
+        785
+      ],
+      "noncommittal_count": 77,
+      "noncommittal_fraction": 0.080797481636936,
+      "noncommittal_unknown": 0,
+      "context_chars": {
+        "n": 953,
+        "mean": 12258.922350472192,
+        "median": 12231.0,
+        "zeros": 0,
+        "ones": 0,
+        "min": 4876.0,
+        "max": 22474.0
+      },
+      "context_blocks": {
+        "n": 953,
+        "mean": 10.25183630640084,
+        "median": 11.0,
+        "zeros": 0,
+        "ones": 2,
+        "min": 1.0,
+        "max": 12.0
+      },
+      "noncommittal_false_cohort": {
+        "faithfulness": {
+          "n": 876,
+          "mean": 0.5498844835632009,
+          "median": 0.6201923076923077,
+          "zeros": 214,
+          "ones": 251,
+          "min": 0.0,
+          "max": 1.0
+        },
+        "factual_correctness": {
+          "n": 876,
+          "mean": 0.22052511415525114,
+          "median": 0.04,
+          "zeros": 438,
+          "ones": 12,
+          "min": 0.0,
+          "max": 1.0
+        },
+        "answer_relevancy": {
+          "n": 876,
+          "mean": 0.8043191986009918,
+          "median": 0.8002474564159094,
+          "zeros": 0,
+          "ones": 0,
+          "min": 0.4777622676299042,
+          "max": 0.9999999999999997
+        },
+        "context_precision": {
+          "n": 876,
+          "mean": 0.19874094266332265,
+          "median": 0.0,
+          "zeros": 451,
+          "ones": 0,
+          "min": 0.0,
+          "max": 0.9999999999916667
+        },
+        "context_recall": {
+          "n": 876,
+          "mean": 0.43183980213089795,
+          "median": 0.3333333333333333,
+          "zeros": 408,
+          "ones": 288,
+          "min": 0.0,
+          "max": 1.0
+        }
+      },
+      "context_recall_zero_cohort_factual": {
+        "n": 474,
+        "mean": 0.10360759493670886,
+        "median": 0.0,
+        "zeros": 321,
+        "ones": 0,
+        "min": 0.0,
+        "max": 0.8
+      },
+      "context_recall_at_least_08_cohort_factual": {
+        "n": 298,
+        "mean": 0.3627852348993288,
+        "median": 0.345,
+        "zeros": 96,
+        "ones": 12,
+        "min": 0.0,
+        "max": 1.0
+      }
+    },
+    "gemma-4-12B-it": {
+      "available_answers": 954,
+      "missing_indices": [],
+      "noncommittal_count": 293,
+      "noncommittal_fraction": 0.30712788259958074,
+      "noncommittal_unknown": 0,
+      "context_chars": {
+        "n": 954,
+        "mean": 12132.035639412998,
+        "median": 12063.5,
+        "zeros": 0,
+        "ones": 0,
+        "min": 4623.0,
+        "max": 21279.0
+      },
+      "context_blocks": {
+        "n": 954,
+        "mean": 10.420335429769391,
+        "median": 11.0,
+        "zeros": 0,
+        "ones": 2,
+        "min": 1.0,
+        "max": 12.0
+      },
+      "noncommittal_false_cohort": {
+        "faithfulness": {
+          "n": 661,
+          "mean": 0.9117634979747227,
+          "median": 1.0,
+          "zeros": 2,
+          "ones": 381,
+          "min": 0.0,
+          "max": 1.0
+        },
+        "factual_correctness": {
+          "n": 660,
+          "mean": 0.31169696969696975,
+          "median": 0.25,
+          "zeros": 212,
+          "ones": 15,
+          "min": 0.0,
+          "max": 1.0
+        },
+        "answer_relevancy": {
+          "n": 661,
+          "mean": 0.7801084124061857,
+          "median": 0.7719562592436228,
+          "zeros": 0,
+          "ones": 0,
+          "min": 0.5080693737533141,
+          "max": 0.9999999999999987
+        },
+        "context_precision": {
+          "n": 661,
+          "mean": 0.2780925413549524,
+          "median": 0.249999999975,
+          "zeros": 220,
+          "ones": 0,
+          "min": 0.0,
+          "max": 0.999999999990909
+        },
+        "context_recall": {
+          "n": 661,
+          "mean": 0.5855611987608962,
+          "median": 0.6666666666666666,
+          "zeros": 192,
+          "ones": 299,
+          "min": 0.0,
+          "max": 1.0
+        }
+      },
+      "context_recall_zero_cohort_factual": {
+        "n": 467,
+        "mean": 0.0895289079229122,
+        "median": 0.0,
+        "zeros": 309,
+        "ones": 0,
+        "min": 0.0,
+        "max": 0.67
+      },
+      "context_recall_at_least_08_cohort_factual": {
+        "n": 301,
+        "mean": 0.4605980066445182,
+        "median": 0.5,
+        "zeros": 58,
+        "ones": 14,
+        "min": 0.0,
+        "max": 1.0
+      }
+    }
+  },
+  "paired_both_noncommittal_false": {
+    "faithfulness": {
+      "n": 635,
+      "meno_mean": 0.6744581702630662,
+      "gemma_mean": 0.9129696398781995,
+      "gemma_minus_meno": 0.2385114696151332,
+      "delta_ci95": [
+        0.21207640428565047,
+        0.26569595351757286
+      ],
+      "gemma_wins": 363,
+      "ties": 183,
+      "meno_wins": 89
+    },
+    "factual_correctness": {
+      "n": 634,
+      "meno_mean": 0.2650157728706624,
+      "gemma_mean": 0.31570977917981075,
+      "gemma_minus_meno": 0.05069400630914827,
+      "delta_ci95": [
+        0.027760252365930597,
+        0.07375433753943217
+      ],
+      "gemma_wins": 277,
+      "ties": 145,
+      "meno_wins": 212
+    },
+    "answer_relevancy": {
+      "n": 635,
+      "meno_mean": 0.8063037712782397,
+      "gemma_mean": 0.7825606343202061,
+      "gemma_minus_meno": -0.02374313695803377,
+      "delta_ci95": [
+        -0.03216099557480865,
+        -0.01563430079993963
+      ],
+      "gemma_wins": 241,
+      "ties": 4,
+      "meno_wins": 390
+    },
+    "context_precision": {
+      "n": 635,
+      "meno_mean": 0.26597264337631105,
+      "gemma_mean": 0.28277765778424846,
+      "gemma_minus_meno": 0.016805014407937365,
+      "delta_ci95": [
+        0.0006690966442002921,
+        0.032410576017566875
+      ],
+      "gemma_wins": 253,
+      "ties": 219,
+      "meno_wins": 163
+    },
+    "context_recall": {
+      "n": 635,
+      "meno_mean": 0.5761811023622048,
+      "gemma_mean": 0.5992482189726285,
+      "gemma_minus_meno": 0.0230671166104237,
+      "delta_ci95": [
+        0.006954724409448818,
+        0.039708192725909246
+      ],
+      "gemma_wins": 70,
+      "ties": 524,
+      "meno_wins": 41
+    }
+  },
+  "successful_job_http_audit": {
+    "http_statuses": {
+      "200": 34631
+    },
+    "http_kinds": {
+      "judge": 31774,
+      "embeddings": 2857
+    },
+    "judge_models": {
+      "qwen3.8-27b": 31774
+    },
+    "finish_reasons": {
+      "stop": 31774
+    },
+    "judge_usage": {
+      "prompt_tokens": 56287296,
+      "completion_tokens": 6858223,
+      "total_tokens": 63145519
+    },
+    "nonempty_reasoning": 0,
+    "nonempty_refusal": 0,
+    "unparseable_judge_json": 0,
+    "nonbinary_judgments": 0,
+    "judge_requests_without_explicit_thinking_off": 0,
+    "max_prompt_tokens": 8311,
+    "max_reserved_total": 12439,
+    "over_budget_checks": 0,
+    "aligned_budget_checks": 31774,
+    "tokenizer_usage_mismatches": 0,
+    "rows_with_unaligned_budget_count": 0
+  },
+  "all_recorded_attempt_http_audit": {
+    "http_statuses": {
+      "200": 34647
+    },
+    "http_kinds": {
+      "judge": 31790,
+      "embeddings": 2857
+    },
+    "judge_models": {
+      "qwen3.8-27b": 31790
+    },
+    "finish_reasons": {
+      "stop": 31781,
+      "length": 9
+    },
+    "judge_usage": {
+      "prompt_tokens": 56325155,
+      "completion_tokens": 6897407,
+      "total_tokens": 63222562
+    },
+    "nonempty_reasoning": 0,
+    "nonempty_refusal": 0,
+    "unparseable_judge_json": 9,
+    "nonbinary_judgments": 0,
+    "judge_requests_without_explicit_thinking_off": 0,
+    "max_prompt_tokens": 8311,
+    "max_reserved_total": 12439,
+    "over_budget_checks": 0,
+    "aligned_budget_checks": 31790,
+    "tokenizer_usage_mismatches": 0,
+    "rows_with_unaligned_budget_count": 0
+  },
+  "evidence_diagnostics": {
+    "method": "Exact (question, reference, context) keys join recorded binary ContextPrecision judgments across models; no inferred labels or model calls.",
+    "context_precision": {
+      "observed_request_keys": 17476,
+      "conflicting_request_keys": 0,
+      "recorded_judge_calls": 17476,
+      "invalid_record_inputs": 0,
+      "unparsed_calls": 0,
+      "unexpected_input_shapes": 0,
+      "wrong_row_inputs": 0,
+      "unexpected_response_choices": 0,
+      "invalid_response_json": 0,
+      "invalid_binary_verdicts": 0,
+      "by_model": {
+        "gemma-4-12B-it": {
+          "records": 954,
+          "reconstructed_records": 954,
+          "unresolved_records": 0,
+          "records_with_missing_verdict": 0,
+          "records_with_conflicting_verdict": 0,
+          "total_evidence_blocks": 9941,
+          "reconstructed_evidence_blocks": 9941,
+          "useful_blocks": 1125,
+          "zero_useful_questions": 501,
+          "all_useful_questions": 4,
+          "score_checked_records": 954,
+          "score_mismatches": 0,
+          "pooled_useful_fraction": 0.11316768936726687,
+          "mean_question_useful_fraction": 0.12463024978748248,
+          "positions": [
+            {
+              "position": 1,
+              "blocks": 954,
+              "useful": 55,
+              "fraction": 0.057651991614255764
+            },
+            {
+              "position": 2,
+              "blocks": 952,
+              "useful": 135,
+              "fraction": 0.14180672268907563
+            },
+            {
+              "position": 3,
+              "blocks": 951,
+              "useful": 158,
+              "fraction": 0.1661409043112513
+            },
+            {
+              "position": 4,
+              "blocks": 948,
+              "useful": 180,
+              "fraction": 0.189873417721519
+            },
+            {
+              "position": 5,
+              "blocks": 941,
+              "useful": 166,
+              "fraction": 0.17640807651434645
+            },
+            {
+              "position": 6,
+              "blocks": 936,
+              "useful": 138,
+              "fraction": 0.14743589743589744
+            },
+            {
+              "position": 7,
+              "blocks": 915,
+              "useful": 98,
+              "fraction": 0.10710382513661203
+            },
+            {
+              "position": 8,
+              "blocks": 892,
+              "useful": 76,
+              "fraction": 0.08520179372197309
+            },
+            {
+              "position": 9,
+              "blocks": 828,
+              "useful": 56,
+              "fraction": 0.06763285024154589
+            },
+            {
+              "position": 10,
+              "blocks": 742,
+              "useful": 33,
+              "fraction": 0.0444743935309973
+            },
+            {
+              "position": 11,
+              "blocks": 582,
+              "useful": 21,
+              "fraction": 0.03608247422680412
+            },
+            {
+              "position": 12,
+              "blocks": 300,
+              "useful": 9,
+              "fraction": 0.03
+            }
+          ],
+          "unresolved_examples": []
+        },
+        "meno-lite": {
+          "records": 953,
+          "reconstructed_records": 953,
+          "unresolved_records": 0,
+          "records_with_missing_verdict": 0,
+          "records_with_conflicting_verdict": 0,
+          "total_evidence_blocks": 9770,
+          "reconstructed_evidence_blocks": 9770,
+          "useful_blocks": 988,
+          "zero_useful_questions": 519,
+          "all_useful_questions": 7,
+          "score_checked_records": 953,
+          "score_mismatches": 0,
+          "pooled_useful_fraction": 0.10112589559877175,
+          "mean_question_useful_fraction": 0.1117327524987546,
+          "positions": [
+            {
+              "position": 1,
+              "blocks": 953,
+              "useful": 66,
+              "fraction": 0.06925498426023086
+            },
+            {
+              "position": 2,
+              "blocks": 951,
+              "useful": 110,
+              "fraction": 0.1156677181913775
+            },
+            {
+              "position": 3,
+              "blocks": 948,
+              "useful": 150,
+              "fraction": 0.15822784810126583
+            },
+            {
+              "position": 4,
+              "blocks": 941,
+              "useful": 143,
+              "fraction": 0.15196599362380447
+            },
+            {
+              "position": 5,
+              "blocks": 934,
+              "useful": 143,
+              "fraction": 0.15310492505353318
+            },
+            {
+              "position": 6,
+              "blocks": 915,
+              "useful": 112,
+              "fraction": 0.12240437158469945
+            },
+            {
+              "position": 7,
+              "blocks": 898,
+              "useful": 94,
+              "fraction": 0.10467706013363029
+            },
+            {
+              "position": 8,
+              "blocks": 861,
+              "useful": 62,
+              "fraction": 0.07200929152148665
+            },
+            {
+              "position": 9,
+              "blocks": 804,
+              "useful": 50,
+              "fraction": 0.06218905472636816
+            },
+            {
+              "position": 10,
+              "blocks": 711,
+              "useful": 34,
+              "fraction": 0.04781997187060478
+            },
+            {
+              "position": 11,
+              "blocks": 542,
+              "useful": 19,
+              "fraction": 0.03505535055350553
+            },
+            {
+              "position": 12,
+              "blocks": 312,
+              "useful": 5,
+              "fraction": 0.016025641025641024
+            }
+          ],
+          "unresolved_examples": []
+        }
+      }
+    },
+    "factual_correctness_input_audit": {
+      "records": 1907,
+      "recorded_judge_calls": 6673,
+      "decomposition_calls": 2859,
+      "nli_calls": 3814,
+      "wrong_row_inputs": 0,
+      "unparsed_calls": 0,
+      "unexpected_input_shapes": 0,
+      "by_model": {
+        "gemma-4-12B-it": {
+          "records": 954,
+          "recorded_judge_calls": 2862,
+          "decomposition_calls": 955,
+          "nli_calls": 1907,
+          "wrong_row_inputs": 0,
+          "unparsed_calls": 0,
+          "unexpected_input_shapes": 0
+        },
+        "meno-lite": {
+          "records": 953,
+          "recorded_judge_calls": 3811,
+          "decomposition_calls": 1904,
+          "nli_calls": 1907,
+          "wrong_row_inputs": 0,
+          "unparsed_calls": 0,
+          "unexpected_input_shapes": 0
+        }
+      },
+      "wrong_input_examples": [],
+      "scope": "Only recorded HTTP calls; correct row binding does not validate judge entailment decisions."
+    }
+  },
+  "illustrative_examples": {
+    "50": {
+      "meno-lite": {
+        "index": 50,
+        "question": "Какие сведения о взятых библиотечных книгах, согласно памятке первокурснику НГУ, можно посмотреть в личном кабинете студента?",
+        "response": "В личном кабинете студента Новосибирского государственного университета можно посмотреть информацию о взятых библиотечных книгах, сроках их сдачи и других данных, связанных с библиотекой.",
+        "reference": "В личном кабинете можно посмотреть, какие библиотечные книги числятся за студентом и когда их нужно вернуть.",
+        "noncommittal": 0,
+        "context_chars": 10008,
+        "context_blocks": 12,
+        "sample_id": "afdd9ce9a4e92b7feb6fbcb460a9f00f1122ee98cbeb8bff72d8d4db1b27755d",
+        "scores": {
+          "faithfulness": 1.0,
+          "factual_correctness": 0.0,
+          "answer_relevancy": 0.7264001331042013,
+          "context_precision": 0.3777777777651852,
+          "context_recall": 1.0
+        }
+      },
+      "gemma-4-12B-it": {
+        "index": 50,
+        "question": "Какие сведения о взятых библиотечных книгах, согласно памятке первокурснику НГУ, можно посмотреть в личном кабинете студента?",
+        "response": "В личном кабинете студента можно посмотреть сведения о том, какие книги взяты и каков срок их сдачи.",
+        "reference": "В личном кабинете можно посмотреть, какие библиотечные книги числятся за студентом и когда их нужно вернуть.",
+        "noncommittal": 0,
+        "context_chars": 9811,
+        "context_blocks": 12,
+        "sample_id": "afdd9ce9a4e92b7feb6fbcb460a9f00f1122ee98cbeb8bff72d8d4db1b27755d",
+        "scores": {
+          "faithfulness": 1.0,
+          "factual_correctness": 1.0,
+          "answer_relevancy": 0.7488853559941132,
+          "context_precision": 0.4777777777618519,
+          "context_recall": 1.0
+        }
+      }
+    },
+    "205": {
+      "meno-lite": {
+        "index": 205,
+        "question": "Я ещё получаю высшее образование и владею китайским на уровне HSK3. Подхожу ли я под указанную аудиторию программы НГУ «Письменный и устный перевод (китайский, русский языки)»?",
+        "response": "Для участия в программе НГУ «Письменный и устный перевод (китайский, русский языки)» требуется иметь высшее или среднее профессиональное образование и уровень владения китайским языком HSK3 и выше. Так как вы получаете высшее образование и владеете китайским на уровне HSK3, вы подходите под указанную аудиторию программы.",
+        "reference": "Да. Программа адресована как уже имеющим, так и получающим высшее или среднее профессиональное образование. Указан минимальный уровень китайского HSK3, поэтому по этим двум условиям вы входите в её аудиторию.",
+        "noncommittal": 0,
+        "context_chars": 8841,
+        "context_blocks": 11,
+        "sample_id": "4048ad9312a5ba065074cf3d36c61eddea82e214c5f9f4bf366b4f86deabcb0c",
+        "scores": {
+          "faithfulness": 0.4,
+          "factual_correctness": 0.29,
+          "answer_relevancy": 0.8370755133882269,
+          "context_precision": 0.3353535353423569,
+          "context_recall": 1.0
+        }
+      },
+      "gemma-4-12B-it": {
+        "index": 205,
+        "question": "Я ещё получаю высшее образование и владею китайским на уровне HSK3. Подхожу ли я под указанную аудиторию программы НГУ «Письменный и устный перевод (китайский, русский языки)»?",
+        "response": "Да, вы подходите под целевую аудиторию программы «Письменный и устный перевод (китайский, русский языки)».\n\nСогласно документам, требования к кандидатам на эту программу следующие:\n\n*   **Образование:** Программа предназначена для лиц, которые имеют и получают высшее или среднее профессиональное образование (любых специальностей). Поскольку вы сейчас получаете высшее образование, вы соответствуете этому критерию.\n*   **Уровень владения китайским языком:** Для участия в программе требуется уровень владения китайским языком HSK3 и выше. Ваш уровень HSK3 соответствует минимальному требованию.\n\n**Краткая информация о программе:**\n*   **Объем:** 540 часов.\n*   **Сроки обучения:** занятия проходят с ноября по июнь.\n*   **Стоимость:** 180 000 ₽ (возможна оплата единовременная или частями: 63 000 + 63 000 + 54 000).\n*   **Форма обучения:** дистанционная.\n*   **Итоговая аттестация:** защита выпускной аттестационной работы и получение диплома НГУ о профессиональной переподготовке.\n\nЕсли у вас возникнут дополнительные вопросы по содержанию программы или процедуре записи, я буду рад помочь!",
+        "reference": "Да. Программа адресована как уже имеющим, так и получающим высшее или среднее профессиональное образование. Указан минимальный уровень китайского HSK3, поэтому по этим двум условиям вы входите в её аудиторию.",
+        "noncommittal": 0,
+        "context_chars": 11808,
+        "context_blocks": 8,
+        "sample_id": "4048ad9312a5ba065074cf3d36c61eddea82e214c5f9f4bf366b4f86deabcb0c",
+        "scores": {
+          "faithfulness": 0.6666666666666666,
+          "factual_correctness": null,
+          "answer_relevancy": 0.689944440616654,
+          "context_precision": 0.3833333333205555,
+          "context_recall": 1.0
+        }
+      }
+    },
+    "218": {
+      "meno-lite": {
+        "index": 218,
+        "question": "Сотруднику НГУ нужен доступ в 1С к персональным данным физических лиц. Какие документы для выдачи такого доступа названы в инструкции от 18 августа 2026 года?",
+        "response": "Для выдачи доступа сотрудника НГУ в систему 1С к персональным данным физических лиц, согласно инструкции от 18 августа 2026 года, требуются следующие документы: паспортные данные сотрудника, подтверждающие личность, и документ, удостоверяющий регистрацию в системе индивидуального (персонифицированного) учета, в том числе в форме электронного документа.",
+        "reference": "Нужен скан служебной записки, подписанной руководителем и согласованной с ответственным за нужный блок 1С. В ней указывают требуемые права либо сотрудника с аналогичными правами. Дополнительно в управлении кадров должно находиться соглашение сотрудника о неразглашении персональных данных.",
+        "noncommittal": 0,
+        "context_chars": 11201,
+        "context_blocks": 11,
+        "sample_id": "dd4e1e1fb3a26a6246708f6946927e962a92450dac9a14bc375ff4aec9d83225",
+        "scores": {
+          "faithfulness": 0.25,
+          "factual_correctness": 0.0,
+          "answer_relevancy": 0.9699671932973151,
+          "context_precision": 0.0,
+          "context_recall": 0.0
+        }
+      },
+      "gemma-4-12B-it": {
+        "index": 218,
+        "question": "Сотруднику НГУ нужен доступ в 1С к персональным данным физических лиц. Какие документы для выдачи такого доступа названы в инструкции от 18 августа 2026 года?",
+        "response": "К сожалению, в предоставленных документах отсутствует информация об инструкции от 18 августа 2026 года, а также сведения о порядке получения доступа к системе 1С или перечне документов для работы с персональными данными сотрудников.\n\nВ имеющихся материалах упоминаются лишь общие правила обработки персональных данных и инструкции по авторизации в системе для сотрудников НГУ, но конкретные требования к документам для доступа к 1С в них не указаны.",
+        "reference": "Нужен скан служебной записки, подписанной руководителем и согласованной с ответственным за нужный блок 1С. В ней указывают требуемые права либо сотрудника с аналогичными правами. Дополнительно в управлении кадров должно находиться соглашение сотрудника о неразглашении персональных данных.",
+        "noncommittal": 1,
+        "context_chars": 12051,
+        "context_blocks": 10,
+        "sample_id": "dd4e1e1fb3a26a6246708f6946927e962a92450dac9a14bc375ff4aec9d83225",
+        "scores": {
+          "faithfulness": 1.0,
+          "factual_correctness": 0.17,
+          "answer_relevancy": 0.0,
+          "context_precision": 0.0,
+          "context_recall": 0.0
+        }
+      }
+    },
+    "258": {
+      "meno-lite": {
+        "index": 258,
+        "question": "Какие специалисты участвуют в проекте НГУ о медиапространстве и коммуникативных стратегиях России в Азиатско-Тихоокеанском регионе и какой материал они систематизируют?",
+        "response": "Специалисты, участвующие в проекте НГУ о медиапространстве и коммуникативных стратегиях России в Азиатско-Тихоокеанском регионе, включают сотрудников лаборатории медиапространства и коммуникативных стратегий России в Азиатско-Тихоокеанском регионе. Они систематизируют материалы, связанные с медиапространством и коммуникационными стратегиями России в Азиатско-Тихоокеанском регионе.",
+        "reference": "В проекте участвуют филологи, историки и специалисты по этноконфессиональным отношениям. Они систематизируют дискурсы современного российского общества, исследуя публичные и приватные коммуникации в политике, образовании, науке, искусстве, религиозной жизни, социальных и возрастных группах, семье и повседневном общении.",
+        "noncommittal": 0,
+        "context_chars": 16731,
+        "context_blocks": 12,
+        "sample_id": "a36f4823de9480eb55b08a6924f3e899aa44c48800ac9283d71a2bff0452f73d",
+        "scores": {
+          "faithfulness": 0.0,
+          "factual_correctness": 0.0,
+          "answer_relevancy": 0.8388946319567955,
+          "context_precision": 0.0,
+          "context_recall": 0.0
+        }
+      },
+      "gemma-4-12B-it": {
+        "index": 258,
+        "question": "Какие специалисты участвуют в проекте НГУ о медиапространстве и коммуникативных стратегиях России в Азиатско-Тихоокеанском регионе и какой материал они систематизируют?",
+        "response": "К сожалению, в предоставленных документах нет информации о том, какие именно специалисты участвуют в проекте «Медиапространство и коммуникативные стратегии России в Азиатско-Тихоокеанском регионе», а также о том, какой именно материал они систематизируют.\n\nВ документах это направление упоминается лишь как одно из структурных подразделений или исследовательских направлений в составе факультета философии НГУ, но подробные сведения о составе команды и содержании работ в нем отсутствуют.",
+        "reference": "В проекте участвуют филологи, историки и специалисты по этноконфессиональным отношениям. Они систематизируют дискурсы современного российского общества, исследуя публичные и приватные коммуникации в политике, образовании, науке, искусстве, религиозной жизни, социальных и возрастных группах, семье и повседневном общении.",
+        "noncommittal": 1,
+        "context_chars": 21279,
+        "context_blocks": 12,
+        "sample_id": "a36f4823de9480eb55b08a6924f3e899aa44c48800ac9283d71a2bff0452f73d",
+        "scores": {
+          "faithfulness": 1.0,
+          "factual_correctness": 0.0,
+          "answer_relevancy": 0.0,
+          "context_precision": 0.0,
+          "context_recall": 0.0
+        }
+      }
+    },
+    "463": {
+      "meno-lite": {
+        "index": 463,
+        "question": "После онлайн-оплаты услуги СУНЦ НГУ какое подтверждение должно прийти на электронную почту и в какой срок по инструкции на странице оплаты?",
+        "response": "После онлайн-оплаты услуги СУНЦ НГУ на электронную почту приходит электронный чек в течение одного часа.",
+        "reference": "На email, указанный при оплате услуги СУНЦ НГУ, должен поступить электронный чек. Инструкция устанавливает срок его поступления — в течение одного часа.",
+        "noncommittal": 0,
+        "context_chars": 12353,
+        "context_blocks": 12,
+        "sample_id": "dbd3e1481819f1369ca2ff4ee1f7bd32a80ce6cc03f8b0042d7ce3b1e053c94d",
+        "scores": {
+          "faithfulness": 1.0,
+          "factual_correctness": 1.0,
+          "answer_relevancy": 0.7932323349286198,
+          "context_precision": 0.20833333332291665,
+          "context_recall": 1.0
+        }
+      },
+      "gemma-4-12B-it": {
+        "index": 463,
+        "question": "После онлайн-оплаты услуги СУНЦ НГУ какое подтверждение должно прийти на электронную почту и в какой срок по инструкции на странице оплаты?",
+        "response": "После онлайн-оплаты образовательных услуг Специализированного учебно-научного центра (СУНЦ) НГУ на указанный при оплате адрес электронной почты должен прийти электронный чек.\n\nСогласно инструкции, документ поступит в течение одного часа.",
+        "reference": "На email, указанный при оплате услуги СУНЦ НГУ, должен поступить электронный чек. Инструкция устанавливает срок его поступления — в течение одного часа.",
+        "noncommittal": 0,
+        "context_chars": 9230,
+        "context_blocks": 12,
+        "sample_id": "dbd3e1481819f1369ca2ff4ee1f7bd32a80ce6cc03f8b0042d7ce3b1e053c94d",
+        "scores": {
+          "faithfulness": 1.0,
+          "factual_correctness": 1.0,
+          "answer_relevancy": 0.7733011363851756,
+          "context_precision": 0.32499999998375,
+          "context_recall": 1.0
+        }
+      }
+    },
+    "477": {
+      "meno-lite": {
+        "index": 477,
+        "question": "Можно ли, судя по перечню методик ЦКП НГУ, исследовать частицы размером 30 нм в жидкой дисперсной системе и какие характеристики частиц позволяет определить соответствующая методика?",
+        "response": "Да, можно исследовать частицы размером 30 нм в жидкой дисперсной системе с помощью метода ускорительной масс-спектрометрии НГУ-ННЦ, который входит в состав Центра коллективного пользования НГУ. Этот метод позволяет определять массу и заряд частиц, а также их пространственное распределение в дисперсной системе.",
+        "reference": "Да: перечень содержит методику определения размеров и формы частиц в жидких и твёрдых дисперсных системах в диапазоне 1–70 нм. Размер 30 нм входит в этот диапазон; определяемые характеристики — размер и форма частиц.",
+        "noncommittal": 0,
+        "context_chars": 22474,
+        "context_blocks": 12,
+        "sample_id": "794c98852f3267ae2a8d4ce419e3e16ab4d195fdab6f067a6a3b20a71932a839",
+        "scores": {
+          "faithfulness": 0.2,
+          "factual_correctness": 0.0,
+          "answer_relevancy": 0.7725058867637961,
+          "context_precision": 0.0,
+          "context_recall": 0.0
+        }
+      },
+      "gemma-4-12B-it": {
+        "index": 477,
+        "question": "Можно ли, судя по перечню методик ЦКП НГУ, исследовать частицы размером 30 нм в жидкой дисперсной системе и какие характеристики частиц позволяет определить соответствующая методика?",
+        "response": "На основании предоставленных документов можно сделать следующие выводы относительно исследования частиц размером 30 нм:\n\n**Возможность исследования**\nВ документах содержатся сведения о работе с наночастицами именно такого размера. В частности, в профиле профессора В. А. Володина (Документ 3) описывается исследование нанодисперсных систем (C12A7), где полученные порошки имели характерные размеры наночастиц в диапазоне **20–30 нм**.\n\n**Методики и характеристики**\nДля анализа подобных объектов в документах упоминаются следующие возможности и характеристики:\n\n*   **Методы исследования:**\n    *   **Рентгеновская дифракция (XRD):** используется для исследования изменений фазового состава материала (Документ 3).\n    *   **Оптические методы:** в секторах диагностической направленности указаны оптические методы исследования наноструктур (Документ 2).\n    *   **Спектроскопия:** в графе знаний упоминается сканирующий проточный цитометр, который применяется для анализа субмикронных частиц и позволяет проводить измерения светорассеяния в угловом режиме.\n\n*   **Определяемые характеристики:**\n    *   **Морфология:** полная характеристика морфологии частиц (через использование сканирующего проточного цитометра).\n    *   **Фазовый состав:** изменения фазового состава при термической обработке.\n    *   **Удельная площадь поверхности:** например, для частиц 20–30 нм она может составлять ~115 м²/г.\n    *   **Размер частиц:** определение характерных размеров в нанодиапазоне.\n\nСтоит отметить, что в документах не содержится прямого подтверждения возможности исследования именно *жидких* дисперсных систем конкретно в ЦКП НГУ, однако описывается работа с нанодисперсными системами и наличие диагностического оборудования для анализа субмикронных частиц.\n\nЕсли вам необходима более детальная информация о регламенте доступа к конкретному оборудованию или перечне услуг ЦКП, рекомендую обратиться непосредственно в Центр коллективного пользования научным оборудованием «Ускорительная масс-спектрометрия НГУ-ННЦ».",
+        "reference": "Да: перечень содержит методику определения размеров и формы частиц в жидких и твёрдых дисперсных системах в диапазоне 1–70 нм. Размер 30 нм входит в этот диапазон; определяемые характеристики — размер и форма частиц.",
+        "noncommittal": 0,
+        "context_chars": 16559,
+        "context_blocks": 12,
+        "sample_id": "794c98852f3267ae2a8d4ce419e3e16ab4d195fdab6f067a6a3b20a71932a839",
+        "scores": {
+          "faithfulness": 0.9375,
+          "factual_correctness": 0.24,
+          "answer_relevancy": 0.7858334920337091,
+          "context_precision": 0.0,
+          "context_recall": 0.0
+        }
+      }
+    },
+    "785": {
+      "gemma-4-12B-it": {
+        "index": 785,
+        "question": "Как меняется результат курсовой работы социолога ЭФ НГУ с первого по третий курс бакалавриата по опубликованному описанию отделения?",
+        "response": "В предоставленных документах нет информации о том, как именно меняется результат курсовой работы социолога с первого по третий курс бакалавриата.\n\nВ документах содержатся следующие сведения, касающиеся курсовых работ и обучения на отделении социологии:\n*   Курсовые работы являются частью учебного процесса для обучающихся на уровне бакалавриата (Граф знаний).\n*   На экономическом факультете (ЭФ) предусмотрены сроки записи к научным руководителям и даты защиты курсовых работ для студентов III курса и магистратуры I курса (Документ 5).\n*   Для отделения социологии ЭФ НГУ существуют методические рекомендации по подготовке курсовых работ и выпускных квалификационных работ (Документ 5).\n*   Александр Васильевич Трусевич, старший преподаватель кафедры общей социологии ЭФ, ведет дисциплину «Курсовое проектирование» (Документ 3).\n\nЕсли вам необходима более детальная информация о содержании работ на разных курсах, рекомендую обратиться к методическим рекомендациям на сайте факультета или к куратору учебного процесса.",
+        "reference": "На первом курсе результатом становится научный реферат, на втором — программа социологического исследования. На третьем — исследование на основе вторичного анализа реальных социологических данных с использованием пакетов обработки данных.",
+        "noncommittal": 1,
+        "context_chars": 15528,
+        "context_blocks": 11,
+        "sample_id": "a5ecb3511d056794e933db6e01d9601b234087cc4ce45f8ecf9679f1f5be97ff",
+        "scores": {
+          "faithfulness": 0.8333333333333334,
+          "factual_correctness": 0.0,
+          "answer_relevancy": 0.0,
+          "context_precision": 0.0,
+          "context_recall": 0.0
+        }
+      }
+    },
+    "807": {
+      "meno-lite": {
+        "index": 807,
+        "question": "Сколько времени отводилось на задания олимпиады ГИ НГУ по истории 29 марта 2026 года и какие устройства требовались участнику для прокторинга?",
+        "response": "На олимпиаду школьников по истории НГУ по истории 29 марта 2026 года отводилось 2,5 часа (с 12:00 до 14:30) по новосибирскому времени (GMT +7). Для прокторинга требовалась веб-камера и микрофон.",
+        "reference": "На задания отводилось 2 часа 30 минут: с 12:00 до 14:30 по новосибирскому времени 29 марта 2026 года. Для прокторинга требовались веб-камера и микрофон.",
+        "noncommittal": 0,
+        "context_chars": 9212,
+        "context_blocks": 8,
+        "sample_id": "28dbc11eac71ea46b86592871faff7a6daf5cf7f90026b7e82d42af658e0931c",
+        "scores": {
+          "faithfulness": 1.0,
+          "factual_correctness": 0.0,
+          "answer_relevancy": 0.8426844882692057,
+          "context_precision": 0.4166666666458333,
+          "context_recall": 1.0
+        }
+      },
+      "gemma-4-12B-it": {
+        "index": 807,
+        "question": "Сколько времени отводилось на задания олимпиады ГИ НГУ по истории 29 марта 2026 года и какие устройства требовались участнику для прокторинга?",
+        "response": "Олимпиада школьников по истории НГУ пройдет 29 марта 2026 года в интервале с 12:00 до 14:30 по новосибирскому времени (GMT +7). Таким образом, на выполнение заданий участникам отводится 2,5 часа.\n\nДля прокторинга участнику необходимо обеспечить наличие веб-камеры и микрофона.",
+        "reference": "На задания отводилось 2 часа 30 минут: с 12:00 до 14:30 по новосибирскому времени 29 марта 2026 года. Для прокторинга требовались веб-камера и микрофон.",
+        "noncommittal": 0,
+        "context_chars": 7958,
+        "context_blocks": 9,
+        "sample_id": "28dbc11eac71ea46b86592871faff7a6daf5cf7f90026b7e82d42af658e0931c",
+        "scores": {
+          "faithfulness": 1.0,
+          "factual_correctness": 0.86,
+          "answer_relevancy": 0.7521165554921101,
+          "context_precision": 0.99999999995,
+          "context_recall": 1.0
+        }
+      }
+    }
+  }
+}
