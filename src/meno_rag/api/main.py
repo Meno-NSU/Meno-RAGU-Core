@@ -561,6 +561,31 @@ async def list_models(request: Request):
     return {"object": "list", "data": merged, "core_model_id": core_model_id}
 
 
+@app.get("/meno/v1/manifest")
+async def meno_backend_manifest(request: Request):
+    """Self-description for the Meno gateway (contract meno-backend/1, section 1.1)."""
+    settings: Settings = request.app.state.settings
+    listing = await list_models(request)
+    # Only models usable without sign-in: the gateway calls this stand anonymously.
+    models = [m for m in listing["data"] if not m.get("requires_auth")]
+    names = settings.llm_display_name_map
+    llms = [{"id": m["id"], "name": names.get(m["id"], m["id"])} for m in models]
+    ids = [m["id"] for m in llms]
+    default_llm = settings.default_model if settings.default_model in ids else (ids[0] if ids else "")
+    manifest = {
+        "protocol": "meno-backend/1",
+        "name": settings.meno_backend_name,
+        "version": settings.meno_backend_version,
+        "kb": KB_ID,
+        "llms": llms,
+        "default_llm": default_llm,
+        "stages": {},
+    }
+    if settings.meno_backend_build:
+        manifest["build"] = settings.meno_backend_build
+    return manifest
+
+
 @app.post("/v1/models/refresh")
 async def refresh_models(request: Request):
     vllm_registry: VLLMRegistry = request.app.state.vllm_registry

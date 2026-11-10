@@ -1,3 +1,4 @@
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -26,6 +27,29 @@ class Settings(BaseSettings):
     vllm_endpoint_api_keys: dict[str, str] = Field(default_factory=dict, validation_alias="VLLM_ENDPOINT_API_KEYS")
     vllm_endpoints: str = Field(default="http://127.0.0.1:9020", validation_alias="VLLM_ENDPOINTS")
     default_model: str | None = Field(default=None, validation_alias=AliasChoices("DEFAULT_MODEL", "LLM_MODEL_NAME"))
+
+    # Identity advertised to the Meno gateway (GET /meno/v1/manifest, protocol meno-backend/1).
+    meno_backend_name: str = Field(default="RAGU", validation_alias="MENO_BACKEND_NAME")
+    meno_backend_version: str = Field(default="nsu-ragu-2026-11", validation_alias="MENO_BACKEND_VERSION")
+    meno_backend_build: str = Field(default="", validation_alias="MENO_BACKEND_BUILD")
+    # "id=display name;id=display name" - how model ids are shown in the gateway's arena.
+    llm_display_names: str = Field(default="gemma-4-12B-it=Gemma 4 12B", validation_alias="LLM_DISPLAY_NAMES")
+
+    @field_validator("meno_backend_version")
+    @classmethod
+    def _check_meno_backend_version(cls, value: str) -> str:
+        if not re.fullmatch(r"[A-Za-z0-9._+-]{1,64}", value):
+            raise ValueError("MENO_BACKEND_VERSION must match [A-Za-z0-9._+-]{1,64}")
+        return value
+
+    @property
+    def llm_display_name_map(self) -> dict[str, str]:
+        result: dict[str, str] = {}
+        for pair in self.llm_display_names.split(";"):
+            model_id, sep, name = pair.partition("=")
+            if sep and model_id.strip() and name.strip():
+                result[model_id.strip()] = name.strip()
+        return result
 
     stand_resources_dir: Path = Field(default=Path("data"), validation_alias="STAND_RESOURCES_DIR")
     frida_embedder_name: str = Field(default="ai-forever/FRIDA", validation_alias="FRIDA_EMBEDDER_NAME")
