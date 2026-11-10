@@ -455,7 +455,8 @@ def count_abbreviation_occurrences(text: str,
 def canonicalize_artifacts(entities: List[Entity],
                            relations: List[Relation]) -> Tuple[List[Entity], List[Relation]]:
     def normalize_name(name: str) -> str:
-        return ' '.join(re.sub(r'[^\w\s]', ' ', str(name).casefold().replace('ё', 'е')).split())
+        # '_' is a word character for \w, so it is a separator here explicitly ('Практика_НИР' = 'Практика НИР')
+        return ' '.join(re.sub(r'[^\w\s]|_', ' ', str(name).casefold().replace('ё', 'е')).split())
 
     def trim_edge_punctuation(name: str) -> str:
         return re.sub(r'^[^\w]+|[^\w]+$', '', name)

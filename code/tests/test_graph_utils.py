@@ -319,6 +319,19 @@ class TestCanonicalizeArtifacts:
         assert all(e.entity_name == 'НГУ' for e in canonical_entities)
         assert len(set(e.id for e in canonical_entities)) == 1
 
+    def test_underscore_variants_are_unified(self):
+        entities = [
+            Entity(entity_name='Производственная практика НИР', entity_type='WORK_OF_ART', description='',
+                   source_chunk_id=['chunk-a']),
+            Entity(entity_name='Производственная практика_НИР', entity_type='WORK_OF_ART', description='',
+                   source_chunk_id=['chunk-b']),
+            Entity(entity_name='Производственная практика НИР', entity_type='WORK_OF_ART', description='',
+                   source_chunk_id=['chunk-c']),
+        ]
+        canonical_entities, _ = canonicalize_artifacts(entities, [])
+        assert len(set(e.id for e in canonical_entities)) == 1
+        assert all(e.entity_name == 'Производственная практика НИР' for e in canonical_entities)
+
     def test_internal_punctuation_is_preserved(self):
         entities = [
             Entity(entity_name='А. В. Бессонов', entity_type='PERSON', description='', source_chunk_id=[]),
