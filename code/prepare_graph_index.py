@@ -177,6 +177,9 @@ def main():
     parser.add_argument('--cache', dest='cache_dir', type=str, required=False, default=None,
                         help='The directory for the LLM response cache. It makes the graph building '
                              'resumable across restarts.')
+    parser.add_argument('--cache_fallback', dest='cache_fallback_dir', type=str, required=False, default=None,
+                        help='The LLM response cache of an earlier build, read only: prompts of unchanged chunks '
+                             'are answered from it, new answers go to --cache. It may be read-only on disk.')
     parser.add_argument('--rate_max_simultaneous', dest='rate_max_simultaneous', type=int, required=False,
                         default=8, help='The maximum number of simultaneous LLM requests (0 means no limit).')
     parser.add_argument('--rate_max_per_minute', dest='rate_max_per_minute', type=int, required=False,
@@ -332,6 +335,12 @@ def main():
         print('The vector-only mode is used: no entity and relation extraction will be performed.')
     else:
         llm_tokenizer = load_hf_tokenizer(args.llm_tokenizer or args.llm_name)
+        llm_cache = args.cache_dir if args.cache_dir is not None else os.path.join(graph_dir, 'llm_cache')
+        if args.cache_fallback_dir is not None:
+            from ragu.utils.ragu_utils import get_disk_cache
+            from graph_utils.llm_cache import LayeredCache, ReadOnlyDiskCache
+            llm_cache = LayeredCache(get_disk_cache(llm_cache), ReadOnlyDiskCache(args.cache_fallback_dir))
+            print(f'The LLM response cache "{args.cache_fallback_dir}" of an earlier build is read as a fallback.')
         llm_client = CachedAsyncOpenAI(
             base_url=args.openai_base_url,
             api_key=args.openai_api_key,
@@ -339,7 +348,7 @@ def main():
             rate_max_per_minute=args.rate_max_per_minute if args.rate_max_per_minute > 0 else None,
             rate_min_delay=args.rate_min_delay if args.rate_min_delay > 0 else None,
             max_completion_tokens=args.max_completion_tokens,
-            cache=args.cache_dir if args.cache_dir is not None else os.path.join(graph_dir, 'llm_cache'),
+            cache=llm_cache,
             debug_errors_storage=os.path.join(graph_dir, 'llm_debug')
         )
         llm = ContextBudgetLLM(
