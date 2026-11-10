@@ -30,6 +30,7 @@ from meno_rag.api.events import (
     StageName,
     StageStatus,
     StageSummary,
+    clean_sources,
     openai_chunk,
     sse_data,
     sse_event,
@@ -1000,7 +1001,7 @@ async def _non_stream_response(
                 "logprobs": None,
             }
         ],
-        "sources": outcome.sources if outcome is not None else [],
+        "sources": clean_sources(outcome.sources) if outcome is not None else [],
         "pipeline": {
             # The same total_ms the metric recorded, not a fresh reading: a third
             # measurement taken here would include the database write and disagree
@@ -1068,8 +1069,9 @@ async def _stream_response(
             yield event.to_sse()
 
         outcome = await prepare_task
-        if outcome.sources:
-            yield sse_event("sources", {"sources": outcome.sources})
+        valid_sources = clean_sources(outcome.sources)
+        if valid_sources:
+            yield sse_event("sources", {"sources": valid_sources})
 
         yield sse_data(
             openai_chunk(
