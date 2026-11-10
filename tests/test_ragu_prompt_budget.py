@@ -82,10 +82,13 @@ def test_graph_context_has_bounded_references_without_mutating_graph_provenance(
         sources.append(index + 1)
     element = {'kind': 'entity', 'name': 'НГУ', 'type': 'ORG', 'description': 'Факт', 'sources': sources}
     before = copy.deepcopy(element)
-    selection = GraphSelection([], [element], scored=1, candidate_scores={}, graph_trace={})
-    context, references = p._assemble_context(selection)
-    assert len(references) == 5
-    assert 'Название 4' in context and 'Название 5' not in context
+    # all 20 chunks were scored for the question, later corpus positions higher: the element names the 5 best
+    scored = {chunk_id: chunk_id / 100 for chunk_id in sources}
+    selection = GraphSelection([], [element], scored=20, candidate_scores=scored, graph_trace={})
+    context, shown = p._assemble_context(selection)
+    assert 'Название 19' in context and 'Название 15' in context
+    assert 'Название 14' not in context and 'Название 0;' not in context
+    assert shown == []  # no document is in the context, so none is shown as a source
     assert element == before
 
 

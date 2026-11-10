@@ -9,7 +9,7 @@ from tests.ragu_fakes import pipeline
 
 
 @pytest.mark.asyncio
-async def test_graph_elements_reranked_and_grounded_with_all_source_urls():
+async def test_graph_elements_reranked_and_grounded_with_the_document_link():
     p = pipeline()
     events = []
 
@@ -24,8 +24,8 @@ async def test_graph_elements_reranked_and_grounded_with_all_source_urls():
     )
     assert "ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ" in outcome.context
     assert "Факт о ФИТ" in outcome.context
-    assert {s["source_url"] for s in outcome.sources} == {"https://example.org/a", "https://example.org/b"}
-    assert len(outcome.sources) == 2
+    # one link per document (SOURCE_URLS_PER_DOCUMENT=1): the document has two
+    assert outcome.sources == [{"document_title": "НГУ", "source_url": "https://example.org/a"}]
     assert outcome.stage_details["rerank"] == {"kept": 3, "from": 3}
     assert outcome.trace["graph"]["selected_elements"]
     assert any("Элемент графа знаний" in str(messages) for messages in p.llm_router.prompts)
@@ -43,7 +43,9 @@ async def test_graph_only_context_is_a_valid_qa_prompt():
         runtime=PipelineRuntime.uniform(ModelRuntime("meno", "http://fake/v1")),
     )
     assert "Факт о ФИТ" in outcome.qa_messages[1]["content"]
-    assert outcome.sources
+    # no document was retrieved, so the elements name none and no source is shown
+    assert outcome.sources == []
+    assert "Встречается во фрагментах документов" not in outcome.qa_messages[1]["content"]
 
 
 @pytest.mark.asyncio

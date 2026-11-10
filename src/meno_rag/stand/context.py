@@ -156,15 +156,18 @@ def prepare_context(
     return descriptions_of_selected_documents, sources_of_selected_documents
 
 
-def flatten_sources(sources_per_document: list[dict[str, Any]]) -> list[dict[str, str]]:
+def flatten_sources(sources_per_document: list[dict[str, Any]], max_urls: int | None = None) -> list[dict[str, str]]:
     """Expand each document's structured source into the API/DB contract: one
-    ``{document_title, source_url}`` row per URL. A document with multiple URLs
-    (multi-source summaries) yields several rows sharing the title; a document
-    with no URL yields a single row with an empty ``source_url``."""
+    ``{document_title, source_url}`` row per URL, at most ``max_urls`` of them per
+    document (all when ``None``). A document with multiple URLs (multi-source
+    summaries) yields several rows sharing the title; a document with no URL
+    yields a single row with an empty ``source_url``."""
     flattened: list[dict[str, str]] = []
     for source in sources_per_document:
         title = source.get("document_title", "") or ""
         urls = source.get("source_urls", []) or []
+        if max_urls is not None:
+            urls = urls[:max_urls]
         if urls:
             for url in urls:
                 flattened.append({"document_title": title, "source_url": url})

@@ -256,7 +256,8 @@ class StandRagPipeline:
                     "final_context_budget_chars": context_budget,
                     "settings": {name: getattr(self.settings, name) for name in (
                         "max_rewrite_queries", "rerank_candidates_per_query", "rerank_top_k", "rerank_weight",
-                        "max_context_chunks", "max_qa_prompt_chars", "graph_source_documents", "min_document_quality",
+                        "max_context_chunks", "max_qa_prompt_chars", "graph_source_documents", "graph_max_elements",
+                        "source_urls_per_document", "min_document_quality",
                     )},
                 },
             )
@@ -694,7 +695,7 @@ class StandRagPipeline:
                     "sources": flatten_sources([source]),
                 })
         context = "\n\n".join(kept_context)
-        sources = flatten_sources(kept_sources)
+        sources = flatten_sources(kept_sources, self.settings.source_urls_per_document)
         return context, sources
 
     def _stage_detail(self, stage_name: str, result: Any) -> dict[str, Any]:

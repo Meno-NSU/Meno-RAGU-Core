@@ -84,7 +84,14 @@ class RaguRagPipeline(StandRagPipeline):
                 previous = selected.get(candidate.key)
                 if previous is None or merged > previous[1]:
                     selected[candidate.key] = (candidate, merged)
-        kept = sorted(selected.values(), key=lambda p: (-p[1], p[0].key))[: self.settings.max_context_chunks]
+        # Document chunks and graph elements have separate limits: in one shared list the short element
+        # blocks pushed documents out of the context (on NSU v1, 5.9 elements and 4.5 documents per answer).
+        ranked_all = sorted(selected.values(), key=lambda p: (-p[1], p[0].key))
+        kept = sorted(
+            [p for p in ranked_all if p[0].chunk_id is not None][: self.settings.max_context_chunks]
+            + [p for p in ranked_all if p[0].chunk_id is None][: self.settings.graph_max_elements],
+            key=lambda p: (-p[1], p[0].key),
+        )
         kept_by_key = {candidate.key: (rank, merged) for rank, (candidate, merged) in enumerate(kept)}
         chunks = [(c.chunk_id, merged) for c, merged in kept if c.chunk_id is not None]
         elements = [dict(c.element, score=merged) for c, merged in kept if c.element is not None]
@@ -128,10 +135,18 @@ class RaguRagPipeline(StandRagPipeline):
         capture_evidence = getattr(chunks, "capture_evidence", False)
         used = 0
         heading = "**ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ**"
+        # An element names only documents retrieved for this question: the kept chunks first, then the other
+        # chunks the reranker scored. Its full source list is in corpus order, so its first documents are
+        # arbitrary for the question (a hub entity such as the university occurs in tens of thousands).
+        retrieved: dict[int, int] = {}
+        for chunk_id, _score in chunks:
+            retrieved.setdefault(chunk_id, len(retrieved))
+        for chunk_id, _score in sorted((getattr(chunks, "candidate_scores", None) or {}).items(), key=lambda kv: -kv[1]):
+            retrieved.setdefault(chunk_id, len(retrieved))
         for element in elements:
             references = []
             documents = set()
-            for chunk_id in element.get("sources", []):
+            for chunk_id in sorted((c for c in element.get("sources", []) if c in retrieved), key=retrieved.get):
                 mapping = self.resources.chunk_mapping.get(str(chunk_id))
                 if mapping is None or mapping["doc_index"] in documents:
                     continue
@@ -182,18 +197,8 @@ class RaguRagPipeline(StandRagPipeline):
             chunks.final_evidence = (chunks.final_evidence or []) + graph_evidence if remaining else graph_evidence
         if graph_context:
             context = "\n\n".join(p for p in (context, graph_context) if p)
-        seen = {(s["document_title"], s["source_url"]) for s in sources}
-        for element in kept_elements:
-            for chunk_id in element.get("sources", []):
-                mapping = self.resources.chunk_mapping.get(str(chunk_id))
-                if mapping is None:
-                    continue
-                doc = self.resources.documents[mapping["doc_index"]]
-                title = doc.get("doc_title", "")
-                for url in normalize_urls(doc.get("url")) or [""]:
-                    if (title, url) not in seen:
-                        seen.add((title, url))
-                        sources.append({"document_title": title, "source_url": url})
+        # Shown sources are the documents of the context. Element references are retrieved chunks, so their
+        # documents are either in the context already or were judged less relevant than it.
         return context, sources
 
     def _stage_detail(self, stage_name, result):

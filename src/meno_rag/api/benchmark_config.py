@@ -21,7 +21,8 @@ _CONTENT_SETTINGS = (
     "generation_temperature", "max_rewrite_queries", "max_context_chunks", "max_qa_prompt_chars",
     "stand_compat_context_order", "qa_fewshots_enabled", "n_few_shots", "max_fewshots_chars",
     "rag_rewrite_rerank_model", "graph_top_k", "engine_rerank_top_k", "graph_related_candidates",
-    "graph_source_documents", "embedder_model", "engine_reranker_model",
+    "graph_source_documents", "graph_max_elements", "source_urls_per_document", "embedder_model",
+    "engine_reranker_model",
 )
 
 

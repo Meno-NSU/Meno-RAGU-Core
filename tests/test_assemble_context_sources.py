@@ -31,9 +31,16 @@ def _pipeline() -> StandRagPipeline:
     )
 
 
-def test_assemble_context_expands_multi_url_document():
+def test_assemble_context_shows_one_url_per_document_by_default():
     context, sources = _pipeline()._assemble_context([(0, 0.9)])
     assert "Сводка" in context
+    assert sources == [{"document_title": "Сводка", "source_url": "https://x.test"}]
+
+
+def test_assemble_context_expands_multi_url_document_when_asked():
+    p = _pipeline()
+    p.settings = p.settings.model_copy(update={"source_urls_per_document": 2})
+    _, sources = p._assemble_context([(0, 0.9)])
     assert sources == [
         {"document_title": "Сводка", "source_url": "https://x.test"},
         {"document_title": "Сводка", "source_url": "https://y.test"},

@@ -246,6 +246,11 @@ class Settings(BaseSettings):
     graph_timeout_seconds: float = Field(default=120.0, gt=0, validation_alias="GRAPH_TIMEOUT_SECONDS")
     graph_related_candidates: int = Field(default=200, ge=0, validation_alias="GRAPH_RELATED_CANDIDATES")
     graph_source_documents: int = Field(default=5, gt=0, validation_alias="GRAPH_SOURCE_DOCUMENTS")
+    # Graph elements (entities, relations) in the answer context, on top of MAX_CONTEXT_CHUNKS document
+    # chunks: before, both kinds shared those slots and elements pushed documents out. 0 = no graph elements.
+    graph_max_elements: int = Field(default=3, ge=0, validation_alias="GRAPH_MAX_ELEMENTS")
+    # Links shown per document: a summary of several pages carries up to dozens of URLs under one title.
+    source_urls_per_document: int = Field(default=1, ge=1, validation_alias="SOURCE_URLS_PER_DOCUMENT")
 
     @property
     def graph_dir(self) -> Path:
