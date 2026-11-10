@@ -78,7 +78,8 @@ def stage_lines(stage: str, detail: dict[str, Any] | None) -> list[str]:
             and expanded.strip()
             and expanded.strip() != str(detail.get("original") or "").strip()
         ):
-            lines.append(f"Расшифровано: {expanded.strip()}")
+            parts = [part.strip() for part in expanded.strip().splitlines() if part.strip()]
+            lines.extend(f"Расшифровано: {part}" if i == 0 else part for i, part in enumerate(parts))
     elif stage == StageName.QUERY_REWRITE:
         queries = detail.get("search_queries")
         if isinstance(queries, list):

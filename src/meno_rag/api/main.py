@@ -593,10 +593,16 @@ async def meno_backend_manifest(request: Request):
     settings: Settings = request.app.state.settings
     listing = await list_models(request)
     # Only models usable without sign-in: the gateway calls this stand anonymously.
-    models = [m for m in listing["data"] if not m.get("requires_auth")]
+    # vLLM only: the gateway must never route a leaderboard run through OpenRouter, whatever
+    # AUTH_ENABLED/OPENROUTER_* say.
+    models = [m for m in listing["data"] if m.get("provider") == "vllm" and not m.get("requires_auth")]
     llms = _manifest_llms(models, settings.llm_display_name_map)
     ids = [m["id"] for m in llms]
     default_llm = settings.default_model if settings.default_model in ids else (ids[0] if ids else "")
+    # Non-standard stage names RAGU can emit need a label (contract section 1.1).
+    stages = {"prepare": {"ru": "Подготовка", "en": "Preparation"}}
+    if settings.qa_fewshots_enabled:
+        stages[StageName.FEWSHOT_SELECTION] = {"ru": "Подбор примеров", "en": "Few-shot selection"}
     manifest = {
         "protocol": "meno-backend/1",
         "name": settings.meno_backend_name,
@@ -604,7 +610,7 @@ async def meno_backend_manifest(request: Request):
         "kb": KB_ID,
         "llms": llms,
         "default_llm": default_llm,
-        "stages": {},
+        "stages": stages,
     }
     if settings.meno_backend_build:
         manifest["build"] = settings.meno_backend_build
@@ -813,6 +819,9 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request, res
         # Benchmarks always get the trace: it is the reason the endpoint exists,
         # and it must not depend on the production capture toggle or sample rate.
         meno_trace = meno_trace_mod.wants_meno_trace(request)
+        # The gateway always sends X-Meno-Request-Id (contract 1.2) and a stand keeps no dialogue
+        # content on disk (contract section 4): a relayed request is answered, never stored.
+        relayed = bool(request.headers.get("x-meno-request-id", "").strip())
         capture_trace = bench or meno_trace or (
             settings.capture_pipeline_trace and random.random() < settings.pipeline_trace_sample_rate
         )
@@ -849,6 +858,7 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request, res
                     capture_trace=capture_trace,
                     bench=bench,
                     meno_trace=meno_trace,
+                    relayed=relayed,
                 ),
                 media_type="text/event-stream",
                 headers=stream_headers,
@@ -867,6 +877,7 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request, res
             guest_session_id=guest_session_id,
             capture_trace=capture_trace,
             bench=bench,
+            relayed=relayed,
         )
     finally:
         if not released:
@@ -901,6 +912,7 @@ async def _non_stream_response(
     guest_session_id: str | None = None,
     capture_trace: bool = False,
     bench: bool = False,
+    relayed: bool = False,
 ):
     pipeline: StandRagPipeline = request.app.state.pipeline
     database: Database = request.app.state.database
@@ -919,7 +931,7 @@ async def _non_stream_response(
         )
         generation_ms = round((time.perf_counter() - gen_started) * 1000, 2)
         total_ms = round((time.perf_counter() - started) * 1000, 2)
-        if not bench:
+        if not bench and not relayed:
             await _persist_success(
                 database=database,
                 run_id=completion_id,
@@ -962,19 +974,20 @@ async def _non_stream_response(
                 status="error",
                 seconds=time.perf_counter() - started,
             )
-            await _persist_failure(
-                database,
-                completion_id,
-                session_id,
-                runtime,
-                payload,
-                str(exc),
-                stream=False,
-                classified=classified,
-                stage=stage,
-                user_id=user_id,
-                guest_session_id=guest_session_id,
-            )
+            if not relayed:
+                await _persist_failure(
+                    database,
+                    completion_id,
+                    session_id,
+                    runtime,
+                    payload,
+                    str(exc),
+                    stream=False,
+                    classified=classified,
+                    stage=stage,
+                    user_id=user_id,
+                    guest_session_id=guest_session_id,
+                )
         return _classified_error_response(classified, retry_id=completion_id, stage=stage)
     finally:
         if not bench:
@@ -1044,6 +1057,7 @@ async def _stream_response(
     capture_trace: bool = False,
     bench: bool = False,
     meno_trace: bool = False,
+    relayed: bool = False,
 ):
     pipeline: StandRagPipeline = request.app.state.pipeline
     database: Database = request.app.state.database
@@ -1074,8 +1088,7 @@ async def _stream_response(
 
         outcome = await prepare_task
         valid_sources = clean_sources(outcome.sources)
-        if valid_sources:
-            yield sse_event("sources", {"sources": valid_sources})
+        yield sse_event("sources", {"sources": valid_sources})  # contract 1.3: at least once, even empty
 
         yield sse_data(
             openai_chunk(
@@ -1160,6 +1173,8 @@ async def _stream_response(
                 status="ok",
                 seconds=total_ms / 1000.0,
             )
+            if relayed:
+                return
             await _persist_success(
                 database=database,
                 run_id=completion_id,
@@ -1197,6 +1212,9 @@ async def _stream_response(
         # spinning unless we explicitly mark it FAILED. Emit a stage event
         # before the error so any UI watching `event: stage` transitions
         # closes the spinner.
+        if stage == "prepare":
+            # Pair the failure with a started so the gateway's stage list stays well-formed.
+            yield StageEvent(stage=stage, status=StageStatus.STARTED, model_id=runtime.generation.model_id).to_sse()
         yield StageEvent(
             stage=StageName.GENERATION if stage == "generation" else stage,
             status=StageStatus.FAILED,
@@ -1229,6 +1247,8 @@ async def _stream_response(
                 status="error",
                 seconds=time.perf_counter() - started,
             )
+            if relayed:
+                return
             await _persist_failure(
                 database,
                 completion_id,

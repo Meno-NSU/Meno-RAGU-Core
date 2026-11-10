@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from fastapi.testclient import TestClient
 
 from meno_rag.api.events import StageEvent, StageName, StageStatus
@@ -245,3 +246,114 @@ def test_unknown_model_answers_contract_error(monkeypatch):
     err = r.json()["error"]
     assert err["code"] == "model_not_found" and isinstance(err["message"], str)
     assert "text/event-stream" not in r.headers["content-type"]
+
+
+class _FailingPipeline(_Pipeline):
+    async def prepare(self, **kw):
+        raise RuntimeError("boom")
+
+
+def _spy_persistence(monkeypatch, main_mod):
+    calls = []
+
+    async def ok(**kwargs):
+        calls.append("success")
+
+    async def fail(*args, **kwargs):
+        calls.append("failure")
+
+    monkeypatch.setattr(main_mod, "_persist_success", ok)
+    monkeypatch.setattr(main_mod, "_persist_failure", fail)
+    return calls
+
+
+def _post(c, stream, headers):
+    return c.post(
+        "/v1/chat/completions",
+        json={"model": "m", "messages": [{"role": "user", "content": "q"}], "stream": stream},
+        headers=headers,
+    )
+
+
+@pytest.mark.parametrize("stream", [True, False])
+@pytest.mark.parametrize("failing", [False, True])
+def test_a_gateway_relayed_request_is_never_persisted(monkeypatch, stream, failing):
+    main_mod = _client(monkeypatch)
+    calls = _spy_persistence(monkeypatch, main_mod)
+    with TestClient(main_mod.app) as c:
+        c.app.state.pipeline = _FailingPipeline() if failing else _Pipeline()
+        _post(c, stream, {"X-Meno-Request-Id": "chatcmpl-abc"})
+    assert calls == []
+
+
+@pytest.mark.parametrize("stream", [True, False])
+@pytest.mark.parametrize("failing", [False, True])
+def test_a_request_without_the_gateway_header_is_still_persisted(monkeypatch, stream, failing):
+    main_mod = _client(monkeypatch)
+    calls = _spy_persistence(monkeypatch, main_mod)
+    with TestClient(main_mod.app) as c:
+        c.app.state.pipeline = _FailingPipeline() if failing else _Pipeline()
+        _post(c, stream, {})
+    assert calls == ["failure" if failing else "success"]
+
+
+def test_a_gateway_relayed_request_leaves_the_database_empty(monkeypatch, tmp_path):
+    from sqlalchemy import func, select
+
+    from meno_rag.config import get_settings
+    from meno_rag.db.orm import Conversation, Message
+
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{tmp_path / 'relay.sqlite3'}")
+    get_settings.cache_clear()
+    from meno_rag.api import main as main_mod
+    from meno_rag.stand.pipeline import ModelRuntime, PipelineRuntime
+
+    rt = PipelineRuntime.uniform(ModelRuntime(provider="vllm", model_id="m", base_url="http://e/v1"))
+
+    async def fake_resolve(app, requested_model):
+        return rt
+
+    monkeypatch.setattr(main_mod, "_resolve_runtime", fake_resolve)
+    with TestClient(main_mod.app) as c:
+        c.app.state.pipeline = _Pipeline()
+        _post(c, True, {"X-Meno-Request-Id": "chatcmpl-abc"})
+
+        async def count():
+            async with c.app.state.database.sessionmaker() as s:
+                return [
+                    (await s.execute(select(func.count()).select_from(t))).scalar_one() for t in (Conversation, Message)
+                ]
+
+        assert c.portal.call(count) == [0, 0]
+    get_settings.cache_clear()
+
+
+def test_sources_event_is_sent_even_when_nothing_valid_is_left(monkeypatch):
+    class Empty(_Pipeline):
+        async def prepare(self, **kw):
+            outcome = await super().prepare(**kw)
+            outcome.sources = [{"document_title": "", "source_url": "ftp://x"}]
+            return outcome
+
+    main_mod = _client(monkeypatch)
+    with TestClient(main_mod.app) as c:
+        c.app.state.pipeline = Empty()
+        r = _post(c, True, {})
+    assert [p for n, p in _events(r.text) if n == "sources"] == [{"sources": []}]
+
+
+def test_failed_prepare_has_a_started_event_before_failed(monkeypatch):
+    main_mod = _client(monkeypatch)
+    _spy_persistence(monkeypatch, main_mod)
+    with TestClient(main_mod.app) as c:
+        c.app.state.pipeline = _FailingPipeline()
+        r = _post(c, True, {})
+    prep = [p["status"] for n, p in _events(r.text) if n == "stage" and p["stage"] == "prepare"]
+    assert prep == ["started", "failed"]
+
+
+def test_each_abbreviation_is_its_own_line():
+    from meno_rag.api.events import stage_lines
+
+    lines = stage_lines("abbreviation_expansion", {"expanded": "НГУ — Новосибирский\nФИТ — Факультет", "original": ""})
+    assert lines == ["Расшифровано: НГУ — Новосибирский", "ФИТ — Факультет"]

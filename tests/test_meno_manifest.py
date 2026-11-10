@@ -37,6 +37,14 @@ def _build_client(monkeypatch, **env):
     return app
 
 
+@pytest.fixture(autouse=True)
+def _fresh_settings_cache():
+    yield
+    from meno_rag.config import get_settings
+
+    get_settings.cache_clear()
+
+
 @pytest.fixture
 def client(monkeypatch):
     app = _build_client(monkeypatch)
@@ -60,7 +68,7 @@ def test_the_manifest_follows_the_contract(client):
     assert body["name"] == "RAGU"
     assert body["version"] == "nsu-ragu-2026-11"
     assert body["kb"] == "nsu-ragu"
-    assert body["stages"] == {}
+    assert body["stages"] == {"prepare": {"ru": "Подготовка", "en": "Preparation"}}
 
     model_ids = [m["id"] for m in client.get("/v1/models").json()["data"]]
     assert [m["id"] for m in body["llms"]] == model_ids
@@ -105,16 +113,30 @@ def test_duplicate_ids_give_one_llm(client):
     _assert_valid_manifest(body)
 
 
-def test_at_most_32_llms_and_vllm_first(client):
+def test_at_most_32_llms_all_vllm(client):
+    body = _manifest_for(client, [{"id": f"v{i}"} for i in range(40)])
+    ids = [m["id"] for m in body["llms"]]
+    assert ids == [f"v{i}" for i in range(32)]
+    _assert_valid_manifest(body)
+
+
+def test_openrouter_models_are_never_listed_even_with_auth_off(client):
+    assert not client.app.state.settings.auth_enabled
     client.app.state.openrouter_registry = AsyncMock()
     client.app.state.openrouter_registry.list_models = AsyncMock(
-        return_value=[{"id": f"or/m{i}", "display_name": f"OR {i}"} for i in range(30)]
+        return_value=[{"id": f"or/m{i}", "display_name": f"OR {i}"} for i in range(5)]
     )
-    body = _manifest_for(client, [{"id": f"v{i}"} for i in range(10)])
-    ids = [m["id"] for m in body["llms"]]
-    assert len(ids) == 32
-    assert ids[:10] == [f"v{i}" for i in range(10)]
+    body = _manifest_for(client, [{"id": "v0"}])
+    assert [m["id"] for m in body["llms"]] == ["v0"]
     _assert_valid_manifest(body)
+
+
+def test_the_few_shot_stage_is_labelled_when_enabled(monkeypatch):
+    app = _build_client(monkeypatch, QA_FEWSHOTS_ENABLED="true")
+    with TestClient(app) as c:
+        stages = c.get("/meno/v1/manifest").json()["stages"]
+    assert stages["fewshot_selection"] == {"ru": "Подбор примеров", "en": "Few-shot selection"}
+    assert stages["prepare"] == {"ru": "Подготовка", "en": "Preparation"}
 
 
 def test_an_id_with_a_space_is_skipped(client):
@@ -125,7 +147,7 @@ def test_an_id_with_a_space_is_skipped(client):
 
 
 def test_a_long_display_name_is_cut_to_128(client, monkeypatch):
-    client.app.state.settings.llm_display_names = "long=" + "x" * 200
+    monkeypatch.setattr(client.app.state.settings, "llm_display_names", "long=" + "x" * 200)
     body = _manifest_for(client, [{"id": "long"}])
     assert len(body["llms"][0]["name"]) == 128
     _assert_valid_manifest(body)
