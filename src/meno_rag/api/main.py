@@ -22,6 +22,7 @@ from sqlalchemy import text
 from meno_rag.api import arena, auth, feedback, guest, history, legal, privacy
 from meno_rag.api import bench as bench_mod
 from meno_rag.api import benchmark_config as benchmark_config_mod
+from meno_rag.api import meno_trace as meno_trace_mod
 from meno_rag.api import metrics as metrics_mod
 from meno_rag.api.admission import AdmissionController
 from meno_rag.api.errors import ClassifiedError, classify_error
@@ -811,7 +812,8 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request, res
         temperature = payload.temperature  # pipeline applies QaSampling.temperature when None
         # Benchmarks always get the trace: it is the reason the endpoint exists,
         # and it must not depend on the production capture toggle or sample rate.
-        capture_trace = bench or (
+        meno_trace = meno_trace_mod.wants_meno_trace(request)
+        capture_trace = bench or meno_trace or (
             settings.capture_pipeline_trace and random.random() < settings.pipeline_trace_sample_rate
         )
 
@@ -846,6 +848,7 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request, res
                     on_finish=admission.release,
                     capture_trace=capture_trace,
                     bench=bench,
+                    meno_trace=meno_trace,
                 ),
                 media_type="text/event-stream",
                 headers=stream_headers,
@@ -1040,6 +1043,7 @@ async def _stream_response(
     on_finish: Callable[[], None] | None = None,
     capture_trace: bool = False,
     bench: bool = False,
+    meno_trace: bool = False,
 ):
     pipeline: StandRagPipeline = request.app.state.pipeline
     database: Database = request.app.state.database
@@ -1128,10 +1132,13 @@ async def _stream_response(
         yield sse_data(done_chunk)
         total_ms = round((time.perf_counter() - started) * 1000, 2)
         yield StageSummary(total_ms=total_ms, stages=stage_durations).to_sse()
-        if bench:
+        if meno_trace:
+            # meno-backend/1 section 3: contexts are required, after the answer and before [DONE].
+            yield sse_event("contexts", {"contexts": meno_trace_mod.build_contexts(outcome)})
+        if bench or meno_trace:
             # After the answer, not before it: the blob is large and would
             # otherwise delay the first token for no benefit.
-            trace = getattr(outcome, "trace", None)
+            trace = meno_trace_mod.build_pipeline_trace(outcome) if meno_trace else getattr(outcome, "trace", None)
             if trace is not None:
                 yield sse_event("pipeline_trace", {"pipeline_trace": trace})
         yield sse_data("[DONE]")
