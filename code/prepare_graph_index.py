@@ -334,6 +334,8 @@ def main():
         artifact_extractor = None
         print('The vector-only mode is used: no entity and relation extraction will be performed.')
     else:
+        from graph_utils.prompt_cache import cache_prompt_templates
+        cache_prompt_templates()
         llm_tokenizer = load_hf_tokenizer(args.llm_tokenizer or args.llm_name)
         llm_cache = args.cache_dir if args.cache_dir is not None else os.path.join(graph_dir, 'llm_cache')
         if args.cache_fallback_dir is not None:

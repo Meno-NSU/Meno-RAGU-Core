@@ -1,5 +1,6 @@
 import asyncio
 import codecs
+import functools
 import json
 import os
 from pathlib import Path
@@ -431,12 +432,19 @@ ABBREVIATION_REWRITE_SYSTEM_PROMPT = (
 )
 
 
+@functools.lru_cache(maxsize=None)
+def _abbreviation_pattern(original: str) -> 're.Pattern[str]':
+    # compiled once per abbreviation: re's own cache (512 patterns) is too small for the 450 abbreviations
+    # checked in every chunk together with all other expressions, so they were recompiled each time
+    return re.compile(rf'(?<![\w]){re.escape(original)}(?![\w])')
+
+
 def find_abbreviation_candidates(text: str,
                                  abbreviations: Dict[str, Dict[str, Any]]) -> List[str]:
     norm_abbreviations = []
     for cur_norm_abbr, cur_record in abbreviations.items():
         cur_original = cur_record.get('abbreviation', cur_norm_abbr) if isinstance(cur_record, dict) else cur_norm_abbr
-        if re.search(rf'(?<![\w]){re.escape(cur_original)}(?![\w])', text):
+        if _abbreviation_pattern(cur_original).search(text):
             norm_abbreviations.append(cur_norm_abbr)
     return norm_abbreviations
 
@@ -446,7 +454,7 @@ def count_abbreviation_occurrences(text: str,
     occurrences = {}
     for cur_norm_abbr, cur_record in abbreviations.items():
         cur_original = cur_record.get('abbreviation', cur_norm_abbr) if isinstance(cur_record, dict) else cur_norm_abbr
-        cur_count = len(re.findall(rf'(?<![\w]){re.escape(cur_original)}(?![\w])', text))
+        cur_count = len(_abbreviation_pattern(cur_original).findall(text))
         if cur_count > 0:
             occurrences[cur_norm_abbr] = cur_count
     return occurrences

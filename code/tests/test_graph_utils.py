@@ -287,6 +287,16 @@ class TestFindAbbreviationCandidates:
         counts = count_abbreviation_occurrences('НГУ, НГУ и ещё раз НГУ, а также ММФ.', _make_abbr_dict())
         assert counts == {'нгу': 3, 'ммф': 1}
 
+    def test_abbreviation_patterns_are_compiled_once(self):
+        # the graph build checks 450 abbreviations in every chunk: recompiling the patterns
+        # (re's own cache holds 512) took 45 ms per chunk
+        from graph_utils.graph_utils import _abbreviation_pattern
+        find_abbreviation_candidates('НГУ и ММФ', _make_abbr_dict())
+        misses = _abbreviation_pattern.cache_info().misses
+        find_abbreviation_candidates('Другой текст про ЕГЭ', _make_abbr_dict())
+        count_abbreviation_occurrences('НГУ, НГУ', _make_abbr_dict())
+        assert _abbreviation_pattern.cache_info().misses == misses
+
     def test_occurrence_counting_respects_word_boundaries(self):
         counts = count_abbreviation_occurrences('НГУ и НГУшка, но не нгу.', _make_abbr_dict())
         assert counts == {'нгу': 1}
