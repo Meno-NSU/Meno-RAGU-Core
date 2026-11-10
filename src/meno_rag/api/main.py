@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import random
+import re
 import time
 import uuid
 from collections.abc import Callable
@@ -561,6 +562,29 @@ async def list_models(request: Request):
     return {"object": "list", "data": merged, "core_model_id": core_model_id}
 
 
+_MANIFEST_LLM_ID_RE = re.compile(r"[A-Za-z0-9._:/+@-]{1,128}")
+_MANIFEST_MAX_LLMS = 32
+_MANIFEST_MAX_NAME_CHARS = 128
+
+
+def _manifest_llms(models: list[dict], display_names: dict[str, str]) -> list[dict]:
+    """Contract-valid llm entries: valid ids only, unique (first wins), at most 32, names cut to 128.
+
+    `models` arrives with vLLM entries first, so they win both de-duplication and the cap.
+    """
+    result: list[dict] = []
+    seen: set[str] = set()
+    for m in models:
+        model_id = m["id"]
+        if model_id in seen or not _MANIFEST_LLM_ID_RE.fullmatch(model_id):
+            continue
+        seen.add(model_id)
+        result.append({"id": model_id, "name": display_names.get(model_id, model_id)[:_MANIFEST_MAX_NAME_CHARS]})
+        if len(result) == _MANIFEST_MAX_LLMS:
+            break
+    return result
+
+
 @app.get("/meno/v1/manifest")
 async def meno_backend_manifest(request: Request):
     """Self-description for the Meno gateway (contract meno-backend/1, section 1.1)."""
@@ -568,8 +592,7 @@ async def meno_backend_manifest(request: Request):
     listing = await list_models(request)
     # Only models usable without sign-in: the gateway calls this stand anonymously.
     models = [m for m in listing["data"] if not m.get("requires_auth")]
-    names = settings.llm_display_name_map
-    llms = [{"id": m["id"], "name": names.get(m["id"], m["id"])} for m in models]
+    llms = _manifest_llms(models, settings.llm_display_name_map)
     ids = [m["id"] for m in llms]
     default_llm = settings.default_model if settings.default_model in ids else (ids[0] if ids else "")
     manifest = {
