@@ -34,12 +34,11 @@ PART = relation('Генетика дрозофилы', 'НГУ', 'PART_OF', 'К�
 PUBLISHED = relation('Генетика дрозофилы', '2019', 'POINT_IN_TIME', 'Курс издан в 2019 году', 4)
 
 
-def review(fix=(), no_fit=(), drop=(), added=()):
-    return RelationReviewModel.model_validate(
-        {'fix': list(fix), 'no_fit': list(no_fit), 'drop': list(drop), 'added': list(added)})
+def review(change=(), drop=(), added=()):
+    return RelationReviewModel.model_validate({'change': list(change), 'drop': list(drop), 'added': list(added)})
 
 
-def fix(number, relation_type='', reverse=False, source_entity='', target_entity=''):
+def change(number, relation_type='', reverse=False, source_entity='', target_entity=''):
     return {'id': number, 'relation_type': relation_type, 'reverse': reverse,
             'source_entity': source_entity, 'target_entity': target_entity}
 
@@ -74,48 +73,44 @@ def test_drop_removes_only_the_listed_relation(validator):
 def test_conflicting_or_unknown_numbers_keep_the_relation(validator):
     result, stats = apply_review(
         [WORKS, PART],
-        review(fix=[fix(1, 'MEMBER_OF')], drop=[{'id': 1, 'reason': 'unsupported'}, {'id': 2, 'reason': 'duplicate'},
-                                                 {'id': 2, 'reason': 'unsupported'}, {'id': 9, 'reason': 'unsupported'}]),
+        review(change=[change(1, 'MEMBER_OF')],
+               drop=[{'id': 1, 'reason': 'unsupported'}, {'id': 2, 'reason': 'duplicate'},
+                     {'id': 2, 'reason': 'unsupported'}, {'id': 9, 'reason': 'unsupported'}]),
         ENTITIES, validator,
     )
     assert dumps(result) == dumps([WORKS, PART])
     assert stats['verdict_conflict'] == 2 and stats['verdict_ignored'] == 1
 
 
-def test_fix_changes_only_type_direction_and_endpoint_names(validator):
+def test_change_alters_only_type_direction_and_endpoint_names(validator):
     backwards = relation('НГУ', 'Иванов', 'PART_OF', 'Иванов работает в НГУ', 5)
     misspelt = relation('Иванов', 'Нгу', 'MEMBER_OF', 'Иванов состоит в НГУ', 2)
     result, stats = apply_review(
-        [backwards, misspelt], review(fix=[fix(1, 'WORKPLACE', reverse=True), fix(2, target_entity='НГУ')]),
+        [backwards, misspelt, PUBLISHED],
+        review(change=[change(1, 'WORKPLACE', reverse=True), change(2, target_entity='НГУ'),
+                       change(3, 'DATE_OF_CREATION')]),
         ENTITIES, validator,
     )
     assert dumps(result) == dumps([
         relation('Иванов', 'НГУ', 'WORKPLACE', 'Иванов работает в НГУ', 5),
         relation('Иванов', 'НГУ', 'MEMBER_OF', 'Иванов состоит в НГУ', 2),
+        relation('Генетика дрозофилы', '2019', 'DATE_OF_CREATION', 'Курс издан в 2019 году', 4),
     ])
-    assert stats['fix'] == 2
+    assert stats['fix'] == 3 and stats['marked_unfit'] == 0
 
 
-def test_fix_that_does_not_fit_is_rejected(validator):
+def test_change_to_an_allowed_type_that_does_not_fit_is_rejected(validator):
     result, stats = apply_review(
-        [WORKS, PART], review(fix=[fix(1, 'DATE_OF_BIRTH'), fix(2, target_entity='Новосибирск')]), ENTITIES, validator,
+        [WORKS, PART], review(change=[change(1, 'DATE_OF_BIRTH'), change(2, target_entity='Новосибирск')]),
+        ENTITIES, validator,
     )
     assert dumps(result) == dumps([WORKS, PART])
     assert stats['fix_rejected'] == 2
 
 
-def test_no_fit_with_a_proposed_type_that_fits_becomes_a_fix(validator):
-    result, stats = apply_review([PUBLISHED], review(no_fit=[{'id': 1, 'proposed_type': 'DATE_OF_CREATION'}]),
-                                 ENTITIES, validator)
-    assert dumps(result) == dumps([relation('Генетика дрозофилы', '2019', 'DATE_OF_CREATION',
-                                            'Курс издан в 2019 году', 4)])
-    assert stats['no_fit_fixed'] == 1 and stats['marked_unfit'] == 0
-
-
-def test_relation_without_a_fitting_type_is_kept_with_a_mark(validator):
+def test_own_label_keeps_the_relation_with_a_mark(validator):
     invented = relation('Иванов', 'Генетика дрозофилы', 'TEACHES', 'Иванов читает курс', 4)
-    result, stats = apply_review([TEACHES, invented], review(no_fit=[{'id': 1, 'proposed_type': 'TEACHES'}]),
-                                 ENTITIES, validator)
+    result, stats = apply_review([TEACHES, invented], review(change=[change(1, 'TEACHES')]), ENTITIES, validator)
     assert [item.relation_type for item in result] == [UNFIT_PREFIX + 'AGENT', UNFIT_PREFIX + 'TEACHES']
     assert [item.description for item in result] == ['Иванов читает курс', 'Иванов читает курс']
     assert stats['no_fit'] == 1 and stats['marked_unfit'] == 2
@@ -175,10 +170,10 @@ def test_review_prompt_numbers_relations_shows_signatures_and_notes(validator):
     system, user = messages[0]['content'], messages[1]['content']
     assert 'WORKPLACE [PERSON -> ORGANIZATION|FACILITY]' in system
     assert 'DATE_OF_BIRTH' not in system
-    assert '1. Иванов (PERSON) -> НГУ (ORGANIZATION) | WORKPLACE | Иванов работает в НГУ\n' in user
-    assert ('2. Иванов (PERSON) -> Генетика дрозофилы (WORK_OF_ART) | AGENT | Иванов читает курс '
+    assert '1. Иванов -> НГУ | WORKPLACE | PERSON -> ORGANIZATION | Иванов работает в НГУ\n' in user
+    assert ('2. Иванов -> Генетика дрозофилы | AGENT | PERSON -> WORK_OF_ART | Иванов читает курс '
             '! AGENT does not accept PERSON -> WORK_OF_ART\n') in user
-    assert '3. Иванов (PERSON) -> Петров (?) | KNOWS' in user
+    assert '3. Иванов -> Петров | KNOWS | PERSON -> ? |' in user
     assert user.rstrip().endswith('Иванов работает в НГУ и читает курс «Генетика дрозофилы».')
 
 
@@ -222,7 +217,7 @@ REVIEW_PASSES = ['Extracting entities from chunks', 'Validating extracted entiti
 
 def test_review_replaces_the_rewriting_validation_and_unfit_relations_reach_the_graph(tmp_path):
     async def run():
-        model = ReviewModel({'no_fit': [{'id': 2, 'proposed_type': 'TEACHES'}]})
+        model = ReviewModel({'change': [change(2, 'TEACHES')]})
         with GraphCheckpoints(tmp_path, {}) as store:
             _, relations = await review_extractor(model, store).extract(chunks())
             assert '05-relation-review' in store.manifest['stages']
