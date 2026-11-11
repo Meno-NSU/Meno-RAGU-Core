@@ -7,13 +7,14 @@ ontology later enforces, so a third of the relations were dropped after it for t
 
 The review shows the numbered relations with the types of their endpoints and the admissible relation types with
 their signatures, flags the relations the ontology would reject together with the types that accept their pair, and
-asks only for changes (a new type, direction or endpoint name), drops with a reason, and missing relations. Every
+asks only for changes of type, drops with a reason, and missing relations. Every
 field of a structured answer is mandatory, so listing only the changes keeps the answer short. Code applies them:
 
 * a relation the review does not list stays exactly as extracted, and a chunk whose review failed keeps all of its
   relations, so the review removes only what it names with a reason;
-* a change may alter only the type, the direction or an endpoint name, and is applied only when the result fits the
-  ontology exactly; a change to a label outside the ontology means that no type fits: the relation stays as it is;
+* a change alters only the type and is applied only when the ontology keeps the result (turning it around itself
+  when the reversed pair fits); a change to a label outside the ontology means that no type fits: the relation stays
+  as it is;
 * a relation the ontology would drop for its type (no fitting type for the pair, or a type outside the vocabulary) is
   kept with the type ``UNFIT:<type>``. Dangling endpoints and self-loops are left to the ontology, which drops them.
 """
@@ -35,16 +36,13 @@ _UNFIT_VIOLATIONS = {'constraint_violation', 'unknown_relation_type'}
 class RelationChange(BaseModel):
     id: int = Field(..., description='Number of the relation in the list')
     relation_type: str = Field(..., description=(
-        'An allowed type that fits the two entity types; if none fits, your own short UPPER_SNAKE_CASE label; '
-        '"" to keep the type'))
-    reverse: bool = Field(..., description='true to swap the source and the target')
-    source_entity: str = Field(..., description='The exact source name from the entity list, or "" to keep it')
-    target_entity: str = Field(..., description='The exact target name from the entity list, or "" to keep it')
+        'An allowed type that fits the two entity types and states what the text says; '
+        'if none does, your own short UPPER_SNAKE_CASE label'))
 
 
 class RelationDrop(BaseModel):
     id: int = Field(..., description='Number of the relation in the list')
-    reason: Literal['unsupported', 'different_rows', 'boilerplate', 'duplicate']
+    reason: Literal['unsupported', 'different_rows', 'boilerplate']
 
 
 class RelationReviewModel(BaseModel):
@@ -56,18 +54,14 @@ class RelationReviewModel(BaseModel):
 REVIEW_SYSTEM = """You check relations that were extracted from a text, against that text and against the allowed relation types.
 List only the relations that need a change, by their numbers, each at most once. Every relation you do not list is kept exactly as it is.
 
-- "change": the text supports the relation, but its type, its direction or an endpoint name is wrong. Give:
-  - "relation_type": an allowed type whose signature fits the types of the two entities; when no allowed type fits, a short UPPER_SNAKE_CASE label of your own (the relation is then kept as it is and marked); "" to keep the type;
-  - "reverse": true to swap the source and the target;
-  - "source_entity" / "target_entity": the exact name from the entity list when an endpoint is a misspelling or a variant of a listed entity, otherwise "".
+- "change": the text supports the relation, but its type is wrong. Give "relation_type": an allowed type whose signature fits the types of the two entities and that states what the text says about them. Do not pick a type only because it accepts any pair. When no allowed type states it, give a short UPPER_SNAKE_CASE label of your own: the relation is then kept as it is and marked.
 - "drop": the relation has to go. Give the "reason":
   - "unsupported": the text gives no basis for this connection at all;
   - "different_rows": the two entities come from different rows of a table or different items of a list, and nothing in the text connects them;
-  - "boilerplate": the relation comes from the furniture of the page (navigation, copyright notices, identifiers, counters) and says nothing about the entities themselves;
-  - "duplicate": another relation in the list states the same connection between the same entities.
+  - "boilerplate": the relation comes from the furniture of the page (navigation, copyright notices, identifiers, counters) and says nothing about the entities themselves.
   A weak or indirect connection that the text supports is not a reason to drop. When in doubt, do not list the relation.
 
-A relation followed by "!" will be discarded as it is. Its note names the allowed types for its pair of entity types: change the relation to one of them when one matches its meaning, otherwise give your own label.
+A relation followed by "!" will be discarded as it is. Its note names the allowed types for its pair of entity types: change the relation to one of them when one states its meaning, otherwise give your own label.
 {% if relation_types %}
 Allowed relation types. A type shown as `TYPE [SUBJECT -> OBJECT] (meaning)` may only go from an entity of a SUBJECT type to an entity of an OBJECT type; `|` separates alternatives, `<->` marks a relation that holds in both directions, and a type shown without brackets accepts any pair. The source entity is the SUBJECT: follow the arrow.
 {{ relation_types }}
@@ -140,31 +134,6 @@ def relation_note(relation: RelationModel, types: dict, validator: OntologyValid
     return f'{problem}; {_accepting(subject_type, object_type, validator)}'
 
 
-def _fits(relation: RelationModel, types: dict, validator: OntologyValidator | None) -> bool:
-    """Whether a fixed relation can be accepted as it is: listed endpoints, no loop, a type that fits exactly."""
-    if relation.source_entity not in types or relation.target_entity not in types:
-        return False
-    if relation.source_entity == relation.target_entity:
-        return False
-    if validator is None:
-        return True
-    ontology = validator.ontology
-    canonical = ontology.resolve_relation_type(relation.relation_type)
-    return canonical is not None and ontology.allows(
-        canonical, types[relation.source_entity], types[relation.target_entity])
-
-
-def _fixed(relation: RelationModel, change: RelationChange) -> RelationModel:
-    update = {field: getattr(change, field).strip()
-              for field in ('relation_type', 'source_entity', 'target_entity') if getattr(change, field).strip()}
-    result = relation.model_copy(update=update)
-    if change.reverse:
-        result = result.model_copy(update={
-            'source_entity': result.target_entity, 'target_entity': result.source_entity,
-        })
-    return result
-
-
 def _changes(review: RelationReviewModel, count: int, stats: Counter) -> dict[int, tuple[str, BaseModel]]:
     """The change of each listed relation; a number listed twice or out of range changes nothing."""
     listed: dict[int, list[tuple[str, BaseModel]]] = {}
@@ -204,13 +173,14 @@ def apply_review(
                 stats[f'drop:{change.reason}'] += 1
                 continue
             if kind == 'change':
-                fixed = _fixed(item, change)
-                if fixed == item:
+                label = change.relation_type.strip()
+                fixed = item.model_copy(update={'relation_type': label})
+                if not label or label == item.relation_type:
                     stats['change_unchanged'] += 1
-                elif _fits(fixed, types, validator):
+                elif validator is None or _rejection(fixed, types, validator) is None:
                     stats['fix'] += 1
                     item = fixed
-                elif validator is not None and validator.ontology.resolve_relation_type(fixed.relation_type) is None:
+                elif validator.ontology.resolve_relation_type(label) is None:
                     stats['no_fit'] += 1
                 else:
                     stats['fix_rejected'] += 1

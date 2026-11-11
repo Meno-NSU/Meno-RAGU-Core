@@ -38,9 +38,8 @@ def review(change=(), drop=(), added=()):
     return RelationReviewModel.model_validate({'change': list(change), 'drop': list(drop), 'added': list(added)})
 
 
-def change(number, relation_type='', reverse=False, source_entity='', target_entity=''):
-    return {'id': number, 'relation_type': relation_type, 'reverse': reverse,
-            'source_entity': source_entity, 'target_entity': target_entity}
+def change(number, relation_type):
+    return {'id': number, 'relation_type': relation_type}
 
 
 @pytest.fixture(scope='module')
@@ -74,7 +73,7 @@ def test_conflicting_or_unknown_numbers_keep_the_relation(validator):
     result, stats = apply_review(
         [WORKS, PART],
         review(change=[change(1, 'MEMBER_OF')],
-               drop=[{'id': 1, 'reason': 'unsupported'}, {'id': 2, 'reason': 'duplicate'},
+               drop=[{'id': 1, 'reason': 'unsupported'}, {'id': 2, 'reason': 'different_rows'},
                      {'id': 2, 'reason': 'unsupported'}, {'id': 9, 'reason': 'unsupported'}]),
         ENTITIES, validator,
     )
@@ -82,30 +81,24 @@ def test_conflicting_or_unknown_numbers_keep_the_relation(validator):
     assert stats['verdict_conflict'] == 2 and stats['verdict_ignored'] == 1
 
 
-def test_change_alters_only_type_direction_and_endpoint_names(validator):
+def test_change_alters_only_the_type_and_the_ontology_may_turn_it_around(validator):
     backwards = relation('НГУ', 'Иванов', 'PART_OF', 'Иванов работает в НГУ', 5)
-    misspelt = relation('Иванов', 'Нгу', 'MEMBER_OF', 'Иванов состоит в НГУ', 2)
     result, stats = apply_review(
-        [backwards, misspelt, PUBLISHED],
-        review(change=[change(1, 'WORKPLACE', reverse=True), change(2, target_entity='НГУ'),
-                       change(3, 'DATE_OF_CREATION')]),
+        [backwards, PUBLISHED], review(change=[change(1, 'WORKPLACE'), change(2, 'DATE_OF_CREATION')]),
         ENTITIES, validator,
     )
     assert dumps(result) == dumps([
-        relation('Иванов', 'НГУ', 'WORKPLACE', 'Иванов работает в НГУ', 5),
-        relation('Иванов', 'НГУ', 'MEMBER_OF', 'Иванов состоит в НГУ', 2),
+        relation('НГУ', 'Иванов', 'WORKPLACE', 'Иванов работает в НГУ', 5),
         relation('Генетика дрозофилы', '2019', 'DATE_OF_CREATION', 'Курс издан в 2019 году', 4),
     ])
-    assert stats['fix'] == 3 and stats['marked_unfit'] == 0
+    assert stats['fix'] == 2 and stats['marked_unfit'] == 0
 
 
 def test_change_to_an_allowed_type_that_does_not_fit_is_rejected(validator):
-    result, stats = apply_review(
-        [WORKS, PART], review(change=[change(1, 'DATE_OF_BIRTH'), change(2, target_entity='Новосибирск')]),
-        ENTITIES, validator,
-    )
+    result, stats = apply_review([WORKS, PART], review(change=[change(1, 'DATE_OF_BIRTH'), change(2, '  ')]),
+                                 ENTITIES, validator)
     assert dumps(result) == dumps([WORKS, PART])
-    assert stats['fix_rejected'] == 2
+    assert stats['fix_rejected'] == 1 and stats['change_unchanged'] == 1
 
 
 def test_own_label_keeps_the_relation_with_a_mark(validator):
