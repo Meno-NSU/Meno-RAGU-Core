@@ -14,15 +14,72 @@ since an institute, a prize or a street is named after a person. A person name o
 name (three words) it fits, word for word or by initials, when exactly one full name fits; full names written in
 another word order join their most frequent spelling. One-word names and names more than one full name fits stay.
 Relations follow their endpoints; a relation that becomes a loop (an alias of the same person) goes.
+
+Inputs (CleanupInputs, files of a graph build): chunks whose artifacts stay out of the graph (pages that repeat one
+record in several citation formats; the chunks stay in the chunk index), entities a model labeled as values or junk
+(a DOI typed PRODUCT, an e-mail typed LOCATION), folded like values after the name variants are merged, and merges of
+duplicate entities a model confirmed (name and type to name and type), applied last.
 """
 import dataclasses
+import json
 import re
 from collections import Counter, defaultdict
+from pathlib import Path
 
 from ragu.graph.types import Entity, Relation
 
 VALUE_TYPES = frozenset({'NUMBER', 'DATE', 'TIME', 'AGE', 'MONEY', 'PERCENT', 'ORDINAL'})
 _WORD = re.compile(r'[^\W\d_]+')
+
+
+@dataclasses.dataclass(frozen=True)
+class CleanupInputs:
+    excluded_chunks: frozenset = frozenset()
+    folded: frozenset = frozenset()  # (name, type) labeled as a value or junk
+    merges: tuple = ()  # ((name, type), (name, type)): duplicate -> target
+
+
+def load_cleanup_inputs(excluded_path=None, labels_path=None, merges_path=None) -> CleanupInputs:
+    excluded = frozenset(json.loads(Path(excluded_path).read_text(encoding='utf-8'))) if excluded_path else frozenset()
+    folded = set()
+    if labels_path:
+        for line in Path(labels_path).read_text(encoding='utf-8').splitlines():
+            row = json.loads(line) if line.strip() else None
+            if row and row['label'] in ('value', 'junk'):
+                folded.add((row['name'], row['type']))
+    merges = []
+    if merges_path:
+        for line in Path(merges_path).read_text(encoding='utf-8').splitlines():
+            row = json.loads(line) if line.strip() else None
+            if row:
+                merges.append((tuple(row['from']), tuple(row['to'])))
+    return CleanupInputs(excluded, frozenset(folded), tuple(merges))
+
+
+def exclude_chunks(entities: list[Entity], relations: list[Relation], excluded: frozenset
+                   ) -> tuple[list[Entity], list[Relation], dict[str, int]]:
+    stats = {'excluded_entities': 0, 'excluded_relations': 0, 'dangling_relations': 0}
+
+    def kept(items, key):
+        result = []
+        for item in items:
+            chunks = [chunk for chunk in item.source_chunk_id if chunk not in excluded]
+            if not chunks:
+                stats[key] += 1
+            else:
+                result.append(item if len(chunks) == len(item.source_chunk_id)
+                              else dataclasses.replace(item, source_chunk_id=chunks))
+        return result
+
+    entities = kept(entities, 'excluded_entities')
+    ids = {entity.id for entity in entities}
+    result = []
+    for relation in kept(relations, 'excluded_relations'):
+        if relation.subject_id in ids and relation.object_id in ids:
+            result.append(relation)
+        else:
+            stats['dangling_relations'] += 1
+    return entities, result, stats
 
 
 def _with_facts(description: str, facts: list[str]) -> str:
@@ -49,8 +106,10 @@ def _fact(description: str, value: str) -> str:
     return description if _names_value(description, value) else f"{description.strip().rstrip('.')}: {value}."
 
 
-def fold_values(entities: list[Entity], relations: list[Relation]) -> tuple[list[Entity], list[Relation], dict[str, int]]:
-    value_names = {entity.id: entity.entity_name for entity in entities if entity.entity_type in VALUE_TYPES}
+def fold_values(entities: list[Entity], relations: list[Relation], folded: frozenset = frozenset()
+                ) -> tuple[list[Entity], list[Relation], dict[str, int]]:
+    value_names = {entity.id: entity.entity_name for entity in entities
+                   if entity.entity_type in VALUE_TYPES or (entity.entity_name, entity.entity_type) in folded}
     value_ids = set(value_names)
     facts: dict[tuple[str, str], list[str]] = defaultdict(list)
     kept_relations = []
@@ -191,7 +250,55 @@ def merge_variants(entities: list[Entity], relations: list[Relation]) -> tuple[l
     return result, kept, stats
 
 
-def clean_graph(entities: list[Entity], relations: list[Relation]) -> tuple[list[Entity], list[Relation], dict[str, int]]:
+def apply_merges(entities: list[Entity], relations: list[Relation], merges: tuple
+                 ) -> tuple[list[Entity], list[Relation], dict[str, int]]:
+    target_of = dict(merges)
+    stats = {'merged_entities': 0, 'merge_self_loops_dropped': 0}
+    replacement: dict[str, str] = {}
+    name_by_id: dict[str, str] = {}
+    result = []
+    for entity in entities:
+        target = target_of.get((entity.entity_name, entity.entity_type))
+        if target is not None and target != (entity.entity_name, entity.entity_type):
+            renamed = Entity(entity_name=target[0], entity_type=target[1], description=entity.description,
+                             source_chunk_id=entity.source_chunk_id, documents_id=entity.documents_id,
+                             clusters=entity.clusters)
+            replacement[entity.id] = renamed.id
+            stats['merged_entities'] += 1
+            entity = renamed
+        name_by_id[entity.id] = entity.entity_name
+        result.append(entity)
+    kept = []
+    for relation in relations:
+        subject_id = replacement.get(relation.subject_id, relation.subject_id)
+        object_id = replacement.get(relation.object_id, relation.object_id)
+        if subject_id == object_id:
+            stats['merge_self_loops_dropped'] += 1
+            continue
+        if (subject_id, object_id) != (relation.subject_id, relation.object_id):
+            relation = Relation(subject_id=subject_id, object_id=object_id,
+                                subject_name=name_by_id.get(subject_id, relation.subject_name),
+                                object_name=name_by_id.get(object_id, relation.object_name),
+                                relation_type=relation.relation_type, description=relation.description,
+                                relation_strength=relation.relation_strength, source_chunk_id=relation.source_chunk_id)
+        kept.append(relation)
+    return result, kept, stats
+
+
+def clean_graph(entities: list[Entity], relations: list[Relation], inputs: CleanupInputs | None = None
+                ) -> tuple[list[Entity], list[Relation], dict[str, int]]:
+    inputs = inputs or CleanupInputs()
+    stats: dict[str, int] = {}
+    if inputs.excluded_chunks:
+        entities, relations, excluded = exclude_chunks(entities, relations, inputs.excluded_chunks)
+        stats.update(excluded)
     entities, relations, folded = fold_values(entities, relations)
     entities, relations, merged = merge_variants(entities, relations)
-    return entities, relations, {**folded, **merged}
+    stats.update({**folded, **merged})
+    if inputs.folded:
+        entities, relations, labeled = fold_values(entities, relations, inputs.folded)
+        stats.update({f'labeled_{key}': value for key, value in labeled.items()})
+    if inputs.merges:
+        entities, relations, applied = apply_merges(entities, relations, inputs.merges)
+        stats.update(applied)
+    return entities, relations, stats

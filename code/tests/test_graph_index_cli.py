@@ -131,3 +131,22 @@ def test_context_guard_distinguishes_oversized_input_from_completion_budget_and_
         asyncio.run(llm.chat_completion(conversation))
     assert tokenizer.calls == 1
     llm.client.chat_completion.assert_not_awaited()
+
+
+def test_cleanup_inputs_are_hashed_into_the_configuration_and_extra_embedders_are_not(tmp_path):
+    from argparse import Namespace
+
+    from graph_utils.checkpoints import CLEANUP_INPUTS, checkpoint_configuration, previous_cleanup_inputs_configuration
+    files = {}
+    for name in ('input_name', 'reverse_index_name', *CLEANUP_INPUTS):
+        files[name] = tmp_path / f'{name}.json'
+        files[name].write_text(f'["{name}"]', encoding='utf-8')
+    args = Namespace(**{name: str(path) for name, path in files.items()}, abbr_fname=None,
+                     embedder_extra_urls='http://everest:9026/v1', graph_cleanup=True)
+    configuration = checkpoint_configuration(args)
+    assert set(CLEANUP_INPUTS) <= set(configuration['files'])
+    assert 'embedder_extra_urls' not in configuration['settings']
+    previous = previous_cleanup_inputs_configuration(configuration)
+    assert not set(CLEANUP_INPUTS) & (set(previous['files']) | set(previous['settings']))
+    files['graph_merges'].write_text('["other"]', encoding='utf-8')
+    assert checkpoint_configuration(args)['files']['graph_merges'] != configuration['files']['graph_merges']

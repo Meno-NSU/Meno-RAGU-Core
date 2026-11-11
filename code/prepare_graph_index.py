@@ -53,6 +53,7 @@ from graph_utils.checkpoints import (
     checkpoint_configuration,
 )
 from graph_utils.compact_embeddings import CompactEmbeddingClient
+from graph_utils.graph_cleanup import load_cleanup_inputs
 from graph_utils.relation_review import chunk_ids
 from rewriting_utils.rewriting_utils import load_abbreviations
 from tokenization_utils.tokenization_utils import load_hf_tokenizer
@@ -167,6 +168,9 @@ def main():
     parser.add_argument('--embedder_url', dest='embedder_base_url', type=str, required=False, default=None,
                         help='Your URL prefix for the OpenAI-compatible embeddings API '
                              '(the "--url" value is used if it is not specified).')
+    parser.add_argument('--embedder_extra_urls', dest='embedder_extra_urls', type=str, required=False, default='',
+                        help='Comma-separated URL prefixes of more servers of the same embedding model; vectorization '
+                             'sends each batch to the least busy server. Does not change the graph or its checkpoints.')
     parser.add_argument('--embedder_key', dest='embedder_api_key', type=str, required=False, default=os.getenv('MENO_INDEX_EMBEDDER_KEY'),
                         help='Your secret OpenAI API key for the embeddings API '
                              '(the "--key" value is used if it is not specified).')
@@ -208,6 +212,15 @@ def main():
                              'times, ages, money, percents, ordinals) become part of the description of what they '
                              'describe instead of nodes; one name under several types takes its most frequent type '
                              '(not for people); person name variants join the only full name they fit.')
+    parser.add_argument('--graph_exclude_chunks', dest='graph_exclude_chunks', type=str, required=False, default=None,
+                        help='With --graph_cleanup: a JSON list of chunk ids whose artifacts stay out of the graph '
+                             '(the chunks stay in the chunk index).')
+    parser.add_argument('--graph_entity_labels', dest='graph_entity_labels', type=str, required=False, default=None,
+                        help='With --graph_cleanup: JSONL of entity labels (name, type, label); entities labeled '
+                             '"value" or "junk" become part of the description of what they describe, as values do.')
+    parser.add_argument('--graph_merges', dest='graph_merges', type=str, required=False, default=None,
+                        help='With --graph_cleanup: JSONL of confirmed duplicates ({"from": [name, type], "to": '
+                             '[name, type]}); a duplicate joins its target and relations follow.')
     parser.add_argument('--relation_review_sources', dest='relation_review_sources', type=str, required=False,
                         default='',
                         help='The comma-separated list of content sources whose chunks get the relation review '
@@ -348,8 +361,13 @@ def main():
     Settings.embedder_token_limit = args.embedder_tokens
 
     embedder_client = CachedAsyncOpenAI(base_url=embedder_base_url, api_key=embedder_api_key)
+    extra_embedders = [CachedAsyncOpenAI(base_url=url.strip(), api_key=embedder_api_key)
+                       for url in args.embedder_extra_urls.split(',') if url.strip()]
     # vectors as float32 arrays: the index keeps all of them until it stores them (see compact_embeddings)
-    dense_embedder = EmbedderOpenAI(client=CompactEmbeddingClient(embedder_client), model_name=args.embedder_name)
+    dense_embedder = EmbedderOpenAI(client=CompactEmbeddingClient(embedder_client, *extra_embedders),
+                                    model_name=args.embedder_name, max_concurrent_batches=5 * (1 + len(extra_embedders)))
+    if extra_embedders:
+        print(f'Vectorization shares batches between {1 + len(extra_embedders)} embedding servers.')
     sparse_embedder = RagUBM25(language=SPARSE_MODEL_LANGUAGE)
     print(f'The sparse embedder is the fastembed BM25 model for the "{SPARSE_MODEL_LANGUAGE}" language.')
 
@@ -425,6 +443,7 @@ def main():
             do_relation_validation=not args.no_validation,
             relation_review=args.relation_review,
             graph_cleanup=args.graph_cleanup,
+            cleanup_inputs=load_cleanup_inputs(args.graph_exclude_chunks, args.graph_entity_labels, args.graph_merges),
             review_chunk_ids=review_chunk_ids,
             abbreviations=abbreviations,
             rewrite_concurrency=args.rate_max_simultaneous if args.rate_max_simultaneous > 0 else 8,

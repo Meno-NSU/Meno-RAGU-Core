@@ -93,6 +93,22 @@ COMPACT_VECTORS_PREVIOUS_CODE = {
     'prepare_graph_index.py': 'eb12b68884c32dee9a97b713507002eaa11e43d0cfad17c7bb84bd01d01cd8de',
     'graph_utils/checkpoints.py': '1cca3036dbd5272492afac0fc205dc3df23683d0c7a2cfa432dbf76eae7f34d2',
 }
+# The code of the cleanup variant (6131990) before the cleanup took inputs (excluded chunks, entity labels, merges).
+# Stages 01-05 stay; 06 (the cleanup) and later are recomputed.
+CLEANUP_INPUTS_PREVIOUS_CODE = {
+    'prepare_graph_index.py': 'e3fff6d644485586fae38c3faa7dd714899a3e339749917e34a74e4ae5875bf4',
+    'graph_utils/checkpoints.py': '43175b54aca35aaee1ad221bd69bbc24cd6cb7c7a88423d92cbe62af76b4938c',
+    'graph_utils/graph_cleanup.py': 'e1805949411c80558dba1d913ed7dda484c37f0203f4ab7ab15176cf68978349',
+    'graph_utils/graph_utils.py': 'b4d2a84213f1da0045348eb44fb7fcbb4f1295aa0dc083459515bcb3acbdcbc5',
+    'graph_utils/compact_embeddings.py': '372b45cf3cace81fe11e999865de2e25ec7812f2c5762e86e086e6392167999f',
+}
+CLEANUP_INPUTS = ('graph_exclude_chunks', 'graph_entity_labels', 'graph_merges')
+
+
+def previous_cleanup_inputs_configuration(configuration):
+    previous = _previous_code(configuration, CLEANUP_INPUTS_PREVIOUS_CODE, (), CLEANUP_INPUTS)
+    previous['files'] = {key: value for key, value in configuration.get('files', {}).items() if key not in CLEANUP_INPUTS}
+    return previous
 
 
 def _previous_code(configuration, code, new_files, new_settings):
@@ -148,6 +164,8 @@ UPGRADES = (
      'Сохраняю снимки 01–06; обобщение 07–11 готовит описания без построчного обновления таблицы.'),
     (previous_compact_vectors_configuration, '12-', 'manifest.before-compact-vectors.json',
      'Сохраняю все снимки, 11 включительно; векторы графа хранятся в памяти как float32.'),
+    (previous_cleanup_inputs_configuration, '06-', 'manifest.before-cleanup-inputs.json',
+     'Сохраняю снимки 01–05; очистка 06 учитывает исключённые чанки, разметку сущностей и слияния дублей.'),
 )
 
 
@@ -195,11 +213,11 @@ def checkpoint_configuration(args):
     root = Path(__file__).resolve().parents[1]
     ignored = {
         'log_level', 'rate_max_simultaneous', 'rate_max_per_minute', 'rate_min_delay',
-        'cache_dir', 'checkpoint_dir', 'openai_api_key', 'embedder_api_key', 'qdrant_key',
+        'cache_dir', 'checkpoint_dir', 'openai_api_key', 'embedder_api_key', 'qdrant_key', 'embedder_extra_urls',
     }
     settings = {key: value for key, value in vars(args).items() if key not in ignored}
     files = {}
-    for name in ('input_name', 'reverse_index_name', 'abbr_fname'):
+    for name in ('input_name', 'reverse_index_name', 'abbr_fname', *CLEANUP_INPUTS):
         value = getattr(args, name, None)
         if value is not None:
             files[name] = file_hash(value)

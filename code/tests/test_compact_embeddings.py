@@ -38,3 +38,18 @@ def test_other_client_calls_reach_the_wrapped_client():
     compact = CompactEmbeddingClient(client)
     assert compact.base_url == client.base_url
     assert asyncio.run(compact.embed_text('bge-m3', 'abc'))[1] == -1.5
+
+
+def test_sub_batches_go_to_the_least_busy_of_several_servers():
+    class Slow(Client):
+        async def embed_texts(self, model_name, texts, **kwargs):
+            await asyncio.sleep(0.05)
+            return await super().embed_texts(model_name, texts, **kwargs)
+
+    slow, fast = Slow(), Client()
+    embedder = EmbedderOpenAI(client=CompactEmbeddingClient(slow, fast), model_name='bge-m3', batch_size=1,
+                              max_concurrent_batches=4, embedder_token_limit=10**6, tokenizer_backend='tiktoken')
+    embedder._truncator = lambda text: text
+    vectors = asyncio.run(embedder.batch_embed_text([str(i) * (i + 1) for i in range(8)]))
+    assert len(vectors) == 8 and all(v.dtype == np.float32 for v in vectors)
+    assert slow.calls and fast.calls and len(fast.calls) > len(slow.calls)
