@@ -117,3 +117,12 @@ def test_reranker_scorer_raises_on_service_errors():
 
     with pytest.raises(httpx.HTTPStatusError):
         asyncio.run(run())
+
+
+def test_a_named_link_of_a_compilation_gives_its_own_title():
+    chunk = ("- Действует [Режим занятий обучающихся в НГУ](https://www.nsu.ru/upload/rezhim.pdf) с 2015 года.\n"
+             "- Расписание публикуется на [table.nsu.ru](http://table.nsu.ru/) перед семестром.")
+    assert [(unit.title, unit.url) for unit in document_units(SUMMARY, [chunk])] == [
+        ("Режим занятий обучающихся в НГУ", "https://www.nsu.ru/upload/rezhim.pdf"),
+        ("Руководство студента", "http://table.nsu.ru/"),
+    ]

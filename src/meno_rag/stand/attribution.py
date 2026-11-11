@@ -6,8 +6,10 @@ against it. The shown sources are the links of those units, best first, one row 
 
 A unit is a chunk of a context document with the document's link. A document compiled from several pages (the
 handbook summaries list many URLs) is split into lines instead, and each line carries the link written in it: the
-compilation names each page next to what it took from it, while the document's first URL is usually another page. A
-line without a link of its own gives no source rather than a wrong one.
+compilation names each page next to what it took from it, while the document's first URL is usually another page. Such a
+line is titled by the text of its link when that names the page ("Режим занятий обучающихся в НГУ", not
+"table.nsu.ru"), since the compilation's own title describes all its pages at once. A line without a link of its own
+gives no source rather than a wrong one.
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ from razdel import sentenize
 from meno_rag.stand.context import normalize_urls
 
 MIN_WORDS = 4
-_LINK = re.compile(r"\[[^\]]*\]\((https?://[^)\s]+)\)|(https?://[^\s)\]>\"«»]+)")
+_LINK = re.compile(r"\[([^\]]*)\]\((https?://[^)\s]+)\)|(https?://[^\s)\]>\"«»]+)")
 Scorer = Callable[[str, list[str]], Awaitable[list[float]]]
 
 
@@ -57,8 +59,15 @@ def norm_url(url: str) -> str:
     return f"{parts.netloc.removeprefix('www.')}{parts.path.rstrip('/')}" + (f"?{parts.query}" if parts.query else "")
 
 
-def _links(text: str) -> list[str]:
-    return [(match.group(1) or match.group(2)).rstrip(".,;:!?") for match in _LINK.finditer(text)]
+def _links(text: str) -> list[tuple[str, str]]:
+    """The links of a line with the text they are written under ("" for a bare URL)."""
+    return [((match.group(2) or match.group(3)).rstrip(".,;:!?"), " ".join((match.group(1) or "").split()))
+            for match in _LINK.finditer(text)]
+
+
+def _names_a_page(anchor: str) -> bool:
+    # "Режим занятий обучающихся в НГУ" names the page; "table.nsu.ru" only repeats its address
+    return bool(re.search(r"[А-Яа-яЁё]", anchor)) or " " in anchor
 
 
 def document_units(document: dict[str, Any], chunk_texts: Sequence[str]) -> list[EvidenceUnit]:
@@ -72,7 +81,8 @@ def document_units(document: dict[str, Any], chunk_texts: Sequence[str]) -> list
             line = line.strip()
             if _words(line) >= MIN_WORDS:
                 links = _links(line)
-                units.append(EvidenceUnit(line, title, links[0] if links else ""))
+                url, anchor = links[0] if links else ("", "")
+                units.append(EvidenceUnit(line, anchor if _names_a_page(anchor) else title, url))
     return units
 
 
