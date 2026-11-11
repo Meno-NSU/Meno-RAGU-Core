@@ -15,6 +15,8 @@ from graph_utils.checkpoints import (
     GraphCheckpoints,
     checkpoint_configuration,
     previous_completion_configuration,
+    previous_context_baseline_configuration,
+    previous_context_cleanup_configuration,
     previous_relation_review_configuration,
     previous_review_sources_configuration,
     previous_summary_configuration,
@@ -372,6 +374,24 @@ def test_relation_review_upgrade_preserves_01_to_04_and_invalidates_later_snapsh
               else 'manifest.before-review-sources.json')
     assert (tmp_path / backup).read_bytes() == before
     assert kept_path.exists()
+
+
+@pytest.mark.parametrize('previous_of, dropped', [
+    (previous_context_baseline_configuration, {'graph_cleanup'}),
+    (previous_context_cleanup_configuration, set()),
+])
+def test_served_context_upgrade_keeps_01_to_06_of_the_running_graph_v2_builds(tmp_path, previous_of, dropped):
+    configuration = {'settings': {'model': 'gemma', 'graph_cleanup': bool(dropped)}, 'files': {'source': 'unchanged'},
+                     'code': {'graph_utils/llm_limits.py': 'new', 'graph_utils/graph_cleanup.py': 'new',
+                              'other-helper': 'unchanged'}}
+    previous = previous_of(configuration)
+    assert set(configuration['settings']) - set(previous['settings']) == dropped
+    assert 'graph_utils/llm_limits.py' not in previous['code']
+    with GraphCheckpoints(tmp_path, previous) as store:
+        store.save('06-artifacts', ([], []), (Entity, Relation))
+        store.save('07-entity-summaries', ([],), (Entity,))
+    with GraphCheckpoints(tmp_path, configuration) as store:
+        assert set(store.manifest['stages']) == {'06-artifacts'}
 
 
 def test_corrupted_manifest_fails_before_running_any_pass(tmp_path):

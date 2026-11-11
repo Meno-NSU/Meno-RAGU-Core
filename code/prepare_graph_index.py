@@ -385,14 +385,20 @@ def main():
             cache=llm_cache,
             debug_errors_storage=os.path.join(graph_dir, 'llm_debug')
         )
+        from graph_utils.llm_limits import effective_context_tokens, served_context_tokens
+        served_context = served_context_tokens(args.openai_base_url, args.llm_name, args.openai_api_key)
+        llm_context_tokens = effective_context_tokens(args.llm_context_tokens, served_context)
+        if llm_context_tokens < args.llm_context_tokens:
+            print(f'The model "{args.llm_name}" serves {served_context} context tokens, so prompts are planned for '
+                  f'{llm_context_tokens} instead of --llm_context_tokens {args.llm_context_tokens}.')
         llm = ContextBudgetLLM(
             client=llm_client, model_name=args.llm_name, temperature=args.temperature,
-            tokenizer=llm_tokenizer, context_tokens=args.llm_context_tokens,
+            tokenizer=llm_tokenizer, context_tokens=llm_context_tokens,
             completion_tokens=args.max_completion_tokens,
         )
         Settings.tokenizer_llm_backend = 'local'
         Settings.tokenizer_llm_name = args.llm_tokenizer or args.llm_name
-        Settings.llm_context_token_limit = args.llm_context_tokens
+        Settings.llm_context_token_limit = llm_context_tokens
         icl_config = None
         icl_embedder = None
         if args.icl_examples > 0:

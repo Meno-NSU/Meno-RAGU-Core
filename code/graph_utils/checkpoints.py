@@ -66,6 +66,37 @@ def previous_review_sources_configuration(configuration):
     return previous
 
 
+# The code of the two graph v2 builds that stopped on a summary prompt planned for 60000 tokens while gemma serves
+# 32000 (--llm_context_tokens is now capped by the served limit, see llm_limits): the baseline build (relation review,
+# 72163fe; no --graph_cleanup option yet) and the cleanup variant (11162d7). Both keep their stages 01-06.
+CONTEXT_BASELINE_PREVIOUS_CODE = {
+    'prepare_graph_index.py': 'db3c1d42e09125d118fb5565c7e108870027e265f0190e9f232fd03ce5552b1a',
+    'graph_utils/checkpoints.py': '016eebb7afcbf7b002687460212bdf192d7450add2a078a57ac80960ffeacc8d',
+    'graph_utils/graph_utils.py': '3fc8f88661904cb33fac653de84346e8844eadb05e8cfba0fe51b26001e0cd9a',
+}
+CONTEXT_CLEANUP_PREVIOUS_CODE = {
+    'prepare_graph_index.py': 'c8f8da384d169702d7526b49b4effd854d84bd3e81f8aee697b281c5039da271',
+    'graph_utils/checkpoints.py': '016eebb7afcbf7b002687460212bdf192d7450add2a078a57ac80960ffeacc8d',
+    'graph_utils/graph_utils.py': 'b4d2a84213f1da0045348eb44fb7fcbb4f1295aa0dc083459515bcb3acbdcbc5',
+}
+
+
+def _previous_code(configuration, code, new_files, new_settings):
+    previous = _without_settings(configuration, new_settings)
+    kept = {key: value for key, value in configuration.get('code', {}).items() if key not in new_files}
+    previous['code'] = {**kept, **code}
+    return previous
+
+
+def previous_context_baseline_configuration(configuration):
+    return _previous_code(configuration, CONTEXT_BASELINE_PREVIOUS_CODE,
+                          ('graph_utils/llm_limits.py', 'graph_utils/graph_cleanup.py'), ('graph_cleanup',))
+
+
+def previous_context_cleanup_configuration(configuration):
+    return _previous_code(configuration, CONTEXT_CLEANUP_PREVIOUS_CODE, ('graph_utils/llm_limits.py',), ())
+
+
 def previous_completion_configuration(configuration):
     return {**configuration, 'code': {**configuration.get('code', {}), **COMPLETION_PREVIOUS_CODE}}
 
@@ -87,6 +118,10 @@ UPGRADES = (
      'Сохраняю снимки 01–04; проверка связей и следующие этапы считаются заново.'),
     (previous_review_sources_configuration, '05-', 'manifest.before-review-sources.json',
      'Сохраняю снимки 01–04; проверка связей выбранных источников и следующие этапы считаются заново.'),
+    (previous_context_baseline_configuration, '07-', 'manifest.before-served-context.json',
+     'Сохраняю снимки 01–06; обобщение 07–11 планирует промпты по контексту, который обслуживает модель.'),
+    (previous_context_cleanup_configuration, '07-', 'manifest.before-served-context.json',
+     'Сохраняю снимки 01–06; обобщение 07–11 планирует промпты по контексту, который обслуживает модель.'),
 )
 
 
