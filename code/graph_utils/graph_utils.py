@@ -32,6 +32,7 @@ except ImportError as err:
 
 from search_utils.search_utils import combine_relevant_chunks
 from graph_utils.local_search import EfficientLocalSearchEngine
+from graph_utils.graph_cleanup import clean_graph
 from graph_utils.relation_review import RelationReviewMixin
 
 try:
@@ -534,12 +535,13 @@ class AbbreviationExpandingExtractor(RelationReviewMixin, TwoStageArtifactsExtra
     """
 
     def __init__(self, *args, abbreviations: Optional[Dict[str, Dict[str, Any]]] = None,
-                 rewrite_concurrency: int = 8, **kwargs):
+                 rewrite_concurrency: int = 8, graph_cleanup: bool = False, **kwargs):
         if type(rewrite_concurrency) is not int or rewrite_concurrency < 1:
             raise ValueError('rewrite_concurrency must be a positive integer.')
         super().__init__(*args, **kwargs)
         self.abbreviations = abbreviations if abbreviations is not None else {}
         self.rewrite_concurrency = rewrite_concurrency
+        self.graph_cleanup = graph_cleanup
         self.num_rewritten_chunks = 0
         self.num_rejected_rewrites = 0
         self.num_failed_rewrites = 0
@@ -547,7 +549,11 @@ class AbbreviationExpandingExtractor(RelationReviewMixin, TwoStageArtifactsExtra
     async def extract(self, chunks: List[Chunk], *args: Any, **kwargs: Any) -> Tuple[List[Entity], List[Relation]]:
         rewritten_chunks = await self._expand_abbreviations(chunks)
         extracted_entities, extracted_relations = await super().extract(rewritten_chunks, *args, **kwargs)
-        return canonicalize_artifacts(extracted_entities, extracted_relations)
+        entities, relations = canonicalize_artifacts(extracted_entities, extracted_relations)
+        if self.graph_cleanup:
+            entities, relations, stats = clean_graph(entities, relations)
+            logger.info('Graph cleanup: {}', ', '.join(f'{key}={value}' for key, value in stats.items()))
+        return entities, relations
 
     async def _expand_abbreviations(self, chunks: List[Chunk]) -> List[Chunk]:
         if len(self.abbreviations) == 0 or not chunks:

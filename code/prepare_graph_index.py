@@ -202,6 +202,11 @@ def main():
                         help='Validate the extracted relations by one verdict per relation instead of rewriting the '
                              'whole list: kept relations stay as extracted, fixes must fit the ontology, and relations '
                              'without a fitting ontology type are kept with the type "UNFIT:<type>".')
+    parser.add_argument('--graph_cleanup', dest='graph_cleanup', action='store_true',
+                        help='Clean the extracted artifacts before their summarization: values (numbers, dates, '
+                             'times, ages, money, percents, ordinals) become part of the description of what they '
+                             'describe instead of nodes; one name under several types takes its most frequent type '
+                             '(not for people); person name variants join the only full name they fit.')
     parser.add_argument('--relation_review_sources', dest='relation_review_sources', type=str, required=False,
                         default='',
                         help='The comma-separated list of content sources whose chunks get the relation review '
@@ -411,6 +416,7 @@ def main():
             do_entity_validation=not args.no_validation,
             do_relation_validation=not args.no_validation,
             relation_review=args.relation_review,
+            graph_cleanup=args.graph_cleanup,
             review_chunk_ids=review_chunk_ids,
             abbreviations=abbreviations,
             rewrite_concurrency=args.rate_max_simultaneous if args.rate_max_simultaneous > 0 else 8,
