@@ -32,6 +32,7 @@ except ImportError as err:
 
 from search_utils.search_utils import combine_relevant_chunks
 from graph_utils.local_search import EfficientLocalSearchEngine
+from graph_utils.relation_review import RelationReviewMixin
 
 try:
     from context_utils.context_utils import global_chunk_index_to_local
@@ -521,7 +522,7 @@ def canonicalize_artifacts(entities: List[Entity],
     return canonical_entities, canonical_relations
 
 
-class AbbreviationExpandingExtractor(TwoStageArtifactsExtractorLLM):
+class AbbreviationExpandingExtractor(RelationReviewMixin, TwoStageArtifactsExtractorLLM):
     """
     Two-stage extractor with an abbreviation-expansion pre-stage and artifact
     canonicalization. Chunks are stored in the knowledge base verbatim: the

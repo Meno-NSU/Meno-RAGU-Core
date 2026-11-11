@@ -197,6 +197,10 @@ def main():
                              'the in-context learning).')
     parser.add_argument('--no_validation', dest='no_validation', action='store_true',
                         help='Disable the entity and relation validation during the extraction.')
+    parser.add_argument('--relation_review', dest='relation_review', action='store_true',
+                        help='Validate the extracted relations by one verdict per relation instead of rewriting the '
+                             'whole list: kept relations stay as extracted, fixes must fit the ontology, and relations '
+                             'without a fitting ontology type are kept with the type "UNFIT:<type>".')
     parser.add_argument('--no_clustering', dest='no_clustering', action='store_true',
                         help='Disable the entity clustering before their summarization.')
     parser.add_argument('--no_community_summary', dest='no_community_summary', action='store_true',
@@ -383,11 +387,12 @@ def main():
             icl_config=icl_config,
             do_entity_validation=not args.no_validation,
             do_relation_validation=not args.no_validation,
+            relation_review=args.relation_review,
             abbreviations=abbreviations,
             rewrite_concurrency=args.rate_max_simultaneous if args.rate_max_simultaneous > 0 else 8,
         )
         info_msg = (f'The two-stage artifact extractor is prepared (ICL examples: {args.icl_examples}, '
-                    f'validation: {not args.no_validation}, '
+                    f'validation: {not args.no_validation}, relation review: {args.relation_review}, '
                     f'abbreviations: {len(abbreviations) if abbreviations is not None else 0}).')
         print(info_msg)
 

@@ -17,6 +17,7 @@ from ragu.graph.types import Community, CommunitySummary, Entity, Relation
 
 from graph_utils.bounded_summaries import install_budgeted_summarizers
 from graph_utils.graph_utils import AbbreviationExpandingExtractor
+from graph_utils.relation_review import REVIEW_STAGE, RelationReviewModel
 
 SUMMARY_PREVIOUS_CODE = {
     'prepare_graph_index.py': 'd7dc69817e82634f3484eafeae227fdca25fb042592a38799d000fefe6aebd3a',
@@ -28,6 +29,26 @@ COMPLETION_PREVIOUS_CODE = {
 }
 
 
+# The code of the builds made before the relation review (463b937). The review changes only stage 05 and later, so
+# such a build keeps its stages 01-04 and continues from 05 with the review.
+RELATION_REVIEW_PREVIOUS_CODE = {
+    'prepare_graph_index.py': 'dd8a29027bd6ef02380f5008757bd1b657ff91bcb20838ece95567f89787cf3a',
+    'graph_utils/checkpoints.py': 'b6d302d995981d1cfa33cf5bfc3df355539f40de5632da6978c72508b835ee9c',
+    'graph_utils/graph_utils.py': '771e82195a41c49c184e5be0d34e829153d4de86d935af35f82fcd7b6ea29aa8',
+}
+RELATION_REVIEW_NEW_CODE = ('graph_utils/relation_review.py',)
+
+
+def previous_relation_review_configuration(configuration):
+    previous = {**configuration}
+    if 'settings' in configuration:
+        previous['settings'] = {key: value for key, value in configuration['settings'].items()
+                                if key != 'relation_review'}
+    code = {key: value for key, value in configuration.get('code', {}).items() if key not in RELATION_REVIEW_NEW_CODE}
+    previous['code'] = {**code, **RELATION_REVIEW_PREVIOUS_CODE}
+    return previous
+
+
 def previous_completion_configuration(configuration):
     return {**configuration, 'code': {**configuration.get('code', {}), **COMPLETION_PREVIOUS_CODE}}
 
@@ -36,6 +57,18 @@ def previous_summary_configuration(configuration):
     code = {key: value for key, value in configuration.get('code', {}).items()
             if key != 'graph_utils/bounded_summaries.py'}
     return {**configuration, 'code': {**code, **SUMMARY_PREVIOUS_CODE}}
+
+
+# Known code changes that keep the earlier snapshots: (configuration before the change, first recomputed stage,
+# backup of the old manifest, log message).
+UPGRADES = (
+    (previous_summary_configuration, '07-', 'manifest.before-summary-budget.json',
+     'Сохраняю снимки 01–06; обобщение 07–11 учитывает контекст LLM и повторяет оборванные ответы.'),
+    (previous_completion_configuration, '07-', 'manifest.before-summary-retries.json',
+     'Сохраняю снимки 01–06; обобщение 07–11 учитывает контекст LLM и повторяет оборванные ответы.'),
+    (previous_relation_review_configuration, '05-', 'manifest.before-relation-review.json',
+     'Сохраняю снимки 01–04; проверка связей и следующие этапы считаются заново.'),
+)
 
 
 class CheckpointError(RuntimeError):
@@ -134,26 +167,22 @@ class GraphCheckpoints:
                 except ValidationError as exc:
                     raise CheckpointError('Повреждён манифест чекпоинтов графа.') from exc
                 if self.manifest['fingerprint'] != self.fingerprint:
-                    previous = (previous_summary_configuration(self.configuration),
-                                previous_completion_configuration(self.configuration))
-                    fingerprints = [hashlib.sha256(json.dumps(old, sort_keys=True).encode()).hexdigest()
-                                    for old in previous]
-                    if self.manifest['fingerprint'] not in fingerprints:
+                    upgrade = next((item for item in UPGRADES if self.manifest['fingerprint'] == hashlib.sha256(
+                        json.dumps(item[0](self.configuration), sort_keys=True).encode()).hexdigest()), None)
+                    if upgrade is None:
                         raise CheckpointError('Изменились входы, код или параметры графа; чекпоинты оставлены без изменений.')
-                    backup_name = ('manifest.before-summary-budget.json'
-                                   if self.manifest['fingerprint'] == fingerprints[0]
-                                   else 'manifest.before-summary-retries.json')
+                    _, first_recomputed, backup_name, message = upgrade
                     backup = self.directory / backup_name
                     if not backup.exists():
                         self.publish_metadata(backup, self.manifest)
                     upgraded = {
                         **self.manifest, 'fingerprint': self.fingerprint,
-                        'stages': {name: entry for name, entry in self.manifest['stages'].items() if name < '07-'},
+                        'stages': {name: entry for name, entry in self.manifest['stages'].items()
+                                   if name < first_recomputed},
                     }
                     self.publish_metadata(path, upgraded)
                     self.manifest = upgraded
-                    logger.info('[ГРАФ: ОБНОВЛЕНИЕ] Сохраняю снимки 01–06; обобщение 07–11 учитывает '
-                                'контекст LLM и повторяет оборванные ответы.')
+                    logger.info('[ГРАФ: ОБНОВЛЕНИЕ] {}', message)
             return self
         except BaseException:
             self.__exit__(None, None, None)
@@ -319,7 +348,7 @@ class CheckpointedExtractor(AbbreviationExpandingExtractor):
             if self.do_entity_validation:
                 required.append('03-entity-validation')
             if self.do_relation_validation:
-                required.append('05-relation-validation')
+                required.append(REVIEW_STAGE if self.relation_review else '05-relation-validation')
             if any(name not in self.checkpoints.manifest['stages'] for name in required):
                 raise CheckpointError('Проход графа завершился с ошибкой; неполный граф не сохранён.')
             return result
@@ -370,10 +399,18 @@ class CheckpointedExtractor(AbbreviationExpandingExtractor):
         ))
 
     async def _validate_relations(self, context, entities_payload, relations):
-        if self.checkpoints is None:
+        if self.checkpoints is None or self.relation_review:
             return await super()._validate_relations(context, entities_payload, relations)
         return await self._checkpointed(self.checkpoints.batch(
             '05-relation-validation', RelationsExtractionModel, super()._validate_relations,
+            (context, entities_payload, relations),
+        ))
+
+    async def _review_relations(self, context, entities_payload, relations):
+        if self.checkpoints is None:
+            return await super()._review_relations(context, entities_payload, relations)
+        return await self._checkpointed(self.checkpoints.batch(
+            REVIEW_STAGE, RelationReviewModel, super()._review_relations,
             (context, entities_payload, relations),
         ))
 

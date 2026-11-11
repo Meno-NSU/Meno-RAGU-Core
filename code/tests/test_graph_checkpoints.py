@@ -7,12 +7,14 @@ from unittest.mock import AsyncMock
 
 import pytest
 from graph_utils.checkpoints import (
+    RELATION_REVIEW_PREVIOUS_CODE,
     CheckpointedExtractor,
     CheckpointedGraphBuilder,
     CheckpointError,
     GraphCheckpoints,
     checkpoint_configuration,
     previous_completion_configuration,
+    previous_relation_review_configuration,
     previous_summary_configuration,
 )
 from ragu import KnowledgeGraph, Settings, StorageArguments
@@ -316,6 +318,41 @@ def test_summary_budget_upgrade_preserves_01_to_06_and_invalidates_only_later_sn
         backup = 'manifest.before-summary-budget.json' if upgrade == 'budget' else 'manifest.before-summary-retries.json'
         assert (tmp_path / backup).read_bytes() == before
         assert core_path.exists() and summary_path.exists()
+
+
+def test_previous_relation_review_configuration_is_the_code_before_the_review():
+    configuration = {'settings': {'model': 'gemma', 'relation_review': True}, 'files': {'source': 'unchanged'},
+                     'code': {'graph_utils/relation_review.py': 'new-stage', 'graph_utils/checkpoints.py': 'new',
+                              'other-helper': 'unchanged'}}
+    previous = previous_relation_review_configuration(configuration)
+    assert previous['settings'] == {'model': 'gemma'}
+    assert previous['files'] == {'source': 'unchanged'}
+    assert previous['code'] == {'other-helper': 'unchanged', **RELATION_REVIEW_PREVIOUS_CODE}
+    assert configuration['settings']['relation_review'] is True
+
+
+@pytest.mark.parametrize('changed', [None, 'settings', 'files'])
+def test_relation_review_upgrade_preserves_01_to_04_and_invalidates_later_snapshots(tmp_path, changed):
+    configuration = {'settings': {'model': 'gemma', 'relation_review': True}, 'files': {'source': 'unchanged'},
+                     'code': {'graph_utils/relation_review.py': 'new-stage', 'other-helper': 'unchanged'}}
+    with GraphCheckpoints(tmp_path, previous_relation_review_configuration(configuration)) as store:
+        store.save('04-relations', ([RelationsExtractionModel()],), (RelationsExtractionModel,))
+        store.save('05-relation-validation', ([RelationsExtractionModel()],), (RelationsExtractionModel,))
+        store.save('06-artifacts', ([], []), (Entity, Relation))
+        kept_path = tmp_path / store.manifest['stages']['04-relations']['file']
+    before = (tmp_path / 'manifest.json').read_bytes()
+    if changed:
+        configuration[changed]['different'] = 'must not migrate'
+        with pytest.raises(CheckpointError, match='Изменились входы'):
+            with GraphCheckpoints(tmp_path, configuration):
+                pytest.fail('Changed content must not migrate')
+        assert (tmp_path / 'manifest.json').read_bytes() == before
+        return
+    with GraphCheckpoints(tmp_path, configuration) as store:
+        assert set(store.manifest['stages']) == {'04-relations'}
+        assert store.load('04-relations', (RelationsExtractionModel,)) == ([RelationsExtractionModel()],)
+    assert (tmp_path / 'manifest.before-relation-review.json').read_bytes() == before
+    assert kept_path.exists()
 
 
 def test_corrupted_manifest_fails_before_running_any_pass(tmp_path):
