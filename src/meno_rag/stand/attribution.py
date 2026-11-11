@@ -10,6 +10,11 @@ compilation names each page next to what it took from it, while the document's f
 line is titled by the text of its link when that names the page ("Режим занятий обучающихся в НГУ", not
 "table.nsu.ru"), since the compilation's own title describes all its pages at once. A line without a link of its own
 gives no source rather than a wrong one.
+
+A document whose sections come from different pages lists them in its metadata ("sections": heading, url, title; a
+teacher's record joins the staff page, the timetable and the publications portal under one timetable link). It is
+split into its sections, and each carries the page and title listed for its heading ("Расписание (часть 1/2)" is
+listed as "Расписание"); a section listed without a page gives no source.
 """
 
 from __future__ import annotations
@@ -73,9 +78,45 @@ def _names_a_page(anchor: str) -> bool:
     return bool(re.search(r"[А-Яа-яЁё]", anchor)) or " " in anchor
 
 
+_SECTION = re.compile(r"(?m)^## (.+)$")
+
+
+def _section_units(document: dict[str, Any], chunk_texts: Sequence[str], title: str, url: str) -> list[EvidenceUnit]:
+    sections = [section for section in document["sections"] if section.get("heading")]
+    full_text = str(document.get("doc_full_text") or document.get("text") or "")
+
+    def listed(heading: str) -> dict[str, Any] | None:
+        fitting = [section for section in sections if heading.strip().startswith(section["heading"])]
+        return max(fitting, key=lambda section: len(section["heading"]), default=None)
+
+    units = []
+    for text in chunk_texts:
+        start = full_text.find(text)
+        earlier = _SECTION.findall(full_text[:start]) if start > 0 else []
+        current = listed(earlier[-1]) if earlier else None  # a chunk may start inside a section
+        blocks: list[tuple[dict[str, Any] | None, list[str]]] = [(current, [])]
+        for line in text.splitlines():
+            match = _SECTION.match(line)
+            if match:
+                blocks.append((listed(match.group(1)), []))
+            blocks[-1][1].append(line)
+        for section, lines in blocks:
+            block = "\n".join(lines).strip()
+            if _words(block) < MIN_WORDS:
+                continue
+            if section is None:  # not listed: the document's own page
+                units.append(EvidenceUnit(block, title, url))
+            else:
+                units.append(EvidenceUnit(block, " ".join(str(section.get("title") or title).split()),
+                                          str(section.get("url") or "")))
+    return units
+
+
 def document_units(document: dict[str, Any], chunk_texts: Sequence[str]) -> list[EvidenceUnit]:
     title = " ".join(str(document.get("doc_title") or "").split())
     urls = normalize_urls(document.get("url"))
+    if document.get("sections"):
+        return _section_units(document, chunk_texts, title, urls[0] if len(urls) == 1 else "")
     if len(urls) <= 1:
         return [EvidenceUnit(text, title, urls[0] if urls else "") for text in chunk_texts]
     units = []

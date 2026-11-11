@@ -320,8 +320,9 @@ class StandRagPipeline:
             texts = [global_chunk_index_to_text(cid, self.resources.documents, self.resources.chunk_mapping)
                      for cid in ordered]
             document = self.resources.documents[document_index]
-            # a page split into several documents is shown under the page's title, not the title of one part
-            whole_page = len(normalize_urls(document.get("url"))) == 1
+            # a page split into several documents is shown under the page's title, not the title of one part; the
+            # sections of a document of several pages carry their own titles
+            whole_page = len(normalize_urls(document.get("url"))) == 1 and not document.get("sections")
             units.extend({"text": unit.text, "url": unit.url,
                           "title": self.page_titles.get(norm_url(unit.url), unit.title) if whole_page else unit.title}
                          for unit in document_units(document, texts))

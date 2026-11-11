@@ -133,3 +133,36 @@ def test_escaped_brackets_inside_a_link_stay_part_of_it():
              "(https://pure.nsu.ru/portal/ru/persons/--\\(0a947727-a6bd\\).html) содержит публикации.")
     assert [(unit.title, unit.url) for unit in document_units(SUMMARY, [chunk])] == [
         ("профиль на исследовательском портале НГУ", "https://pure.nsu.ru/portal/ru/persons/--(0a947727-a6bd).html")]
+
+
+TEACHER = (
+    "# Иванов Иван Иванович\n\n"
+    "## Учебные дисциплины\n\n- Теория вероятностей и математическая статистика;\n\n"
+    "## Расписание (часть 1/2)\n\nПонедельник 9:00 практическое занятие Физика 2, аудитория 411 ГК\n"
+    "Вторник 10:50 лекция Физика 2, аудитория 220 ГК\n\n"
+    "## Публикации (часть 3/9)\n\nСтатья о волновых пакетах в журнале Physics of Fluids.\n"
+)
+SECTIONS = [
+    {"heading": "Учебные дисциплины", "url": "https://www.nsu.ru/n/sveden/employees/", "title": "Педагогический состав НГУ"},
+    {"heading": "Расписание", "url": "https://table.nsu.ru/teacher/1", "title": "Расписание: Иванов Иван Иванович"},
+    {"heading": "Публикации", "url": "", "title": ""},
+]
+
+
+def test_a_document_of_several_sources_gives_each_section_the_page_it_was_taken_from():
+    document = {"doc_title": "Иванов Иван Иванович", "url": "https://table.nsu.ru/teacher/1",
+                "doc_full_text": TEACHER, "sections": SECTIONS}
+    units = document_units(document, [TEACHER.strip()])
+    assert [(unit.url, unit.title) for unit in units] == [
+        ("https://www.nsu.ru/n/sveden/employees/", "Педагогический состав НГУ"),
+        ("https://table.nsu.ru/teacher/1", "Расписание: Иванов Иван Иванович"),
+        ("", "Иванов Иван Иванович"),  # no page of its own: no source rather than a wrong one
+    ]
+    assert units[1].text.startswith("## Расписание (часть 1/2)") and "Вторник" in units[1].text
+
+
+def test_a_chunk_that_starts_inside_a_section_keeps_that_section_page():
+    document = {"doc_title": "Иванов Иван Иванович", "url": "https://table.nsu.ru/teacher/1",
+                "doc_full_text": TEACHER, "sections": SECTIONS}
+    units = document_units(document, ["Вторник 10:50 лекция Физика 2, аудитория 220 ГК"])
+    assert [(unit.url, unit.title) for unit in units] == [("https://table.nsu.ru/teacher/1", "Расписание: Иванов Иван Иванович")]

@@ -90,3 +90,29 @@ async def test_sources_of_a_split_page_carry_the_page_title():
     units = p._evidence_units(Picked())
     assert [(u["title"], u["url"]) for u in units] == [
         ("Иванов Иван Иванович", TIMETABLE), ("Кафедра физики", "https://www.nsu.ru/n/physics/")]
+
+
+@pytest.mark.asyncio
+async def test_sections_of_a_split_page_keep_the_pages_and_titles_listed_for_them():
+    async def scorer(sentence, texts):
+        return [0.9] * len(texts)
+
+    p = pipeline(source_scorer=scorer)
+    documents = split_record()
+    staff = "https://www.nsu.ru/n/sveden/employees/"
+    documents[0] = {**document("Учебные дисциплины Иванова", TIMETABLE,
+                               "# Иванов Иван Иванович\n\n## Учебные дисциплины\n\n- Теория вероятностей и статистика;"
+                               "\n\n## Расписание\n\nПонедельник 9:00 практическое занятие Физика 2"),
+                    "sections": [{"heading": "Учебные дисциплины", "url": staff, "title": "Педагогический состав НГУ"},
+                                 {"heading": "Расписание", "url": TIMETABLE, "title": "Расписание: Иванов И. И."}]}
+    p.resources.documents[:] = documents
+    p.resources.chunk_mapping.clear()
+    p.resources.chunk_mapping.update({str(i): {"doc_index": i, "local_chunk_index": 0} for i in range(len(documents))})
+
+    class Picked(list):
+        final_evidence = [{"kind": "document", "chunk_ids": [0, 3]}]
+
+    units = p._evidence_units(Picked())
+    assert [(u["title"], u["url"]) for u in units] == [
+        ("Педагогический состав НГУ", staff), ("Расписание: Иванов И. И.", TIMETABLE),
+        ("Иванов Иван Иванович", TIMETABLE)]
