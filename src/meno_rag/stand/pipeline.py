@@ -19,7 +19,15 @@ from meno_rag.config import Settings
 from meno_rag.llm.think_detector import has_thinking
 from meno_rag.logging_config import preview_field
 from meno_rag.schemas import ChatMessage, PipelineOutcome
-from meno_rag.stand.attribution import EvidenceUnit, Scorer, attribute, document_units, to_sources
+from meno_rag.stand.attribution import (
+    EvidenceUnit,
+    Scorer,
+    attribute,
+    document_units,
+    norm_url,
+    page_titles,
+    to_sources,
+)
 from meno_rag.stand.context import (
     flatten_sources,
     global_chunk_index_to_text,
@@ -106,6 +114,10 @@ class StandRagPipeline:
     @property
     def late_sources(self) -> bool:
         return self.source_scorer is not None
+
+    @functools.cached_property
+    def page_titles(self) -> dict[str, str]:
+        return page_titles(self.resources.documents)
 
     async def prepare(
         self,
@@ -272,7 +284,8 @@ class StandRagPipeline:
                     "settings": {name: getattr(self.settings, name) for name in (
                         "max_rewrite_queries", "rerank_candidates_per_query", "rerank_top_k", "rerank_weight",
                         "max_context_chunks", "max_qa_prompt_chars", "graph_source_documents", "graph_max_elements",
-                        "source_urls_per_document", "min_document_quality",
+                        "source_urls_per_document", "min_document_quality", "rerank_candidates_per_page",
+                        "source_attribution", "source_attribution_threshold", "max_sources",
                     )},
                 },
             )
@@ -306,8 +319,12 @@ class StandRagPipeline:
             ordered = sorted(chunk_ids, key=lambda cid: self.resources.chunk_mapping[str(cid)]["local_chunk_index"])
             texts = [global_chunk_index_to_text(cid, self.resources.documents, self.resources.chunk_mapping)
                      for cid in ordered]
-            units.extend({"text": unit.text, "title": unit.title, "url": unit.url}
-                         for unit in document_units(self.resources.documents[document_index], texts))
+            document = self.resources.documents[document_index]
+            # a page split into several documents is shown under the page's title, not the title of one part
+            whole_page = len(normalize_urls(document.get("url"))) == 1
+            units.extend({"text": unit.text, "url": unit.url,
+                          "title": self.page_titles.get(norm_url(unit.url), unit.title) if whole_page else unit.title}
+                         for unit in document_units(document, texts))
         return units
 
     async def finalize_sources(self, outcome: PipelineOutcome, answer: str) -> list[dict[str, str]]:

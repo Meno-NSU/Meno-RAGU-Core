@@ -126,3 +126,10 @@ def test_a_named_link_of_a_compilation_gives_its_own_title():
         ("Режим занятий обучающихся в НГУ", "https://www.nsu.ru/upload/rezhim.pdf"),
         ("Руководство студента", "http://table.nsu.ru/"),
     ]
+
+
+def test_escaped_brackets_inside_a_link_stay_part_of_it():
+    chunk = ("- Его [профиль на исследовательском портале НГУ]"
+             "(https://pure.nsu.ru/portal/ru/persons/--\\(0a947727-a6bd\\).html) содержит публикации.")
+    assert [(unit.title, unit.url) for unit in document_units(SUMMARY, [chunk])] == [
+        ("профиль на исследовательском портале НГУ", "https://pure.nsu.ru/portal/ru/persons/--(0a947727-a6bd).html")]

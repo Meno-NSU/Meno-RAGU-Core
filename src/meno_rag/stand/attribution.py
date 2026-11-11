@@ -27,7 +27,8 @@ from razdel import sentenize
 from meno_rag.stand.context import normalize_urls
 
 MIN_WORDS = 4
-_LINK = re.compile(r"\[([^\]]*)\]\((https?://[^)\s]+)\)|(https?://[^\s)\]>\"«»]+)")
+# a Markdown link target may escape its brackets ("persons/--\\(0a94…\\).html"); they belong to the address
+_LINK = re.compile(r"\[([^\]]*)\]\((https?://(?:\\[()]|[^)\s\\])+)\)|(https?://[^\s)\]>\"«»]+)")
 Scorer = Callable[[str, list[str]], Awaitable[list[float]]]
 
 
@@ -39,7 +40,8 @@ class EvidenceUnit:
 
 
 def _words(text: str) -> int:
-    return len(re.findall(r"\w+", _LINK.sub(" ", text)))
+    # the text of a Markdown link is part of the sentence, its address is not
+    return len(re.findall(r"\w+", _LINK.sub(lambda match: f" {match.group(1) or ''} ", text)))
 
 
 def split_sentences(answer: str) -> list[str]:
@@ -61,7 +63,8 @@ def norm_url(url: str) -> str:
 
 def _links(text: str) -> list[tuple[str, str]]:
     """The links of a line with the text they are written under ("" for a bare URL)."""
-    return [((match.group(2) or match.group(3)).rstrip(".,;:!?"), " ".join((match.group(1) or "").split()))
+    return [((match.group(2) or match.group(3)).replace("\\(", "(").replace("\\)", ")").rstrip(".,;:!?"),
+             " ".join((match.group(1) or "").split()))
             for match in _LINK.finditer(text)]
 
 
@@ -84,6 +87,34 @@ def document_units(document: dict[str, Any], chunk_texts: Sequence[str]) -> list
                 url, anchor = links[0] if links else ("", "")
                 units.append(EvidenceUnit(line, anchor if _names_a_page(anchor) else title, url))
     return units
+
+
+def _heading(document: dict[str, Any]) -> str:
+    first = str(document.get("doc_full_text") or document.get("text") or "").lstrip().split("\n", 1)[0].strip()
+    return first[2:].strip() if first.startswith("# ") else ""
+
+
+def page_titles(documents: Sequence[dict[str, Any]]) -> dict[str, str]:
+    """Titles of the pages that are split into several documents, by normalised link.
+
+    A page cut into parts (a teacher's record is one link and over a hundred documents titled after their own
+    parts: a publication, the intellectual property) is shown once, so it needs the page's title, not a part's: the
+    first-level heading all its parts share ("# Иванов Иван Иванович"), else the title of its first document.
+    Compilations of several pages are left out: their lines carry their own links and titles.
+    """
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for document in documents:
+        urls = normalize_urls(document.get("url"))
+        if len(urls) == 1:
+            groups.setdefault(norm_url(urls[0]), []).append(document)
+    titles = {}
+    for key, parts in groups.items():
+        if len(parts) < 2:
+            continue
+        headings = {_heading(part) for part in parts}
+        heading = headings.pop() if len(headings) == 1 else ""
+        titles[key] = heading or " ".join(str(parts[0].get("doc_title") or "").split())
+    return titles
 
 
 async def attribute(answer: str, units: Sequence[EvidenceUnit], scorer: Scorer,

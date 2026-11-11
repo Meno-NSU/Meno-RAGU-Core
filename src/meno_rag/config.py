@@ -254,6 +254,9 @@ class Settings(BaseSettings):
     # Sources after the answer, as in Menon 1.1: the context pieces the answer's sentences rest on (the engine
     # reranker scores sentence x piece; a piece counts from the threshold on), one row per page, best first. Needs
     # ENGINE_RERANKER_MODEL and ENGINE_RERANKER_URL; without them the sources are the context documents.
+    # Candidates one page may take in each query's rerank pool (0 = no limit): a page split into many documents (a
+    # teacher's record: over a hundred parts under one link) otherwise fills the pool and no other page is reranked.
+    rerank_candidates_per_page: int = Field(default=6, ge=0, validation_alias="RERANK_CANDIDATES_PER_PAGE")
     source_attribution: bool = Field(default=True, validation_alias="SOURCE_ATTRIBUTION")
     source_attribution_threshold: float = Field(default=0.5, ge=0, le=1, validation_alias="SOURCE_ATTRIBUTION_THRESHOLD")
     max_sources: int = Field(default=5, ge=1, validation_alias="MAX_SOURCES")

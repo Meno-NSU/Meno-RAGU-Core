@@ -7,6 +7,7 @@ from typing import Any
 from context_utils.context_utils import graph_element_to_text
 
 from meno_rag.api.events import StageName
+from meno_rag.stand.attribution import norm_url
 from meno_rag.stand.context import normalize_urls
 from meno_rag.stand.pipeline import ModelRuntime, StandRagPipeline, _RerankOutput
 from meno_rag.stand.rerank import rerank_merge_score
@@ -56,8 +57,7 @@ class RaguRagPipeline(StandRagPipeline):
         return fused
 
     async def _rerank(self, fused_batches, user_question, dialogue_history, runtime: ModelRuntime):
-        cap = self.settings.rerank_candidates_per_query
-        batches = [batch["pool"][:cap] if cap > 0 else batch["pool"] for batch in fused_batches]
+        batches = [self._candidate_pool(batch["pool"]) for batch in fused_batches]
         unique = {c.key: c for batch in batches for c in batch}
 
         async def score(candidate):
@@ -116,6 +116,32 @@ class RaguRagPipeline(StandRagPipeline):
             candidate_scores={c.chunk_id: scores[c.key] for c in unique.values() if c.chunk_id is not None},
             graph_trace=graph_trace,
         )
+
+    def _candidate_pool(self, pool):
+        """The query's best candidates for the reranker, at most ``rerank_candidates_per_page`` chunks of one page."""
+        cap = self.settings.rerank_candidates_per_query
+        per_page = self.settings.rerank_candidates_per_page
+        if per_page <= 0:
+            return pool[:cap] if cap > 0 else list(pool)
+        taken: dict[str, int] = {}
+        selected = []
+        for candidate in pool:
+            if cap > 0 and len(selected) >= cap:
+                break
+            page = self._page_of(candidate.chunk_id) if candidate.chunk_id is not None else None
+            if page is not None:
+                if taken.get(page, 0) >= per_page:
+                    continue
+                taken[page] = taken.get(page, 0) + 1
+            selected.append(candidate)
+        return selected
+
+    def _page_of(self, chunk_id):
+        mapping = self.resources.chunk_mapping.get(str(chunk_id))
+        if mapping is None:
+            return None
+        urls = normalize_urls(self.resources.documents[mapping["doc_index"]].get("url"))
+        return norm_url(urls[0]) if urls else f"document:{mapping['doc_index']}"
 
     @staticmethod
     def _trace_candidate(candidate):
