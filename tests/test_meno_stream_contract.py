@@ -357,3 +357,42 @@ def test_each_abbreviation_is_its_own_line():
 
     lines = stage_lines("abbreviation_expansion", {"expanded": "НГУ — Новосибирский\nФИТ — Факультет", "original": ""})
     assert lines == ["Расшифровано: НГУ — Новосибирский", "ФИТ — Факультет"]
+
+
+class _LatePipeline(_Pipeline):
+    late_sources = True
+
+    def __init__(self):
+        self.answers = []
+
+    async def finalize_sources(self, outcome, answer):
+        self.answers.append(answer)
+        outcome.sources = [{"document_title": "Doc A", "source_url": "https://nsu.ru/a"}]
+        return outcome.sources
+
+
+def test_attributed_sources_are_sent_once_after_the_answer(monkeypatch):
+    main_mod = _client(monkeypatch)
+    with TestClient(main_mod.app) as c:
+        c.app.state.pipeline = late = _LatePipeline()
+        r = c.post(
+            "/v1/chat/completions",
+            json={"model": "m", "messages": [{"role": "user", "content": "q"}], "stream": True},
+        )
+    assert late.answers == ["ok"]
+    assert [p for n, p in _events(r.text) if n == "sources"] == [
+        {"sources": [{"document_title": "Doc A", "source_url": "https://nsu.ru/a"}]}]
+    assert r.text.index("event: sources") > r.text.index('"content": "ok"')
+    assert r.text.index("event: sources") < r.text.index('"finish_reason": "stop"')
+
+
+def test_non_stream_answer_carries_the_attributed_sources(monkeypatch):
+    main_mod = _client(monkeypatch)
+    with TestClient(main_mod.app) as c:
+        c.app.state.pipeline = late = _LatePipeline()
+        r = c.post(
+            "/v1/chat/completions",
+            json={"model": "m", "messages": [{"role": "user", "content": "q"}], "stream": False},
+        )
+    assert late.answers == ["ok"]
+    assert r.json()["sources"] == [{"document_title": "Doc A", "source_url": "https://nsu.ru/a"}]

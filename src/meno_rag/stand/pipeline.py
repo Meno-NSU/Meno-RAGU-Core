@@ -19,7 +19,14 @@ from meno_rag.config import Settings
 from meno_rag.llm.think_detector import has_thinking
 from meno_rag.logging_config import preview_field
 from meno_rag.schemas import ChatMessage, PipelineOutcome
-from meno_rag.stand.context import flatten_sources, normalize_urls, prepare_context, prepare_relevant_documents
+from meno_rag.stand.attribution import EvidenceUnit, Scorer, attribute, document_units, to_sources
+from meno_rag.stand.context import (
+    flatten_sources,
+    global_chunk_index_to_text,
+    normalize_urls,
+    prepare_context,
+    prepare_relevant_documents,
+)
 from meno_rag.stand.dialogue_history import prepare_dialogue_history
 from meno_rag.stand.qa import prepare_prompt_for_question_answering, system_prompt_with_datetime
 from meno_rag.stand.rerank import (
@@ -78,6 +85,7 @@ class StandRagPipeline:
         embed_semaphore: asyncio.Semaphore,
         bm25_semaphore: asyncio.Semaphore | None = None,
         retrieval_executor: ThreadPoolExecutor | None = None,
+        source_scorer: Scorer | None = None,
     ) -> None:
         self.settings = settings
         self.resources = resources
@@ -91,6 +99,13 @@ class StandRagPipeline:
         # thread pool. Defaults (None) preserve the legacy asyncio.to_thread path.
         self.bm25_semaphore = bm25_semaphore
         self.retrieval_executor = retrieval_executor
+        # With a scorer the sources are attributed after the answer (finalize_sources); without one they stay the
+        # context documents, shown before the answer.
+        self.source_scorer = source_scorer
+
+    @property
+    def late_sources(self) -> bool:
+        return self.source_scorer is not None
 
     async def prepare(
         self,
@@ -176,7 +191,7 @@ class StandRagPipeline:
             stage_details,
             model_id=runtime.core.model_id,
         )
-        if capture_trace:
+        if capture_trace or self.late_sources:
             if not isinstance(reranked_global_chunks, _RerankOutput):
                 reranked_global_chunks = _RerankOutput(reranked_global_chunks)
             reranked_global_chunks.capture_evidence = True
@@ -274,7 +289,42 @@ class StandRagPipeline:
             retrieved=retrieved_records,
             fewshots=fewshot_records,
             trace=trace,
+            evidence=self._evidence_units(reranked_global_chunks) if self.late_sources else [],
         )
+
+    def _evidence_units(self, chunks: Any) -> list[dict[str, str]]:
+        """The chunks of the final context (the documents' and those the graph elements name), as units the answer
+        can be attributed to; a document compiled from several pages is split into lines with their own links."""
+        by_document: dict[int, list[int]] = {}
+        for piece in getattr(chunks, "final_evidence", None) or []:
+            for chunk_id in piece.get("chunk_ids") or []:
+                mapping = self.resources.chunk_mapping.get(str(chunk_id))
+                if mapping is not None and chunk_id not in by_document.setdefault(mapping["doc_index"], []):
+                    by_document[mapping["doc_index"]].append(chunk_id)
+        units: list[dict[str, str]] = []
+        for document_index, chunk_ids in by_document.items():
+            ordered = sorted(chunk_ids, key=lambda cid: self.resources.chunk_mapping[str(cid)]["local_chunk_index"])
+            texts = [global_chunk_index_to_text(cid, self.resources.documents, self.resources.chunk_mapping)
+                     for cid in ordered]
+            units.extend({"text": unit.text, "title": unit.title, "url": unit.url}
+                         for unit in document_units(self.resources.documents[document_index], texts))
+        return units
+
+    async def finalize_sources(self, outcome: PipelineOutcome, answer: str) -> list[dict[str, str]]:
+        """Replace the context documents by the pages the answer rests on (no-op without a scorer)."""
+        if self.source_scorer is None:
+            return outcome.sources
+        try:
+            units = [EvidenceUnit(**unit) for unit in outcome.evidence]
+            scored = await attribute(answer, units, self.source_scorer, self.settings.source_attribution_threshold)
+            outcome.sources = to_sources(scored, self.settings.max_sources)
+            if outcome.trace is not None:
+                outcome.trace["source_attribution"] = [
+                    {"title": unit.title, "url": unit.url, "score": round(score, 4)} for unit, score in scored]
+        except Exception as exc:  # an answer without sources beats a failed turn
+            logger.warning("source_attribution_failed", error=repr(exc))
+            outcome.sources = []
+        return outcome.sources
 
     async def generate_text(
         self,

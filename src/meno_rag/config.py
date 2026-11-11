@@ -251,6 +251,12 @@ class Settings(BaseSettings):
     graph_max_elements: int = Field(default=3, ge=0, validation_alias="GRAPH_MAX_ELEMENTS")
     # Links shown per document: a summary of several pages carries up to dozens of URLs under one title.
     source_urls_per_document: int = Field(default=1, ge=1, validation_alias="SOURCE_URLS_PER_DOCUMENT")
+    # Sources after the answer, as in Menon 1.1: the context pieces the answer's sentences rest on (the engine
+    # reranker scores sentence x piece; a piece counts from the threshold on), one row per page, best first. Needs
+    # ENGINE_RERANKER_MODEL and ENGINE_RERANKER_URL; without them the sources are the context documents.
+    source_attribution: bool = Field(default=True, validation_alias="SOURCE_ATTRIBUTION")
+    source_attribution_threshold: float = Field(default=0.5, ge=0, le=1, validation_alias="SOURCE_ATTRIBUTION_THRESHOLD")
+    max_sources: int = Field(default=5, ge=1, validation_alias="MAX_SOURCES")
 
     @property
     def graph_dir(self) -> Path:

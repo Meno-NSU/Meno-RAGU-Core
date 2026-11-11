@@ -59,7 +59,7 @@ class LLM:
         }
 
 
-def pipeline(**overrides):
+def pipeline(source_scorer=None, **overrides):
     text = "Факультет НГУ."
     resources = StandResources(
         documents=[
@@ -85,4 +85,5 @@ def pipeline(**overrides):
         rerank_semaphore=asyncio.Semaphore(2),
         generation_semaphore=asyncio.Semaphore(2),
         embed_semaphore=asyncio.Semaphore(2),
+        source_scorer=source_scorer,
     )

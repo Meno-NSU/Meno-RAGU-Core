@@ -58,6 +58,7 @@ from meno_rag.llm.router import LLMRouter
 from meno_rag.llm.status import InMemoryModelStatusStore, ModelStatusStore, RedisModelStatusStore
 from meno_rag.logging_config import configure_logging
 from meno_rag.schemas import ChatCompletionRequest
+from meno_rag.stand.attribution import RerankerScorer
 from meno_rag.stand.pipeline import PipelineRuntime
 from meno_rag.stand.ragu_pipeline import RaguRagPipeline as StandRagPipeline
 from meno_rag.stand.resources import load_stand_resources
@@ -113,6 +114,15 @@ def check_runtime_safety(settings: Settings) -> list[str]:
             "LOG_CONTENT_PREVIEWS=false."
         )
     return warnings
+
+
+def _source_scorer(settings: Settings, http_client: httpx.AsyncClient) -> RerankerScorer | None:
+    """The engine reranker scores the answer's sentences against the context for the shown sources; without it (or
+    with SOURCE_ATTRIBUTION=false) the sources are the context documents."""
+    if not settings.source_attribution or not settings.engine_reranker_model.strip() or not settings.engine_reranker_url.strip():
+        return None
+    return RerankerScorer(http_client, settings.engine_reranker_url, settings.engine_reranker_model,
+                          settings.engine_reranker_api_key)
 
 
 @asynccontextmanager
@@ -263,6 +273,7 @@ async def lifespan(app: FastAPI):
             embed_semaphore=asyncio.Semaphore(settings.embed_concurrency),
             bm25_semaphore=asyncio.Semaphore(settings.bm25_concurrency),
             retrieval_executor=retrieval_executor,
+            source_scorer=_source_scorer(settings, http_client),
         )
     except Exception as exc:
         logger.exception("stand_resources_load_failed", error=str(exc))
@@ -930,6 +941,8 @@ async def _non_stream_response(
             outcome=outcome, runtime=runtime, max_tokens=max_tokens, temperature=temperature
         )
         generation_ms = round((time.perf_counter() - gen_started) * 1000, 2)
+        if getattr(pipeline, "late_sources", False):
+            await pipeline.finalize_sources(outcome, answer)
         total_ms = round((time.perf_counter() - started) * 1000, 2)
         if not bench and not relayed:
             await _persist_success(
@@ -1087,8 +1100,10 @@ async def _stream_response(
             yield event.to_sse()
 
         outcome = await prepare_task
-        valid_sources = clean_sources(outcome.sources)
-        yield sse_event("sources", {"sources": valid_sources})  # contract 1.3: at least once, even empty
+        late_sources = getattr(pipeline, "late_sources", False)
+        if not late_sources:
+            valid_sources = clean_sources(outcome.sources)
+            yield sse_event("sources", {"sources": valid_sources})  # contract 1.3: at least once, even empty
 
         yield sse_data(
             openai_chunk(
@@ -1134,6 +1149,10 @@ async def _stream_response(
             duration_ms=generation_ms,
             model_id=runtime.generation.model_id,
         ).to_sse()
+        if late_sources:
+            # As Menon 1.1: the sources are the pages the finished answer rests on, sent once before the stop chunk.
+            await pipeline.finalize_sources(outcome, "".join(answer_parts))
+            yield sse_event("sources", {"sources": clean_sources(outcome.sources)})
 
         done_chunk = openai_chunk(
             completion_id=completion_id,
