@@ -52,6 +52,7 @@ from graph_utils.checkpoints import (
     GraphCheckpoints,
     checkpoint_configuration,
 )
+from graph_utils.compact_embeddings import CompactEmbeddingClient
 from graph_utils.relation_review import chunk_ids
 from rewriting_utils.rewriting_utils import load_abbreviations
 from tokenization_utils.tokenization_utils import load_hf_tokenizer
@@ -347,7 +348,8 @@ def main():
     Settings.embedder_token_limit = args.embedder_tokens
 
     embedder_client = CachedAsyncOpenAI(base_url=embedder_base_url, api_key=embedder_api_key)
-    dense_embedder = EmbedderOpenAI(client=embedder_client, model_name=args.embedder_name)
+    # vectors as float32 arrays: the index keeps all of them until it stores them (see compact_embeddings)
+    dense_embedder = EmbedderOpenAI(client=CompactEmbeddingClient(embedder_client), model_name=args.embedder_name)
     sparse_embedder = RagUBM25(language=SPARSE_MODEL_LANGUAGE)
     print(f'The sparse embedder is the fastembed BM25 model for the "{SPARSE_MODEL_LANGUAGE}" language.')
 

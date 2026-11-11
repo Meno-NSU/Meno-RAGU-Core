@@ -87,6 +87,12 @@ SUMMARY_SPEED_PREVIOUS_CODE = {
     'graph_utils/checkpoints.py': '1e664ce91c13cbbb175442eef3f69db63dbeaed32658c5190f7e127214477a10',
     'graph_utils/bounded_summaries.py': 'fc94811eacad24e2fd6f909223a324b7615dd891d74628ecc286243deaa95b47',
 }
+# The code of both graph v2 builds (b71d726) before vectors were kept as float32 (compact_embeddings). Only the
+# vectorization after the graph changes: every stage, 11-graph-ready included, stays.
+COMPACT_VECTORS_PREVIOUS_CODE = {
+    'prepare_graph_index.py': 'eb12b68884c32dee9a97b713507002eaa11e43d0cfad17c7bb84bd01d01cd8de',
+    'graph_utils/checkpoints.py': '1cca3036dbd5272492afac0fc205dc3df23683d0c7a2cfa432dbf76eae7f34d2',
+}
 
 
 def _previous_code(configuration, code, new_files, new_settings):
@@ -107,6 +113,10 @@ def previous_context_cleanup_configuration(configuration):
 
 def previous_summary_speed_configuration(configuration):
     return _previous_code(configuration, SUMMARY_SPEED_PREVIOUS_CODE, (), ())
+
+
+def previous_compact_vectors_configuration(configuration):
+    return _previous_code(configuration, COMPACT_VECTORS_PREVIOUS_CODE, ('graph_utils/compact_embeddings.py',), ())
 
 
 def previous_completion_configuration(configuration):
@@ -136,6 +146,8 @@ UPGRADES = (
      'Сохраняю снимки 01–06; обобщение 07–11 планирует промпты по контексту, который обслуживает модель.'),
     (previous_summary_speed_configuration, '07-', 'manifest.before-summary-speed.json',
      'Сохраняю снимки 01–06; обобщение 07–11 готовит описания без построчного обновления таблицы.'),
+    (previous_compact_vectors_configuration, '12-', 'manifest.before-compact-vectors.json',
+     'Сохраняю все снимки, 11 включительно; векторы графа хранятся в памяти как float32.'),
 )
 
 
