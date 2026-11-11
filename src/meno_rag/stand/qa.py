@@ -41,7 +41,11 @@ def prepare_prompt_for_question_answering(
     abbr_dict: dict,
     stemmer: SnowballStemmer | None = None,
     fewshots: list[FewshotExample] | None = None,
+    route: str | None = None,
 ) -> str:
+    """The QA user prompt. A route (see routing.py) other than "nsu" changes the INSTRUCTION: a general question may
+    use general knowledge, a turn about the dialogue is answered from its history, and small talk, off-topic requests
+    and prompt injections follow the rules of the system prompt."""
     num_relevant_documents = calculate_number_of_documents_in_context(context)
     found_abbreviations = find_candidates_to_abbreviations(
         source_text=context + "\n\n" + dialogue_history + "\n\n" + user_question,
@@ -85,15 +89,24 @@ def prepare_prompt_for_question_answering(
     input_prompt += "==========\nCURRENT QUESTION\n==========\n\n"
     input_prompt += user_question + "\n\n"
     input_prompt += "==========\nINSTRUCTION\n==========\n\n"
-    input_prompt += "Ответьте, пожалуйста, на вопрос из раздела CURRENT QUESTION"
-    if len(context) > 0:
-        if num_relevant_documents > 1:
-            input_prompt += f", опираясь только на факты из разделов DOCUMENT 1–{num_relevant_documents}."
-        else:
-            input_prompt += ", опираясь только на факты из разделов DOCUMENT 1."
+    if route in ("meta_dialog", "rework"):
+        input_prompt += ("Ответьте, пожалуйста, на реплику из раздела CURRENT QUESTION по разделу DIALOGUE HISTORY, "
+                         "как сказано в системном промпте.")
+    elif route in ("chitchat", "off_topic", "prompt_injection"):
+        input_prompt += "Ответьте, пожалуйста, на реплику из раздела CURRENT QUESTION, как сказано в системном промпте."
+    elif route == "general":
+        input_prompt += ("Ответьте, пожалуйста, на вопрос из раздела CURRENT QUESTION. Общие понятия объясняйте из "
+                         "своих знаний; сведения об НГУ берите только из разделов DOCUMENT.")
     else:
-        input_prompt += "."
-    if len(dialogue_history) > 0:
+        input_prompt += "Ответьте, пожалуйста, на вопрос из раздела CURRENT QUESTION"
+        if len(context) > 0:
+            if num_relevant_documents > 1:
+                input_prompt += f", опираясь только на факты из разделов DOCUMENT 1–{num_relevant_documents}."
+            else:
+                input_prompt += ", опираясь только на факты из разделов DOCUMENT 1."
+        else:
+            input_prompt += "."
+    if len(dialogue_history) > 0 and route not in ("meta_dialog", "rework"):
         input_prompt += (
             "\n\nРаздел DIALOGUE HISTORY используйте исключительно для разрешения местоимений, "
             "уточнений и восстановления темы — не извлекайте из него фактические сведения."

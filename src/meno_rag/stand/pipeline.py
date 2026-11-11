@@ -45,6 +45,14 @@ from meno_rag.stand.rerank import (
     score_from_logprobs,
 )
 from meno_rag.stand.resources import StandResources
+from meno_rag.stand.routing import (
+    FALLBACK_ROUTE,
+    NO_SEARCH_ROUTES,
+    ROUTE_SCHEMA,
+    parse_route,
+    route_messages,
+    with_route_rules,
+)
 from meno_rag.stand.rewriting import (
     find_candidates_to_abbreviations,
     parse_rewritten_queries,
@@ -157,14 +165,26 @@ class StandRagPipeline:
             stage_details,
         )
 
-        search_queries = await self._timed_stage(
-            StageName.QUERY_REWRITE,
-            emit,
-            lambda: self._rewrite_question(question, prepared_dialogue_history, runtime.core),
-            stage_durations,
-            stage_details,
-            model_id=runtime.core.model_id,
-        )
+        # The kind of the turn (routing.py) is asked next to the rewrite, so it costs no extra latency.
+        route_task = (asyncio.create_task(self._route_turn(question, prepared_dialogue_history, runtime.core))
+                      if self.settings.turn_routing else None)
+        try:
+            search_queries = await self._timed_stage(
+                StageName.QUERY_REWRITE,
+                emit,
+                lambda: self._rewrite_question(question, prepared_dialogue_history, runtime.core),
+                stage_durations,
+                stage_details,
+                model_id=runtime.core.model_id,
+            )
+        except BaseException:
+            if route_task is not None:
+                route_task.cancel()
+            raise
+        route = await route_task if route_task is not None else None
+        if route is not None:
+            stage_details.setdefault(StageName.QUERY_REWRITE, {})["route"] = route
+        searching = route not in NO_SEARCH_ROUTES
 
         # Few-shot selection is fail-safe and surfaced as its own stage so the
         # UI can show "found a similar case". Only run (and emit) when enabled
@@ -179,30 +199,35 @@ class StandRagPipeline:
                 stage_details,
             )
 
-        retrieval_batches = await self._timed_stage(
-            StageName.RETRIEVAL,
-            emit,
-            lambda: self._retrieve(search_queries),
-            stage_durations,
-            stage_details,
-        )
+        if searching:
+            retrieval_batches = await self._timed_stage(
+                StageName.RETRIEVAL,
+                emit,
+                lambda: self._retrieve(search_queries),
+                stage_durations,
+                stage_details,
+            )
 
-        fused_batches = await self._timed_stage(
-            StageName.FUSION,
-            emit,
-            lambda: self._fuse(retrieval_batches),
-            stage_durations,
-            stage_details,
-        )
+            fused_batches = await self._timed_stage(
+                StageName.FUSION,
+                emit,
+                lambda: self._fuse(retrieval_batches),
+                stage_durations,
+                stage_details,
+            )
 
-        reranked_global_chunks = await self._timed_stage(
-            StageName.RERANK,
-            emit,
-            lambda: self._rerank(fused_batches, question, prepared_dialogue_history, runtime.core),
-            stage_durations,
-            stage_details,
-            model_id=runtime.core.model_id,
-        )
+            reranked_global_chunks = await self._timed_stage(
+                StageName.RERANK,
+                emit,
+                lambda: self._rerank(fused_batches, question, prepared_dialogue_history, runtime.core),
+                stage_durations,
+                stage_details,
+                model_id=runtime.core.model_id,
+            )
+        else:  # small talk, an injection or a turn about the dialogue: no search, no documents
+            search_queries, retrieval_batches, fused_batches = [], [], []
+            reranked_global_chunks = _RerankOutput([])
+            reranked_global_chunks.final_evidence = []
         if capture_trace or self.late_sources:
             if not isinstance(reranked_global_chunks, _RerankOutput):
                 reranked_global_chunks = _RerankOutput(reranked_global_chunks)
@@ -213,13 +238,16 @@ class StandRagPipeline:
         fewshots_chars = self._fewshots_char_cost(selected_fewshots)
         context_budget = max(self.settings.max_qa_prompt_chars - fewshots_chars, 0)
 
-        context, sources = await self._timed_stage(
-            StageName.CONTEXT_ASSEMBLY,
-            emit,
-            lambda: self._assemble_context(reranked_global_chunks, budget_override=context_budget),
-            stage_durations,
-            stage_details,
-        )
+        if searching:
+            context, sources = await self._timed_stage(
+                StageName.CONTEXT_ASSEMBLY,
+                emit,
+                lambda: self._assemble_context(reranked_global_chunks, budget_override=context_budget),
+                stage_durations,
+                stage_details,
+            )
+        else:
+            context, sources = "", []
 
         fewshots_for_prompt = [example for example, _score in selected_fewshots]
         system_prompt = system_prompt_with_datetime(datetime.now())
@@ -228,9 +256,10 @@ class StandRagPipeline:
             user_prompt = prepare_prompt_for_question_answering(
                 user_question=question, dialogue_history=prepared_dialogue_history, context=context,
                 abbr_dict=self.resources.abbreviations, stemmer=self.resources.stemmer,
-                fewshots=fewshots_for_prompt or None,
+                fewshots=fewshots_for_prompt or None, route=route,
             )
-            return [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+            system = with_route_rules(system_prompt, route, bool(context)) if route is not None else system_prompt
+            return [{"role": "system", "content": system}, {"role": "user", "content": user_prompt}]
 
         qa_messages = qa_prompt(context)
         completion_tokens = generation_max_tokens or self.settings.max_output_tokens
@@ -285,7 +314,7 @@ class StandRagPipeline:
                         "max_rewrite_queries", "rerank_candidates_per_query", "rerank_top_k", "rerank_weight",
                         "max_context_chunks", "max_qa_prompt_chars", "graph_source_documents", "graph_max_elements",
                         "source_urls_per_document", "min_document_quality", "rerank_candidates_per_page",
-                        "source_attribution", "source_attribution_threshold", "max_sources",
+                        "source_attribution", "source_attribution_threshold", "max_sources", "turn_routing",
                     )},
                 },
             )
@@ -451,6 +480,26 @@ class StandRagPipeline:
             self.resources.abbreviations,
             self.resources.stemmer,
         )
+
+    async def _route_turn(self, question: str, dialogue_history: str, runtime: ModelRuntime) -> str:
+        """The kind of the turn (routing.py); the stand's previous behaviour ("nsu") when the call fails."""
+        try:
+            reply = await self.llm_router.chat_completion_text(
+                runtime=runtime,
+                messages=route_messages(question, dialogue_history),
+                stage="turn_routing",
+                max_tokens=20,
+                temperature=0.0,
+                response_format=ROUTE_SCHEMA,
+                extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+                timeout=self.settings.rewrite_timeout_seconds,
+            )
+            return parse_route(reply, question)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.warning("turn_routing_failed", model_id=runtime.model_id, error=repr(exc)[:200])
+            return FALLBACK_ROUTE
 
     async def _rewrite_question(self, question: str, dialogue_history: str, runtime: ModelRuntime) -> list[str]:
         input_messages = prepare_prompt_for_rewriting(

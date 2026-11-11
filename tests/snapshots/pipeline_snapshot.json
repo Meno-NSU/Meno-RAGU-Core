@@ -29,7 +29,8 @@
       "resolved_coreferences": "Какие факультеты есть в НГУ?",
       "search_queries": [
         "Какие факультеты есть в НГУ?"
-      ]
+      ],
+      "route": "nsu"
     },
     "retrieval": {
       "chunks_found": 1,
