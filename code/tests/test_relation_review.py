@@ -63,10 +63,10 @@ def test_failed_review_keeps_every_relation(validator):
     assert stats['review_missing'] == 1
 
 
-def test_drop_removes_only_the_listed_relation(validator):
+def test_proposed_drops_are_counted_but_the_relation_is_kept(validator):
     result, stats = apply_review([WORKS, PART], review(drop=[{'id': 2, 'reason': 'boilerplate'}]), ENTITIES, validator)
-    assert dumps(result) == dumps([WORKS])
-    assert stats['drop:boilerplate'] == 1
+    assert dumps(result) == dumps([WORKS, PART])
+    assert stats['drop_proposed:boilerplate'] == 1
 
 
 def test_conflicting_or_unknown_numbers_keep_the_relation(validator):

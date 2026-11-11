@@ -11,7 +11,10 @@ asks only for changes of type, drops with a reason, and missing relations. Every
 field of a structured answer is mandatory, so listing only the changes keeps the answer short. Code applies them:
 
 * a relation the review does not list stays exactly as extracted, and a chunk whose review failed keeps all of its
-  relations, so the review removes only what it names with a reason;
+  relations;
+* proposed drops are kept in the stage snapshot with their reasons but not applied: on a sample about half of
+  gemma's drops removed facts the text states (an article's journal, a facility's area), so applying them is left
+  to a measured decision;
 * a change alters only the type and is applied only when the ontology keeps the result (turning it around itself
   when the reversed pair fits); a change to a label outside the ontology means that no type fits: the relation stays
   as it is;
@@ -170,9 +173,8 @@ def apply_review(
         for number, item in enumerate(relations, 1):
             kind, change = changes.get(number, ('keep', None))
             if kind == 'drop':
-                stats[f'drop:{change.reason}'] += 1
-                continue
-            if kind == 'change':
+                stats[f'drop_proposed:{change.reason}'] += 1
+            elif kind == 'change':
                 label = change.relation_type.strip()
                 fixed = item.model_copy(update={'relation_type': label})
                 if not label or label == item.relation_type:
