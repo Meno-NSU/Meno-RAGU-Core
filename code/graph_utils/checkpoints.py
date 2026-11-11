@@ -37,15 +37,32 @@ RELATION_REVIEW_PREVIOUS_CODE = {
     'graph_utils/graph_utils.py': '771e82195a41c49c184e5be0d34e829153d4de86d935af35f82fcd7b6ea29aa8',
 }
 RELATION_REVIEW_NEW_CODE = ('graph_utils/relation_review.py',)
+RELATION_REVIEW_SETTINGS = ('relation_review', 'relation_review_sources')
+# The code of the review of every chunk (fe27823), before --relation_review_sources limited it to chosen sources.
+REVIEW_SOURCES_PREVIOUS_CODE = {
+    'prepare_graph_index.py': 'bd6e08549a6372192fd3060417c97797d2217c73edff7b979aecf6bb56fb7250',
+    'graph_utils/checkpoints.py': 'fff858d5b87e590d7c2faaee0858993d12478fb011a1274037d8ef03d6afdce3',
+    'graph_utils/relation_review.py': '52cc0caf25f1f06ac4b428fe80a4643897244934ad8c96d0d3718fee7fab5b00',
+}
+
+
+def _without_settings(configuration, names):
+    previous = {**configuration}
+    if 'settings' in configuration:
+        previous['settings'] = {key: value for key, value in configuration['settings'].items() if key not in names}
+    return previous
 
 
 def previous_relation_review_configuration(configuration):
-    previous = {**configuration}
-    if 'settings' in configuration:
-        previous['settings'] = {key: value for key, value in configuration['settings'].items()
-                                if key != 'relation_review'}
+    previous = _without_settings(configuration, RELATION_REVIEW_SETTINGS)
     code = {key: value for key, value in configuration.get('code', {}).items() if key not in RELATION_REVIEW_NEW_CODE}
     previous['code'] = {**code, **RELATION_REVIEW_PREVIOUS_CODE}
+    return previous
+
+
+def previous_review_sources_configuration(configuration):
+    previous = _without_settings(configuration, ('relation_review_sources',))
+    previous['code'] = {**configuration.get('code', {}), **REVIEW_SOURCES_PREVIOUS_CODE}
     return previous
 
 
@@ -68,6 +85,8 @@ UPGRADES = (
      'Сохраняю снимки 01–06; обобщение 07–11 учитывает контекст LLM и повторяет оборванные ответы.'),
     (previous_relation_review_configuration, '05-', 'manifest.before-relation-review.json',
      'Сохраняю снимки 01–04; проверка связей и следующие этапы считаются заново.'),
+    (previous_review_sources_configuration, '05-', 'manifest.before-review-sources.json',
+     'Сохраняю снимки 01–04; проверка связей выбранных источников и следующие этапы считаются заново.'),
 )
 
 

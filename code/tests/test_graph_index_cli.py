@@ -61,11 +61,12 @@ def test_indexing_keys_come_from_environment_and_cli_has_priority(monkeypatch, e
     assert parsed[0].log_level == 'DEBUG'
     assert parsed[0].checkpoint_dir == '/data/graph-checkpoints'
     assert parsed[0].relation_review is False
+    assert parsed[0].relation_review_sources == ''
 
 
 def test_relation_review_is_requested_explicitly(monkeypatch):
     arguments = ['prepare_graph_index.py', '-i', 'corpus.jsonl', '-r', 'mapping.json', '-e', 'bge-m3',
-                 '--relation_review']
+                 '--relation_review', '--relation_review_sources', 'menon,teaching']
     monkeypatch.setattr(sys, 'argv', arguments)
     original = ArgumentParser.parse_args
     parsed = []
@@ -82,6 +83,7 @@ def test_relation_review_is_requested_explicitly(monkeypatch):
     with pytest.raises(Parsed):
         runpy.run_path(str(script), run_name='__main__')
     assert parsed[0].relation_review is True
+    assert parsed[0].relation_review_sources == 'menon,teaching'
 
 
 @pytest.mark.parametrize('prompt_tokens, allowed', [(7, True), (8, False)])

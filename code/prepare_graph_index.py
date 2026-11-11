@@ -52,6 +52,7 @@ from graph_utils.checkpoints import (
     GraphCheckpoints,
     checkpoint_configuration,
 )
+from graph_utils.relation_review import chunk_ids
 from rewriting_utils.rewriting_utils import load_abbreviations
 from tokenization_utils.tokenization_utils import load_hf_tokenizer
 
@@ -201,6 +202,11 @@ def main():
                         help='Validate the extracted relations by one verdict per relation instead of rewriting the '
                              'whole list: kept relations stay as extracted, fixes must fit the ontology, and relations '
                              'without a fitting ontology type are kept with the type "UNFIT:<type>".')
+    parser.add_argument('--relation_review_sources', dest='relation_review_sources', type=str, required=False,
+                        default='',
+                        help='The comma-separated list of content sources whose chunks get the relation review '
+                             '(all chunks if it is not specified). The relations of the other chunks are kept as '
+                             'extracted, and those without a fitting ontology type get the type "UNFIT:<type>".')
     parser.add_argument('--no_clustering', dest='no_clustering', action='store_true',
                         help='Disable the entity clustering before their summarization.')
     parser.add_argument('--no_community_summary', dest='no_community_summary', action='store_true',
@@ -297,6 +303,23 @@ def main():
         enrich_sources=chunk_header_sources,
         stats=enrichment_stats
     )
+    review_chunk_ids: Optional[Set[str]] = None
+    if args.relation_review and len(args.relation_review_sources.strip()) > 0:
+        review_sources = {it.strip().lower() for it in args.relation_review_sources.split(',') if it.strip()}
+        if content_sources is not None:
+            review_sources &= content_sources
+        review_texts, _ = collect_knowledge_base_chunks(
+            documents=documents,
+            chunk_mapping=chunk_reverse_index,
+            content_sources=review_sources,
+            max_num_chunks=args.max_chunks,
+            enrich_mode=args.chunk_header,
+            enrich_sources=chunk_header_sources,
+            stats=dict()
+        )
+        review_chunk_ids = chunk_ids(review_texts)
+        del review_texts
+        print(f'{len(review_chunk_ids)} chunks of the sources {sorted(review_sources)} get the relation review.')
     del documents, chunk_reverse_index
     gc.collect()
     print(f'{len(chunk_texts)} chunks are selected for the knowledge graph.')
@@ -388,6 +411,7 @@ def main():
             do_entity_validation=not args.no_validation,
             do_relation_validation=not args.no_validation,
             relation_review=args.relation_review,
+            review_chunk_ids=review_chunk_ids,
             abbreviations=abbreviations,
             rewrite_concurrency=args.rate_max_simultaneous if args.rate_max_simultaneous > 0 else 8,
         )

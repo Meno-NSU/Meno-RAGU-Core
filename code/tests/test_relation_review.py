@@ -6,6 +6,7 @@ from graph_utils.relation_review import (
     UNFIT_PREFIX,
     RelationReviewModel,
     apply_review,
+    chunk_ids,
     relation_note,
     review_messages,
 )
@@ -233,4 +234,26 @@ def test_interrupted_review_build_resumes_without_repeating_completed_llm_passes
             _, relations = await review_extractor(resumed, store).extract(chunks())
         assert resumed.calls == REVIEW_PASSES[REVIEW_PASSES.index(stop):]
         assert len(relations) == 4
+    asyncio.run(run())
+
+
+def test_chunk_ids_are_the_ids_the_graph_gives_chunks():
+    texts = ['Иванов работает в НГУ.', 'Курс «Генетика дрозофилы».']
+    assert chunk_ids(texts) == {Chunk(text, index, f'doc_{index}').id for index, text in enumerate(texts)}
+
+
+def test_only_selected_chunks_are_reviewed_and_the_rest_are_marked_by_code(tmp_path):
+    async def run():
+        model = ReviewModel({'change': [change(2, 'TEACHES')]})
+        selected = chunks()[:1]
+        extractor = review_extractor(model, None)
+        with GraphCheckpoints(tmp_path, {}) as store:
+            extractor.checkpoints = store
+            extractor.review_chunk_ids = chunk_ids([item.content for item in selected])
+            _, relations = await extractor.extract(chunks())
+            assert store.manifest['stages']['05-relation-review']['counts'] == [1]
+        assert len(model.conversations['Reviewing extracted relations']) == 1
+        assert sorted(item.relation_type for item in relations) == sorted(
+            ['WORKPLACE', UNFIT_PREFIX + 'AGENT', 'WORKPLACE', UNFIT_PREFIX + 'AGENT'])
+        assert extractor.review_stats['not_reviewed'] == 1 and extractor.review_stats['no_fit'] == 1
     asyncio.run(run())

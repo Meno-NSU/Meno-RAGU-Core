@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 from ragu.common.logger import logger
 from ragu.common.prompts.default_models import RelationModel, RelationsExtractionModel
 from ragu.triplet.ontology import OntologyValidator, ValidationReport
+from ragu.utils.ragu_utils import compute_mdhash_id
 
 UNFIT_PREFIX = 'UNFIT:'
 REVIEW_STAGE = '05-relation-review'
@@ -191,15 +192,33 @@ def apply_review(
             result.append(item)
         stats['added'] += len(review.added)
         result.extend(review.added)
+    marked, marking = mark_unfit(result, entities, validator)
+    stats.update(marking)
+    return marked, stats
+
+
+def mark_unfit(
+    relations: Sequence[RelationModel],
+    entities: Sequence[dict],
+    validator: OntologyValidator | None,
+) -> tuple[list[RelationModel], Counter]:
+    """Give ``UNFIT:<type>`` to the relations the ontology would drop for their type; leave the others as they are."""
+    stats: Counter = Counter()
     if validator is None:
-        return result, stats
+        return list(relations), stats
+    types = {entity['entity_name']: entity['entity_type'] for entity in entities}
     marked = []
-    for item in result:
+    for item in relations:
         if _rejection(item, types, validator) in _UNFIT_VIOLATIONS:
             stats['marked_unfit'] += 1
             item = item.model_copy(update={'relation_type': UNFIT_PREFIX + item.relation_type})
         marked.append(item)
     return marked, stats
+
+
+def chunk_ids(texts) -> set[str]:
+    """The identifiers the graph gives the chunks with these texts (``Chunk.id``)."""
+    return {compute_mdhash_id(text, prefix='chunk-') for text in texts}
 
 
 def is_unfit(relation: RelationModel) -> bool:
@@ -209,10 +228,18 @@ def is_unfit(relation: RelationModel) -> bool:
 class RelationReviewMixin:
     """Extractor mixin: with ``relation_review=True`` the relation validation pass becomes the review."""
 
-    def __init__(self, *args, relation_review: bool = False, **kwargs):
+    def __init__(self, *args, relation_review: bool = False, review_chunk_ids: set[str] | None = None, **kwargs):
         super().__init__(*args, **kwargs)
         self.relation_review = relation_review
+        self.review_chunk_ids = review_chunk_ids
         self.review_stats: Counter = Counter()
+        self._review_selection: list[bool] | None = None
+
+    async def extract(self, chunks, *args, **kwargs):
+        # The relation passes see only the chunk texts, in the order of the chunks; remember which ones to review.
+        self._review_selection = (None if self.review_chunk_ids is None
+                                  else [chunk.id in self.review_chunk_ids for chunk in chunks])
+        return await super().extract(chunks, *args, **kwargs)
 
     def _review_relation_types(self, entities: Sequence[dict]) -> str | None:
         if self.ontology is None:
@@ -246,12 +273,23 @@ class RelationReviewMixin:
     async def _validate_relations(self, context, entities_payload, relations):
         if not self.relation_review:
             return await super()._validate_relations(context, entities_payload, relations)
-        reviews = await self._review_relations(context, entities_payload, relations)
+        selection = self._review_selection if self._review_selection is not None else [True] * len(context)
+        if len(selection) != len(context):
+            raise RuntimeError('The review selection does not match the chunks of the relation pass.')
+        chosen = [index for index, selected in enumerate(selection) if selected]
+        reviews = dict(zip(chosen, await self._review_relations(
+            [context[index] for index in chosen], [entities_payload[index] for index in chosen],
+            [relations[index] for index in chosen],
+        ) if chosen else [], strict=True))
         result = []
         stats: Counter = Counter()
-        for entities, extracted, review in zip(entities_payload, relations, reviews, strict=True):
+        for index, (entities, extracted) in enumerate(zip(entities_payload, relations, strict=True)):
             items = list(extracted.relations) if extracted is not None else []
-            applied, chunk_stats = apply_review(items, review, entities, self.validator)
+            if index in reviews:
+                applied, chunk_stats = apply_review(items, reviews[index], entities, self.validator)
+            else:
+                applied, chunk_stats = mark_unfit(items, entities, self.validator)
+                chunk_stats['not_reviewed'] += 1
             stats.update(chunk_stats)
             result.append(RelationsExtractionModel(relations=applied))
         self.review_stats.update(stats)
