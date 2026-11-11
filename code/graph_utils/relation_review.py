@@ -5,18 +5,21 @@ RAGU's validation asks the model to return the whole relation list again. That c
 extraction itself, lets the model rewrite correct relations, and never shows it the domain → range signatures the
 ontology later enforces, so a third of the relations were dropped after it for type pairs the model never saw.
 
-The review asks for one verdict per numbered relation instead. Code applies the verdicts:
+The review shows the numbered relations with the types of their endpoints and the admissible relation types with
+their signatures, flags the relations the ontology would reject together with the types that accept their pair, and
+asks only for changes: fixes, relations without a fitting type, drops with a reason, and missing relations. Every
+field of a structured answer is mandatory, so listing only the changes keeps the answer short. Code applies them:
 
-* a kept relation stays exactly as extracted, and a relation without a verdict (or a chunk whose review failed) is
-  kept, so the review can only remove what it names with a reason;
+* a relation the review does not list stays exactly as extracted, and a chunk whose review failed keeps all of its
+  relations, so the review removes only what it names with a reason;
 * a fix may change only the type, the direction or an endpoint name, and is accepted only when the result fits the
-  ontology exactly;
+  ontology exactly; a "no fit" whose proposed type is an admissible type that fits is applied as a fix;
 * a relation the ontology would drop for its type (no fitting type for the pair, or a type outside the vocabulary) is
   kept with the type ``UNFIT:<type>``. Dangling endpoints and self-loops are left to the ontology, which drops them.
 """
 from collections import Counter
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Literal
 
 from jinja2 import Template
 from pydantic import BaseModel, Field
@@ -29,39 +32,44 @@ REVIEW_STAGE = '05-relation-review'
 _UNFIT_VIOLATIONS = {'constraint_violation', 'unknown_relation_type'}
 
 
-class RelationVerdict(BaseModel):
+class RelationFix(BaseModel):
     id: int = Field(..., description='Number of the relation in the list')
-    verdict: Literal['keep', 'fix', 'no_fit', 'drop']
-    reason: Literal['unsupported', 'different_rows', 'duplicate'] | None = Field(
-        None, description='Only for drop: why the relation is dropped')
-    relation_type: str | None = Field(None, description='Only for fix: the new type from the allowed list')
-    reverse: bool = Field(False, description='Only for fix: swap source and target')
-    source_entity: str | None = Field(None, description='Only for fix: the exact source name from the entity list')
-    target_entity: str | None = Field(None, description='Only for fix: the exact target name from the entity list')
-    proposed_type: str | None = Field(None, description='Only for no_fit: your own UPPER_SNAKE_CASE label')
+    relation_type: str = Field(..., description='The new type from the allowed list, or "" to keep the type')
+    reverse: bool = Field(..., description='true to swap the source and the target')
+    source_entity: str = Field(..., description='The exact source name from the entity list, or "" to keep it')
+    target_entity: str = Field(..., description='The exact target name from the entity list, or "" to keep it')
+
+
+class RelationNoFit(BaseModel):
+    id: int = Field(..., description='Number of the relation in the list')
+    proposed_type: str = Field(..., description='Your own short UPPER_SNAKE_CASE label for the relation')
+
+
+class RelationDrop(BaseModel):
+    id: int = Field(..., description='Number of the relation in the list')
+    reason: Literal['unsupported', 'different_rows', 'boilerplate', 'duplicate']
 
 
 class RelationReviewModel(BaseModel):
-    verdicts: list[RelationVerdict] = Field(default_factory=list, description='One verdict per numbered relation')
+    fix: list[RelationFix] = Field(default_factory=list, description='Relations to fix')
+    no_fit: list[RelationNoFit] = Field(default_factory=list, description='Relations no allowed type fits')
+    drop: list[RelationDrop] = Field(default_factory=list, description='Relations to drop')
     added: list[RelationModel] = Field(default_factory=list, description='Relations the list misses')
 
 
 REVIEW_SYSTEM = """You check relations that were extracted from a text, against that text and against the allowed relation types.
+List only the relations that need a change, by their numbers. Every relation you do not list is kept exactly as it is.
 
-For EVERY numbered relation return one verdict with its number:
-- "keep": the text supports the relation and its type fits. This is the default: when in doubt, keep.
-- "fix": the text supports the relation, but its type, its direction or an endpoint name is wrong. Give only what changes:
-  - "relation_type": an allowed type whose signature fits the types of the two entities;
-  - "reverse": true to swap the source and the target;
-  - "source_entity" / "target_entity": the exact name from the entity list, when an endpoint is a misspelling or a variant of a listed entity.
+- "fix": the text supports the relation, but its type, its direction or an endpoint name is wrong. Give "relation_type": an allowed type whose signature fits the types of the two entities, or "" to keep the type; "reverse": true to swap the source and the target; "source_entity" / "target_entity": the exact name from the entity list when an endpoint is a misspelling or a variant of a listed entity, or "" to keep it.
 - "no_fit": the text supports the relation, but no allowed type fits these two entities. Give "proposed_type": a short UPPER_SNAKE_CASE label of your own that names the relation. The relation is kept.
-- "drop": only with a "reason":
+- "drop": the relation has to go. Give the "reason":
   - "unsupported": the text gives no basis for this connection at all;
   - "different_rows": the two entities come from different rows of a table or different items of a list, and nothing in the text connects them;
+  - "boilerplate": the relation comes from the furniture of the page (navigation, copyright notices, identifiers, counters) and says nothing about the entities themselves;
   - "duplicate": another relation in the list states the same connection between the same entities.
-  A weak or indirect connection that the text supports is not a reason to drop.
+  A weak or indirect connection that the text supports is not a reason to drop. When in doubt, do not list the relation.
 
-A relation followed by "!" does not fit the allowed types as it is: fix it, or answer "no_fit" when no allowed type fits.
+A relation followed by "!" will be discarded as it is. Its note names the allowed types for its pair of entity types: fix the relation with one of them when one matches its meaning, otherwise answer "no_fit".
 {% if relation_types %}
 Allowed relation types. A type shown as `TYPE [SUBJECT -> OBJECT] (meaning)` may only go from an entity of a SUBJECT type to an entity of an OBJECT type; `|` separates alternatives, `<->` marks a relation that holds in both directions, and a type shown without brackets accepts any pair. The source entity is the SUBJECT: follow the arrow.
 {{ relation_types }}
@@ -83,7 +91,7 @@ def review_messages(
     notes: Sequence[str | None],
     language: str,
 ) -> list[dict]:
-    """Build the chat messages that ask for verdicts on the numbered relations of one chunk."""
+    """Build the chat messages that ask for the changes to the numbered relations of one chunk."""
     types = {entity['entity_name']: entity['entity_type'] for entity in entities}
     lines = ['Entities:']
     lines.extend(f'- {entity["entity_name"]} ({entity["entity_type"]})' for entity in entities)
@@ -111,19 +119,27 @@ def _rejection(relation: RelationModel, types: dict, validator: OntologyValidato
     return next(iter(report.dropped), 'dropped')
 
 
-def _note(relation: RelationModel, types: dict, validator: OntologyValidator | None) -> str | None:
+def _accepting(subject_type: str, object_type: str, validator: OntologyValidator) -> str:
+    names = [name for name in validator.ontology.relation_type_names
+             if validator.ontology.allows(name, subject_type, object_type)]
+    return (f'allowed for {subject_type} -> {object_type}: {", ".join(names)}' if names
+            else f'no allowed type accepts {subject_type} -> {object_type}')
+
+
+def relation_note(relation: RelationModel, types: dict, validator: OntologyValidator | None) -> str | None:
+    """Why the ontology would discard the relation and which types accept its pair, or ``None`` if it would not."""
     if validator is None:
         return None
     reason = _rejection(relation, types, validator)
-    if reason == 'constraint_violation':
-        return (f'{relation.relation_type} does not accept '
-                f'{types[relation.source_entity]} -> {types[relation.target_entity]}')
-    if reason == 'unknown_relation_type':
-        return f'{relation.relation_type} is not an allowed type'
     if reason == 'dangling_endpoint':
         missing = relation.source_entity if relation.source_entity not in types else relation.target_entity
         return f'{missing} is not in the entity list'
-    return None
+    if reason not in _UNFIT_VIOLATIONS:
+        return None
+    subject_type, object_type = types[relation.source_entity], types[relation.target_entity]
+    problem = (f'{relation.relation_type} does not accept {subject_type} -> {object_type}'
+               if reason == 'constraint_violation' else f'{relation.relation_type} is not an allowed type')
+    return f'{problem}; {_accepting(subject_type, object_type, validator)}'
 
 
 def _fits(relation: RelationModel, types: dict, validator: OntologyValidator | None) -> bool:
@@ -140,20 +156,33 @@ def _fits(relation: RelationModel, types: dict, validator: OntologyValidator | N
         canonical, types[relation.source_entity], types[relation.target_entity])
 
 
-def _fixed(relation: RelationModel, verdict: RelationVerdict) -> RelationModel:
-    update: dict[str, Any] = {}
-    if verdict.relation_type and verdict.relation_type.strip():
-        update['relation_type'] = verdict.relation_type.strip()
-    if verdict.source_entity and verdict.source_entity.strip():
-        update['source_entity'] = verdict.source_entity.strip()
-    if verdict.target_entity and verdict.target_entity.strip():
-        update['target_entity'] = verdict.target_entity.strip()
+def _fixed(relation: RelationModel, change: RelationFix) -> RelationModel:
+    update = {field: getattr(change, field).strip()
+              for field in ('relation_type', 'source_entity', 'target_entity') if getattr(change, field).strip()}
     result = relation.model_copy(update=update)
-    if verdict.reverse:
+    if change.reverse:
         result = result.model_copy(update={
             'source_entity': result.target_entity, 'target_entity': result.source_entity,
         })
     return result
+
+
+def _changes(review: RelationReviewModel, count: int, stats: Counter) -> dict[int, tuple[str, BaseModel]]:
+    """The change of each listed relation; a number listed twice or out of range changes nothing."""
+    listed: dict[int, list[tuple[str, BaseModel]]] = {}
+    for kind, items in (('fix', review.fix), ('no_fit', review.no_fit), ('drop', review.drop)):
+        for item in items:
+            if 1 <= item.id <= count:
+                listed.setdefault(item.id, []).append((kind, item))
+            else:
+                stats['verdict_ignored'] += 1
+    changes = {}
+    for number, items in listed.items():
+        if len(items) == 1:
+            changes[number] = items[0]
+        else:
+            stats['verdict_conflict'] += 1
+    return changes
 
 
 def apply_review(
@@ -162,45 +191,39 @@ def apply_review(
     entities: Sequence[dict],
     validator: OntologyValidator | None,
 ) -> tuple[list[RelationModel], Counter]:
-    """Apply the verdicts of one chunk and mark the relations the ontology has no fitting type for."""
+    """Apply the review of one chunk and mark the relations the ontology has no fitting type for."""
     stats: Counter = Counter()
     types = {entity['entity_name']: entity['entity_type'] for entity in entities}
     if review is None:
         stats['review_missing'] += 1
         result = list(relations)
     else:
-        verdicts: dict[int, RelationVerdict] = {}
-        for verdict in review.verdicts:
-            if 1 <= verdict.id <= len(relations) and verdict.id not in verdicts:
-                verdicts[verdict.id] = verdict
-            else:
-                stats['verdict_ignored'] += 1
+        changes = _changes(review, len(relations), stats)
         result = []
         for number, item in enumerate(relations, 1):
-            verdict = verdicts.get(number)
-            if verdict is None:
-                stats['no_verdict'] += 1
-                result.append(item)
-            elif verdict.verdict == 'drop':
-                if verdict.reason is None:
-                    stats['drop_without_reason'] += 1
-                    result.append(item)
+            kind, change = changes.get(number, ('keep', None))
+            if kind == 'drop':
+                stats[f'drop:{change.reason}'] += 1
+                continue
+            if kind == 'no_fit':
+                proposed = item.model_copy(update={'relation_type': change.proposed_type.strip()})
+                if proposed.relation_type and _fits(proposed, types, validator):
+                    stats['no_fit_fixed'] += 1
+                    item = proposed
                 else:
-                    stats[f'drop:{verdict.reason}'] += 1
-            elif verdict.verdict == 'fix':
-                fixed = _fixed(item, verdict)
+                    stats['no_fit'] += 1
+            elif kind == 'fix':
+                fixed = _fixed(item, change)
                 if fixed == item:
                     stats['fix_unchanged'] += 1
-                    result.append(item)
                 elif _fits(fixed, types, validator):
                     stats['fix'] += 1
-                    result.append(fixed)
+                    item = fixed
                 else:
                     stats['fix_rejected'] += 1
-                    result.append(item)
             else:
-                stats[verdict.verdict] += 1
-                result.append(item)
+                stats['keep'] += 1
+            result.append(item)
         stats['added'] += len(review.added)
         result.extend(review.added)
     if validator is None:
@@ -247,7 +270,7 @@ class RelationReviewMixin:
             conversations.append(review_messages(
                 context=text, entities=entities, relations=[item.model_dump() for item in items],
                 relation_types=self._review_relation_types(entities),
-                notes=[_note(item, types, self.validator) for item in items],
+                notes=[relation_note(item, types, self.validator) for item in items],
                 language=self.language,
             ))
         return await self.llm.batch_chat_completion(
