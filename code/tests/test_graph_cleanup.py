@@ -115,3 +115,20 @@ def test_the_cleanup_shapes_the_saved_artifacts_when_asked(tmp_path):
     assert relations == []
     entities, relations = asyncio.run(run(False))
     assert len(entities) == 2 and len(relations) == 1
+
+
+def test_a_value_the_relation_does_not_name_is_written_into_the_fact():
+    work = entity('Control of pulse regime generation', 'WORK_OF_ART', 'Доклад о генерации импульсов.')
+    year = entity('2019', 'DATE')
+    entities, _, _ = fold_values([work, year], [relation(work, year, 'DATE_OF_CREATION', 'Дата публикации работы.')])
+    assert entities[0].description == 'Доклад о генерации импульсов. Дата публикации работы: 2019.'
+
+
+def test_an_initial_stands_for_the_given_name_then_the_patronymic():
+    names = ['Evgenii Sergeevich Smirnov', 'S. Smirnov', 'E. S. Smirnov', 'Smirnov, E', 'Смирнов Сергей Захарович',
+             'Захар Смирнов', 'С. З. Смирнов']
+    people = [entity(name, 'PERSON', chunk=f'c{i}') for i, name in enumerate(names)]
+    entities, _, _ = merge_variants(people, [])
+    assert [e.entity_name for e in entities] == [
+        'Evgenii Sergeevich Smirnov', 'S. Smirnov', 'Evgenii Sergeevich Smirnov', 'Evgenii Sergeevich Smirnov',
+        'Смирнов Сергей Захарович', 'Захар Смирнов', 'Смирнов Сергей Захарович']

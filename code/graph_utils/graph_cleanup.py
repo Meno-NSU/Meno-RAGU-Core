@@ -34,8 +34,24 @@ def _with_facts(description: str, facts: list[str]) -> str:
     return ' '.join(parts)
 
 
+def _terms(text: str) -> list[str]:
+    return [term.casefold().replace('ё', 'е') for term in re.findall(r'[^\W_]+', str(text))]
+
+
+def _names_value(description: str, value: str) -> bool:
+    """Every word or number of the value starts one of the description ("11 стр." in "Объём статьи 11 страниц")."""
+    terms = _terms(description)
+    return all(any(term.startswith(part) for term in terms) for part in _terms(value))
+
+
+def _fact(description: str, value: str) -> str:
+    # "Дата публикации работы." names no date: the value itself was the name of the node that goes
+    return description if _names_value(description, value) else f"{description.strip().rstrip('.')}: {value}."
+
+
 def fold_values(entities: list[Entity], relations: list[Relation]) -> tuple[list[Entity], list[Relation], dict[str, int]]:
-    value_ids = {entity.id for entity in entities if entity.entity_type in VALUE_TYPES}
+    value_names = {entity.id: entity.entity_name for entity in entities if entity.entity_type in VALUE_TYPES}
+    value_ids = set(value_names)
     facts: dict[tuple[str, str], list[str]] = defaultdict(list)
     kept_relations = []
     stats = {'value_entities': 0, 'folded_relations': 0, 'value_to_value_relations': 0}
@@ -46,9 +62,10 @@ def fold_values(entities: list[Entity], relations: list[Relation]) -> tuple[list
         elif subject_value and object_value:
             stats['value_to_value_relations'] += 1
         else:
-            target = relation.object_id if subject_value else relation.subject_id
+            target, value = ((relation.object_id, relation.subject_id) if subject_value
+                             else (relation.subject_id, relation.object_id))
             for chunk_id in relation.source_chunk_id:
-                facts[(target, chunk_id)].append(relation.description)
+                facts[(target, chunk_id)].append(_fact(relation.description, value_names[value]))
             stats['folded_relations'] += 1
     kept_entities = []
     for entity in entities:
@@ -72,17 +89,22 @@ def _words(name: str) -> list[str]:
     return [word.casefold().replace('ё', 'е') for word in _WORD.findall(str(name))]
 
 
+def _word_fits(word: str, full_word: str) -> bool:
+    return full_word == word if len(word) > 1 else full_word.startswith(word)
+
+
 def _fits(short: list[str], full: list[str]) -> bool:
-    """Every word of the short name matches its own word of the full name: whole words first, then initials."""
-    free = list(full)
-    for word in sorted(short, key=len, reverse=True):
-        match = next((i for i, candidate in enumerate(free)
-                      if candidate is not None and (candidate == word if len(word) > 1 else candidate.startswith(word))),
-                     None)
-        if match is None:
-            return False
-        free[match] = None
-    return True
+    """The short name has the surname of the full one (its first or its last word), and its other words are the given
+    name and then the patronymic, whole or as initials: "S. Smirnov" is not "Evgenii Sergeevich Smirnov"."""
+    for surname, given, patronymic in ((0, 1, 2), (2, 0, 1)):
+        if full[surname] not in short:
+            continue
+        rest = list(short)
+        rest.remove(full[surname])
+        order = [full[given], full[patronymic]]
+        if len(rest) <= 2 and all(_word_fits(word, order[i]) for i, word in enumerate(rest)):
+            return True
+    return False
 
 
 def _person_targets(entities: list[Entity]) -> dict[str, str]:
