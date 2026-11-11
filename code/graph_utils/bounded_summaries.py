@@ -24,6 +24,13 @@ class SummaryBudget:
     def size(self, conversation):
         return self.llm.count_prompt_tokens(conversation)
 
+    def fits(self, conversation):
+        # A token covers at least one byte of text, and the chat template adds a few special tokens per message, so
+        # a prompt within the limit by its bytes is within it by its tokens: most of the millions of graph descriptions
+        # need no tokenization.
+        upper = sum(len(str(message.get('content', '')).encode()) + 64 for message in conversation)
+        return upper <= self.limit or self.size(conversation) <= self.limit
+
     @staticmethod
     def split(text):
         middle = len(text) // 2
@@ -147,7 +154,7 @@ class SummaryBudget:
         def conversation(item):
             return render(instruction.messages, **{argument: [item]}, language=language)[0].to_openai()
 
-        oversized = [item for item in items if self.size(conversation(item)) > self.limit]
+        oversized = [item for item in items if not self.fits(conversation(item))]
 
         async def reduce(item):
             def renderer(text):
@@ -162,19 +169,26 @@ class SummaryBudget:
 
 
 class BudgetedEntitySummarizer(EntitySummarizer):
-    async def summarize_entities(self, grouped_entities_df):
-        if not self.use_llm_summarization:
-            return await super().summarize_entities(grouped_entities_df)
+    async def merged_descriptions(self, grouped_entities_df):
+        """The description of every group, as the library merges it (joined, or clustered and summarized). Collected
+        in a list: a DataFrame updated row by row copies its column each time (about 80 groups a second on 631K)."""
         started = reported = time.monotonic()
         total = len(grouped_entities_df)
         logger.info('[ГРАФ: ОПИСАНИЯ СУЩНОСТЕЙ] Подготовка {} групп описаний.', total)
-        for completed, (index, row) in enumerate(grouped_entities_df.iterrows(), 1):
-            grouped_entities_df.loc[index, 'description'] = await self._summarize_by_cluster_if_needed(row['description'])
+        descriptions = []
+        for completed, value in enumerate(grouped_entities_df['description'].tolist(), 1):
+            descriptions.append(await self._summarize_by_cluster_if_needed(value))
             now = time.monotonic()
             if now - reported >= 30 or completed == total:
                 logger.info('[ГРАФ: ОПИСАНИЯ СУЩНОСТЕЙ] {}/{} групп; прошло {:.0f} с.',
                             completed, total, now - started)
                 reported = now
+        return descriptions
+
+    async def summarize_entities(self, grouped_entities_df):
+        if not self.use_llm_summarization:
+            return await super().summarize_entities(grouped_entities_df)
+        grouped_entities_df['description'] = await self.merged_descriptions(grouped_entities_df)
         mask = grouped_entities_df['duplicate_count'].to_numpy() > self.summarize_only_if_more_than
         singles = [Entity(**row) for _, row in grouped_entities_df.loc[~mask].drop('duplicate_count', axis=1).iterrows()]
         multiples = [Entity(**row) for _, row in grouped_entities_df.loc[mask].drop('duplicate_count', axis=1).iterrows()]

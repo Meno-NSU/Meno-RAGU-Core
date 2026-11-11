@@ -1,6 +1,7 @@
 import asyncio
 import dataclasses
 import json
+import time
 from collections import Counter
 
 import httpx
@@ -340,4 +341,37 @@ def test_fitting_prompts_reuse_real_legacy_response_cache_without_http_requests(
                     actual = await BudgetedCommunitySummarizer(llm).summarize(data)
                 assert len(requests) == 1
                 assert [dataclasses.asdict(item) for item in actual] == [dataclasses.asdict(item) for item in old]
+    asyncio.run(run())
+
+
+def test_hundreds_of_thousands_of_groups_are_prepared_in_seconds_with_the_library_join():
+    import pandas as pd
+
+    groups = 300000
+    frame = pd.DataFrame({
+        'entity_name': [f'Сущность {i}' for i in range(groups)], 'entity_type': ['ORGANIZATION'] * groups,
+        'description': [[f'Описание {i}.', 'Ещё факт.'] for i in range(groups)], 'duplicate_count': [2] * groups,
+    })
+    summarizer = BudgetedEntitySummarizer(model(), summarize_only_if_more_than=7)
+    started = time.monotonic()
+    descriptions = asyncio.run(summarizer.merged_descriptions(frame))
+    assert time.monotonic() - started < 20  # the per-row DataFrame update took about an hour for this many groups
+    assert descriptions == [f'Описание {i}. Ещё факт.' for i in range(groups)]
+
+
+def test_only_prompts_that_may_not_fit_by_their_bytes_are_tokenized():
+    async def run():
+        llm = model(context=1000, completion=100)
+        short = Entity('НГУ', 'ORGANIZATION', 'Университет.', ['chunk-a'])
+        cyrillic = Entity('СО РАН', 'ORGANIZATION', 'я' * 600, ['chunk-b'])  # 1200 bytes, 600 tokens: fits
+        long = Entity('ИЯФ', 'ORGANIZATION', 'x' * 5000, ['chunk-c'])
+        budget = SummaryBudget(llm)
+        instruction = BudgetedEntitySummarizer(llm).get_prompt('entity_summarizer')
+        llm.tokenizer.calls = 0
+        await budget.descriptions([short], instruction, 'entity', 'russian')
+        assert llm.tokenizer.calls == 0
+        await budget.descriptions([cyrillic], instruction, 'entity', 'russian')
+        assert llm.tokenizer.calls == 1 and cyrillic.description == 'я' * 600
+        await budget.descriptions([long], instruction, 'entity', 'russian')
+        assert len(long.description) < 5000
     asyncio.run(run())

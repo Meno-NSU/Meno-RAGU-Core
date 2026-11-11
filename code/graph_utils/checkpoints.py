@@ -81,6 +81,14 @@ CONTEXT_CLEANUP_PREVIOUS_CODE = {
 }
 
 
+# The code of both graph v2 builds (ef684e8) before stage 07 prepared descriptions without a row-by-row DataFrame
+# update and sized prompts by their bytes first. The results are the same; stages 01-06 stay.
+SUMMARY_SPEED_PREVIOUS_CODE = {
+    'graph_utils/checkpoints.py': '1e664ce91c13cbbb175442eef3f69db63dbeaed32658c5190f7e127214477a10',
+    'graph_utils/bounded_summaries.py': 'fc94811eacad24e2fd6f909223a324b7615dd891d74628ecc286243deaa95b47',
+}
+
+
 def _previous_code(configuration, code, new_files, new_settings):
     previous = _without_settings(configuration, new_settings)
     kept = {key: value for key, value in configuration.get('code', {}).items() if key not in new_files}
@@ -95,6 +103,10 @@ def previous_context_baseline_configuration(configuration):
 
 def previous_context_cleanup_configuration(configuration):
     return _previous_code(configuration, CONTEXT_CLEANUP_PREVIOUS_CODE, ('graph_utils/llm_limits.py',), ())
+
+
+def previous_summary_speed_configuration(configuration):
+    return _previous_code(configuration, SUMMARY_SPEED_PREVIOUS_CODE, (), ())
 
 
 def previous_completion_configuration(configuration):
@@ -122,6 +134,8 @@ UPGRADES = (
      'Сохраняю снимки 01–06; обобщение 07–11 планирует промпты по контексту, который обслуживает модель.'),
     (previous_context_cleanup_configuration, '07-', 'manifest.before-served-context.json',
      'Сохраняю снимки 01–06; обобщение 07–11 планирует промпты по контексту, который обслуживает модель.'),
+    (previous_summary_speed_configuration, '07-', 'manifest.before-summary-speed.json',
+     'Сохраняю снимки 01–06; обобщение 07–11 готовит описания без построчного обновления таблицы.'),
 )
 
 
