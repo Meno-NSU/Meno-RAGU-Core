@@ -83,3 +83,25 @@ def test_routing_can_be_switched_off():
     p.llm_router = RoutedLLM("chitchat")
     outcome = asyncio.run(p.prepare(messages=[ChatMessage(role="user", content="Спасибо!")], runtime=RUNTIME))
     assert outcome.context and "# Как отвечать на эту реплику" not in outcome.qa_messages[0]["content"]
+
+
+def test_a_history_of_several_messages_of_one_side_in_a_row_becomes_whole_turns():
+    from meno_rag.stand.pipeline import extract_question_and_history
+
+    messages = [ChatMessage(role="assistant", content="Здравствуйте!"),
+                ChatMessage(role="user", content="Где ФИТ?"), ChatMessage(role="user", content="И как туда попасть?"),
+                ChatMessage(role="assistant", content="ФИТ в главном корпусе."),
+                ChatMessage(role="assistant", content="Вход с Пирогова."),
+                ChatMessage(role="user", content="Без ответа"),
+                ChatMessage(role="user", content="А часы работы?")]
+    question, history = extract_question_and_history(messages)
+    assert question == "А часы работы?"
+    assert history == [{"role": "user", "content": "Где ФИТ?\nИ как туда попасть?"},
+                       {"role": "assistant", "content": "ФИТ в главном корпусе.\nВход с Пирогова."}]
+
+
+def test_a_question_after_an_unanswered_one_is_still_answered():
+    p = pipeline()
+    messages = [ChatMessage(role="user", content="Привет"), ChatMessage(role="user", content="ФИТ")]
+    outcome = asyncio.run(p.prepare(messages=messages, runtime=RUNTIME))
+    assert outcome.question == "ФИТ" and outcome.prepared_dialogue_history == ""

@@ -1042,11 +1042,20 @@ def extract_question_and_history(messages: list[ChatMessage]) -> tuple[str, list
     question = " ".join(messages[last_user_idx].content.strip().split()).strip()
     if not question:
         raise ValueError("The current user question is empty.")
-    raw_history = [
-        {"role": msg.role, "content": msg.content}
-        for msg in messages[:last_user_idx]
-        if msg.role in {"user", "assistant"}
-    ]
-    if len(raw_history) % 2 != 0:
-        raw_history = raw_history[1:] if raw_history and raw_history[0]["role"] == "assistant" else raw_history[:-1]
+    # Whole turns: several messages of one side in a row join (two questions before an answer, an answer in parts),
+    # an answer before any question and a question left without an answer stay out. The history must alternate.
+    turns: list[list[str | None]] = []
+    for msg in messages[:last_user_idx]:
+        if msg.role == "user":
+            if turns and turns[-1][1] is None:
+                turns[-1][0] = f"{turns[-1][0]}\n{msg.content}"
+            else:
+                turns.append([msg.content, None])
+        elif msg.role == "assistant" and turns:
+            turns[-1][1] = msg.content if turns[-1][1] is None else f"{turns[-1][1]}\n{msg.content}"
+    raw_history = []
+    for user_content, assistant_content in turns:
+        if assistant_content is not None:
+            raw_history += [{"role": "user", "content": user_content},
+                            {"role": "assistant", "content": assistant_content}]
     return question, raw_history
