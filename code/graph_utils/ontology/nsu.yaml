@@ -82,9 +82,9 @@ relation_types:
       - {domain: [PUBLICATION], range: [PERIODICAL], to: PUBLISHED_IN}
       - {domain: [DISCIPLINE], range: [EDUCATIONAL_PROGRAM, CURRICULUM, PROGRAM_TRACK], to: IN_PROGRAM}
   AUTHOR_OF:
-    description: links a person to a publication, thesis or work they wrote (not an editor, publisher or supervisor)
+    description: links a person to a publication or thesis they wrote (not a journal, not an editor, publisher or supervisor)
     domain: [PERSON]
-    range: [PUBLICATION, THESIS, WORK_OF_ART]
+    range: [PUBLICATION, THESIS]
     aliases: [AUTHOR, WROTE]
     inverse_aliases: [WRITTEN_BY, AUTHORED_BY]
   EDITOR_OF:
@@ -92,9 +92,9 @@ relation_types:
     domain: [PERSON]
     range: [PUBLICATION, PERIODICAL, WORK_OF_ART]
   PUBLISHED_IN:
-    description: links a publication to the journal or proceedings it appeared in
-    domain: [PUBLICATION, THESIS, WORK_OF_ART]
-    range: [PERIODICAL, WORK_OF_ART]
+    description: links a publication, or a person who published there, to the journal or proceedings it appeared in
+    domain: [PUBLICATION, THESIS, WORK_OF_ART, PERSON]
+    range: [PERIODICAL]
     inverse_aliases: [PUBLISHES]
   PRESENTED_AT:
     description: links a person or a talk to the conference or event where it was presented
@@ -178,7 +178,8 @@ relation_types:
     description: links a researcher, unit, project or publication to what it studies
     domain: [PERSON, ORGANIZATION, PUBLICATION, THESIS, PROJECT]
   USES:
-    description: links a study, unit, project or method to a method, instrument, software, material or organism it uses
+    description: the subject (a study, publication, unit, project, person or method) uses the object (a method, instrument, software, material or organism) — only when the text says it is used
+    domain: [PUBLICATION, THESIS, PROJECT, ORGANIZATION, PERSON, METHOD, RESEARCH_FIELD]
     range: [METHOD, INSTRUMENT, SOFTWARE, MATERIAL, ORGANISM]
   REGULATES:
     description: links a law or regulation to what it governs
