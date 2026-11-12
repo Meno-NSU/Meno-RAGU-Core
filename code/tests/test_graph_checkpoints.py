@@ -441,3 +441,22 @@ def test_graph_checkpoint_configuration_detects_content_changes_but_allows_execu
     corpus.write_text('modified')
     assert checkpoint_configuration(args) != original
     assert 'secret' not in json.dumps(original)
+
+
+def test_a_new_build_starts_from_the_earlier_stages_of_another_build(tmp_path):
+    """Graph v4 changes only the cleanup inputs (06): it starts from graph v3's stages 01-05, hard-linked, under its
+    own configuration; a folder that has a manifest is never seeded again."""
+    source, target = tmp_path / 'v3', tmp_path / 'v4'
+    with GraphCheckpoints(source, {'cleanup': 'v3'}) as store:
+        store.save('02-entities', ([EntitiesExtractionModel()],), (EntitiesExtractionModel,))
+        store.save('06-artifacts', ([], []), (Entity, Relation))
+        entities_file = store.manifest['stages']['02-entities']['file']
+    source_manifest = (source / 'manifest.json').read_bytes()
+    with GraphCheckpoints(target, {'cleanup': 'v4'}, seed=(source, '06-')) as store:
+        assert sorted(store.manifest['stages']) == ['02-entities']
+        assert store.load('02-entities', (EntitiesExtractionModel,)) == ([EntitiesExtractionModel()],)
+        assert store.load('06-artifacts', (Entity, Relation)) is None
+    assert (target / entities_file).stat().st_ino == (source / entities_file).stat().st_ino
+    assert (source / 'manifest.json').read_bytes() == source_manifest
+    with GraphCheckpoints(target, {'cleanup': 'v4'}, seed=(source, '07-')) as store:
+        assert sorted(store.manifest['stages']) == ['02-entities']

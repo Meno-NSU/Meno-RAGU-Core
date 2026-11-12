@@ -214,6 +214,7 @@ def checkpoint_configuration(args):
     ignored = {
         'log_level', 'rate_max_simultaneous', 'rate_max_per_minute', 'rate_min_delay',
         'cache_dir', 'checkpoint_dir', 'openai_api_key', 'embedder_api_key', 'qdrant_key', 'embedder_extra_urls',
+        'checkpoint_seed', 'checkpoint_seed_until',
     }
     settings = {key: value for key, value in vars(args).items() if key not in ignored}
     files = {}
@@ -240,11 +241,15 @@ def checkpoint_configuration(args):
 
 
 class GraphCheckpoints:
-    def __init__(self, directory, configuration, *, before_save=None):
+    def __init__(self, directory, configuration, *, before_save=None, seed=None):
+        """``seed`` = (another build's checkpoint directory, first stage not taken): a directory without a manifest
+        starts from that build's earlier stages, hard-linked, under this configuration. It is for a build that differs
+        only from that stage on (graph v4 changes the cleanup inputs of 06); whoever seeds vouches for that."""
         self.directory = Path(directory)
         self.configuration = configuration
         self.fingerprint = hashlib.sha256(json.dumps(configuration, sort_keys=True).encode()).hexdigest()
         self.before_save = before_save
+        self.seed = seed
         self.manifest = {'version': 1, 'fingerprint': self.fingerprint, 'stages': {}}
         self.lock = None
 
@@ -259,6 +264,8 @@ class GraphCheckpoints:
             raise CheckpointError('Другой процесс уже использует чекпоинты графа.') from exc
         try:
             path = self.directory / 'manifest.json'
+            if not path.exists() and self.seed is not None:
+                self._seed(path, *self.seed)
             if path.exists():
                 try:
                     self.manifest = SavedManifest.model_validate_json(path.read_text(encoding='utf-8')).model_dump()
@@ -290,6 +297,22 @@ class GraphCheckpoints:
         if self.lock is not None:
             self.lock.close()
             self.lock = None
+
+    def _seed(self, path, source, first_not_taken):
+        source = Path(source)
+        try:
+            manifest = SavedManifest.model_validate_json((source / 'manifest.json').read_text(encoding='utf-8'))
+        except (OSError, ValidationError) as exc:
+            raise CheckpointError(f'Нет корректного манифеста чекпоинтов в {source}.') from exc
+        stages = {name: entry for name, entry in manifest.model_dump()['stages'].items() if name < first_not_taken}
+        for entry in stages.values():
+            target = self.directory / entry['file']
+            if not target.exists():
+                os.link(source / entry['file'], target)
+        self.sync_directory()
+        self.publish_metadata(path, {'version': 1, 'fingerprint': self.fingerprint, 'stages': stages})
+        logger.info('[ГРАФ: НАЧАЛО С ДРУГОЙ СБОРКИ] {}: беру этапы {} (до {}).', source, ', '.join(sorted(stages)),
+                    first_not_taken)
 
     def dependencies(self, stage):
         return {name: entry['sha256'] for name, entry in self.manifest['stages'].items() if name < stage}

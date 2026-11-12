@@ -117,6 +117,12 @@ def main():
                         help='The output directory for the RAGU knowledge graph.')
     parser.add_argument('--checkpoints', dest='checkpoint_dir', type=str,
                         help='Каталог снимков завершённых проходов графа; по умолчанию соседний с --output.')
+    parser.add_argument('--checkpoint_seed', dest='checkpoint_seed', type=str, required=False, default=None,
+                        help='Каталог снимков другой сборки: новый каталог --checkpoints начинает с её этапов до '
+                             '--checkpoint_seed_until (жёсткие ссылки). Только для сборки, которая отличается '
+                             'с этого этапа (например, входами очистки 06).')
+    parser.add_argument('--checkpoint_seed_until', dest='checkpoint_seed_until', type=str, required=False,
+                        default='06-', help='Первый этап, который --checkpoint_seed не берёт (по умолчанию 06-).')
     parser.add_argument('--sources', dest='content_sources', type=str, required=False,
                         default='summary,teachers,news,base',
                         help='The comma-separated list of content sources whose documents are '
@@ -490,8 +496,9 @@ def main():
                 if llm is not None and llm.overflow_count:
                     raise CheckpointError('Превышен контекст LLM; неполный проход графа не сохранён.')
 
+            seed = (args.checkpoint_seed, args.checkpoint_seed_until) if args.checkpoint_seed else None
             with GraphCheckpoints(checkpoint_dir, checkpoint_configuration(args),
-                                  before_save=validate_context) as checkpoints:
+                                  before_save=validate_context, seed=seed) as checkpoints:
                 if artifact_extractor is not None:
                     artifact_extractor.checkpoints = checkpoints
                 knowledge_graph.pipeline = CheckpointedGraphBuilder.from_pipeline(knowledge_graph.pipeline, checkpoints)
