@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -31,6 +32,23 @@ class GraphSelection(_RerankOutput):
 
 
 class RaguRagPipeline(StandRagPipeline):
+    def _priority(self, candidate: Candidate, merged: float) -> float:
+        """The order of relevant candidates, as Menon 1.1 orders them (v2/prompting.py priority, prod
+        V2_SOURCE_PRIOR_WEIGHT=2): the log-odds of the merged score plus SOURCE_PRIOR_WEIGHT * ln(quality of the
+        source document), so a comparably relevant official page goes before a post (posts of the KB have quality
+        about .55, NSU pages .73-.95) and a clearly better post stays ahead. Graph elements have prior 1; weight 0
+        keeps the merged score itself."""
+        weight = self.settings.source_prior_weight
+        if weight <= 0:
+            return merged
+        prior = 1.0
+        if candidate.chunk_id is not None:
+            mapping = self.resources.chunk_mapping.get(str(candidate.chunk_id))
+            if mapping is not None:
+                prior = float(self.resources.documents[mapping["doc_index"]].get("quality_score") or 1.0)
+        p = min(max(merged, 1e-6), 1 - 1e-6)
+        return math.log(p / (1 - p)) + weight * math.log(min(max(prior, 0.05), 1.0))
+
     async def _retrieve(self, search_queries):
         batches = []
         for query in search_queries:
@@ -76,21 +94,22 @@ class RaguRagPipeline(StandRagPipeline):
                     task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
         scores = dict(zip(unique, values, strict=True))
+        order = self._priority
         selected: dict[str, tuple[Candidate, float]] = {}
         for batch in batches:
             ranked = [(c, rerank_merge_score(c.score, scores[c.key], self.settings.rerank_weight)) for c in batch]
-            ranked = sorted((p for p in ranked if p[1] > 0), key=lambda p: (-p[1], p[0].key))
+            ranked = sorted((p for p in ranked if p[1] > 0), key=lambda p: (-order(*p), p[0].key))
             for candidate, merged in ranked[: self.settings.rerank_top_k]:
                 previous = selected.get(candidate.key)
                 if previous is None or merged > previous[1]:
                     selected[candidate.key] = (candidate, merged)
         # Document chunks and graph elements have separate limits: in one shared list the short element
         # blocks pushed documents out of the context (on NSU v1, 5.9 elements and 4.5 documents per answer).
-        ranked_all = sorted(selected.values(), key=lambda p: (-p[1], p[0].key))
+        ranked_all = sorted(selected.values(), key=lambda p: (-order(*p), p[0].key))
         kept = sorted(
             [p for p in ranked_all if p[0].chunk_id is not None][: self.settings.max_context_chunks]
             + [p for p in ranked_all if p[0].chunk_id is None][: self.settings.graph_max_elements],
-            key=lambda p: (-p[1], p[0].key),
+            key=lambda p: (-order(*p), p[0].key),
         )
         kept_by_key = {candidate.key: (rank, merged) for rank, (candidate, merged) in enumerate(kept)}
         chunks = [(c.chunk_id, merged) for c, merged in kept if c.chunk_id is not None]

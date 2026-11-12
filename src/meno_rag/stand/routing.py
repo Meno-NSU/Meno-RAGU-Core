@@ -111,6 +111,14 @@ NO_CONTEXT_RULES: dict[str, str] = {
 }
 
 
+# Menon 1.1's V2_SOURCE_AUTHORITY rule, for turns answered from documents (nsu, general).
+SOURCE_AUTHORITY_RULE = (
+    "Официальные документы НГУ (страницы сайтов НГУ, положения, приказы, сведения об образовательной организации) "
+    "надёжнее постов в соцсетях. Опирайтесь прежде всего на официальные документы; посты используйте, когда официальных "
+    "сведений нет, или чтобы дополнить их, и тогда прямо называйте источник, например «по сообщению в Telegram-канале …»."
+)
+
+
 def route_messages(question: str, dialogue_history: str) -> list[dict[str, str]]:
     parts = []
     if dialogue_history.strip():
@@ -141,6 +149,8 @@ def parse_route(text: str, question: str) -> str:
     return route
 
 
-def with_route_rules(system_prompt: str, route: str, has_context: bool) -> str:
+def with_route_rules(system_prompt: str, route: str, has_context: bool, authority: bool = False) -> str:
     rule = (ROUTE_RULES if has_context or route not in NO_CONTEXT_RULES else NO_CONTEXT_RULES)[route]
+    if authority and has_context and route in ("nsu", "general"):
+        rule = f"{rule}\n{SOURCE_AUTHORITY_RULE}"
     return f"{system_prompt.rstrip()}\n\n# Как отвечать на эту реплику\n{rule}\n{STYLE_RULE}\n"

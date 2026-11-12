@@ -62,8 +62,11 @@ def split_sentences(answer: str) -> list[str]:
 
 
 def norm_url(url: str) -> str:
+    """The page of a link: scheme, "www." and a trailing slash do not matter; a query and an anchor do (the staff
+    page of nsu.ru is one document per person, "…/sveden/employees/#Фамилия_Имя_Отчество")."""
     parts = urlsplit((url or "").strip().lower())
-    return f"{parts.netloc.removeprefix('www.')}{parts.path.rstrip('/')}" + (f"?{parts.query}" if parts.query else "")
+    return (f"{parts.netloc.removeprefix('www.')}{parts.path.rstrip('/')}" + (f"?{parts.query}" if parts.query else "")
+            + (f"#{parts.fragment}" if parts.fragment else ""))
 
 
 def _links(text: str) -> list[tuple[str, str]]:

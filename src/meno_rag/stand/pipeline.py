@@ -258,7 +258,8 @@ class StandRagPipeline:
                 abbr_dict=self.resources.abbreviations, stemmer=self.resources.stemmer,
                 fewshots=fewshots_for_prompt or None, route=route,
             )
-            system = with_route_rules(system_prompt, route, bool(context)) if route is not None else system_prompt
+            system = (with_route_rules(system_prompt, route, bool(context), authority=self.settings.source_authority)
+                      if route is not None else system_prompt)
             return [{"role": "system", "content": system}, {"role": "user", "content": user_prompt}]
 
         qa_messages = qa_prompt(context)
@@ -315,6 +316,7 @@ class StandRagPipeline:
                         "max_context_chunks", "max_qa_prompt_chars", "graph_source_documents", "graph_max_elements",
                         "source_urls_per_document", "min_document_quality", "rerank_candidates_per_page",
                         "source_attribution", "source_attribution_threshold", "max_sources", "turn_routing",
+                        "source_prior_weight", "source_authority",
                     )},
                 },
             )

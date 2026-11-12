@@ -261,6 +261,11 @@ class Settings(BaseSettings):
     # The kind of every turn, as in Menon 1.1 (stand/routing.py): general questions may use general knowledge,
     # small talk and turns about the dialogue skip the search. Off: every turn is searched and answered from documents.
     turn_routing: bool = Field(default=True, validation_alias="TURN_ROUTING")
+    # Source authority, as prod Menon 1.1 (V2_SOURCE_PRIOR_WEIGHT=2, V2_SOURCE_AUTHORITY=true): relevant candidates are
+    # ordered by the log-odds of their score plus this weight * ln(quality_score of the document), and the answer rules
+    # say official documents come before posts. Weight 0: the score alone.
+    source_prior_weight: float = Field(default=2.0, ge=0, validation_alias="SOURCE_PRIOR_WEIGHT")
+    source_authority: bool = Field(default=True, validation_alias="SOURCE_AUTHORITY")
     source_attribution_threshold: float = Field(default=0.5, ge=0, le=1, validation_alias="SOURCE_ATTRIBUTION_THRESHOLD")
     max_sources: int = Field(default=5, ge=1, validation_alias="MAX_SOURCES")
 
