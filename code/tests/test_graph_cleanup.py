@@ -192,3 +192,29 @@ def test_cleanup_inputs_load_from_their_files(tmp_path):
     assert inputs.folded == frozenset({('1742-6588', 'PRODUCT'), ('Подробнее', 'PRODUCT')})
     assert inputs.merges == ((('ФФ НГУ', 'ORGANIZATION'), ('Физический факультет', 'ORGANIZATION')),)
     assert load_cleanup_inputs(None, None, None) == CleanupInputs()
+
+
+def test_a_refuted_alias_relation_keeps_its_text_with_the_unfit_mark():
+    """ALTERNATIVE_NAME relations of graph v3 join e.g. «Новосибирск» and «Москва»; the pairs a model refuted are kept
+    as UNFIT:ALTERNATIVE_NAME (their text stays), in either direction; other relations of the pair are left alone."""
+    city = entity('Новосибирск', 'CITY')
+    capital = entity('Москва', 'CITY')
+    alias = relation(capital, city, 'ALTERNATIVE_NAME', 'Конференция прошла в Москве и Новосибирске.')
+    near = relation(city, capital, 'LOCATED_IN', 'Связь городов.')
+    marks = frozenset({(frozenset({('Новосибирск', 'CITY'), ('Москва', 'CITY')}), 'ALTERNATIVE_NAME')})
+    _, kept, stats = clean_graph([city, capital], [alias, near], CleanupInputs(marked_relations=marks))
+    assert [(r.relation_type, r.description) for r in kept] == [
+        ('UNFIT:ALTERNATIVE_NAME', 'Конференция прошла в Москве и Новосибирске.'), ('LOCATED_IN', 'Связь городов.')]
+    assert stats['marked_relations'] == 1
+
+
+def test_relation_marks_name_the_nodes_the_merges_leave(tmp_path):
+    from graph_utils.graph_cleanup import load_cleanup_inputs
+    (tmp_path / 'merges.jsonl').write_text(json.dumps({'from': ['НГУ', 'ORGANIZATION'], 'to': [
+        'Новосибирский государственный университет', 'ORGANIZATION']}, ensure_ascii=False) + '\n', encoding='utf-8')
+    (tmp_path / 'marks.jsonl').write_text(json.dumps({'subject': ['НГУ', 'ORGANIZATION'], 'object': ['Москва', 'CITY'],
+                                                      'relation_type': 'ALTERNATIVE_NAME'}, ensure_ascii=False) + '\n',
+                                          encoding='utf-8')
+    inputs = load_cleanup_inputs(None, None, tmp_path / 'merges.jsonl', tmp_path / 'marks.jsonl')
+    assert inputs.marked_relations == frozenset({(frozenset({
+        ('Новосибирский государственный университет', 'ORGANIZATION'), ('Москва', 'CITY')}), 'ALTERNATIVE_NAME')})

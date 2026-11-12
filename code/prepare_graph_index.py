@@ -221,6 +221,10 @@ def main():
     parser.add_argument('--graph_merges', dest='graph_merges', type=str, required=False, default=None,
                         help='With --graph_cleanup: JSONL of confirmed duplicates ({"from": [name, type], "to": '
                              '[name, type]}); a duplicate joins its target and relations follow.')
+    parser.add_argument('--graph_relation_marks', dest='graph_relation_marks', type=str, required=False, default=None,
+                        help='With --graph_cleanup: JSONL of refuted relations ({"subject": [name, type], "object": '
+                             '[name, type], "relation_type": ...}, names of the graph before --graph_merges); such '
+                             'relations between the two, either way, keep their text with the type "UNFIT:<type>".')
     parser.add_argument('--relation_review_sources', dest='relation_review_sources', type=str, required=False,
                         default='',
                         help='The comma-separated list of content sources whose chunks get the relation review '
@@ -443,7 +447,8 @@ def main():
             do_relation_validation=not args.no_validation,
             relation_review=args.relation_review,
             graph_cleanup=args.graph_cleanup,
-            cleanup_inputs=load_cleanup_inputs(args.graph_exclude_chunks, args.graph_entity_labels, args.graph_merges),
+            cleanup_inputs=load_cleanup_inputs(args.graph_exclude_chunks, args.graph_entity_labels, args.graph_merges,
+                                             args.graph_relation_marks),
             review_chunk_ids=review_chunk_ids,
             abbreviations=abbreviations,
             rewrite_concurrency=args.rate_max_simultaneous if args.rate_max_simultaneous > 0 else 8,

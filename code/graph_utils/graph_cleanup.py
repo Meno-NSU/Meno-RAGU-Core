@@ -17,8 +17,10 @@ Relations follow their endpoints; a relation that becomes a loop (an alias of th
 
 Inputs (CleanupInputs, files of a graph build): chunks whose artifacts stay out of the graph (pages that repeat one
 record in several citation formats; the chunks stay in the chunk index), entities a model labeled as values or junk
-(a DOI typed PRODUCT, an e-mail typed LOCATION), folded like values after the name variants are merged, and merges of
-duplicate entities a model confirmed (name and type to name and type), applied last.
+(a DOI typed PRODUCT, an e-mail typed LOCATION), folded like values after the name variants are merged, merges of
+duplicate entities a model confirmed (name and type to name and type), and relations a model refuted (an
+ALTERNATIVE_NAME between two different objects, such as «Новосибирск» and «Москва»), which keep their text with the type
+UNFIT:<type> after the merges.
 """
 import dataclasses
 import json
@@ -37,9 +39,12 @@ class CleanupInputs:
     excluded_chunks: frozenset = frozenset()
     folded: frozenset = frozenset()  # (name, type) labeled as a value or junk
     merges: tuple = ()  # ((name, type), (name, type)): duplicate -> target
+    # (frozenset of the two ends' (name, type), relation type): relations of that type between the two, either way,
+    # that a model refuted (an ALTERNATIVE_NAME between two different objects); kept as UNFIT:<type>
+    marked_relations: frozenset = frozenset()
 
 
-def load_cleanup_inputs(excluded_path=None, labels_path=None, merges_path=None) -> CleanupInputs:
+def load_cleanup_inputs(excluded_path=None, labels_path=None, merges_path=None, marks_path=None) -> CleanupInputs:
     excluded = frozenset(json.loads(Path(excluded_path).read_text(encoding='utf-8'))) if excluded_path else frozenset()
     folded = set()
     if labels_path:
@@ -53,7 +58,15 @@ def load_cleanup_inputs(excluded_path=None, labels_path=None, merges_path=None) 
             row = json.loads(line) if line.strip() else None
             if row:
                 merges.append((tuple(row['from']), tuple(row['to'])))
-    return CleanupInputs(excluded, frozenset(folded), tuple(merges))
+    marks = set()
+    if marks_path:
+        target = dict(merges)  # a mark names the nodes of the graph it was made on; the merges may rename them
+        for line in Path(marks_path).read_text(encoding='utf-8').splitlines():
+            row = json.loads(line) if line.strip() else None
+            if row:
+                ends = frozenset(target.get(tuple(end), tuple(end)) for end in (row['subject'], row['object']))
+                marks.add((ends, row['relation_type']))
+    return CleanupInputs(excluded, frozenset(folded), tuple(merges), frozenset(marks))
 
 
 def exclude_chunks(entities: list[Entity], relations: list[Relation], excluded: frozenset
@@ -301,4 +314,21 @@ def clean_graph(entities: list[Entity], relations: list[Relation], inputs: Clean
     if inputs.merges:
         entities, relations, applied = apply_merges(entities, relations, inputs.merges)
         stats.update(applied)
+    if inputs.marked_relations:
+        relations, marked = mark_relations(entities, relations, inputs.marked_relations)
+        stats['marked_relations'] = marked
     return entities, relations, stats
+
+
+def mark_relations(entities: list[Entity], relations: list[Relation], marks: frozenset
+                   ) -> tuple[list[Relation], int]:
+    """Give UNFIT:<type> to the relations of a marked type between a marked pair of nodes; the text stays."""
+    node = {entity.id: (entity.entity_name, entity.entity_type) for entity in entities}
+    result, marked = [], 0
+    for relation in relations:
+        ends = frozenset((node.get(relation.subject_id), node.get(relation.object_id)))
+        if not relation.relation_type.startswith('UNFIT:') and (ends, relation.relation_type) in marks:
+            relation = dataclasses.replace(relation, relation_type='UNFIT:' + relation.relation_type)
+            marked += 1
+        result.append(relation)
+    return result, marked

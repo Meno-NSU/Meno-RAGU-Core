@@ -102,7 +102,7 @@ CLEANUP_INPUTS_PREVIOUS_CODE = {
     'graph_utils/graph_utils.py': 'b4d2a84213f1da0045348eb44fb7fcbb4f1295aa0dc083459515bcb3acbdcbc5',
     'graph_utils/compact_embeddings.py': '372b45cf3cace81fe11e999865de2e25ec7812f2c5762e86e086e6392167999f',
 }
-CLEANUP_INPUTS = ('graph_exclude_chunks', 'graph_entity_labels', 'graph_merges')
+CLEANUP_INPUTS = ('graph_exclude_chunks', 'graph_entity_labels', 'graph_merges', 'graph_relation_marks')
 
 
 def previous_cleanup_inputs_configuration(configuration):
