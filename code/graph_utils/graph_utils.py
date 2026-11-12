@@ -462,14 +462,39 @@ def count_abbreviation_occurrences(text: str,
     return occurrences
 
 
+_OPENER_OF = {')': '(', ']': '[', '}': '{', '»': '«', '”': '“', '“': '„'}
+_CLOSER_OF = {'(': ')', '[': ']', '{': '}', '«': '»', '„': '“', '“': '”'}
+_WORD_CHAR = re.compile(r'\w')
+
+
+def trim_edge_punctuation(name: str) -> str:
+    """Trims punctuation and spaces at both ends of a name, but keeps a bracket or quote whose pair is inside the
+    name: 'Дексаметазон (DEX)' and '«Эксперт» (журнал)' stay whole, 'НГУ).' becomes 'НГУ'."""
+    end = len(name)
+    while end > 0 and not _WORD_CHAR.match(name[end - 1]):
+        mark, body = name[end - 1], name[:end - 1]
+        if mark in _OPENER_OF and body.count(_OPENER_OF[mark]) > body.count(mark):
+            break
+        if mark == '"' and body.count(mark) % 2 == 1:
+            break
+        end -= 1
+    name = name[:end]
+    start = 0
+    while start < len(name) and not _WORD_CHAR.match(name[start]):
+        mark, rest = name[start], name[start + 1:]
+        if mark in _CLOSER_OF and rest.count(_CLOSER_OF[mark]) > rest.count(mark):
+            break
+        if mark == '"' and rest.count(mark) % 2 == 1:
+            break
+        start += 1
+    return name[start:]
+
+
 def canonicalize_artifacts(entities: List[Entity],
                            relations: List[Relation]) -> Tuple[List[Entity], List[Relation]]:
     def normalize_name(name: str) -> str:
         # '_' is a word character for \w, so it is a separator here explicitly ('Практика_НИР' = 'Практика НИР')
         return ' '.join(re.sub(r'[^\w\s]|_', ' ', str(name).casefold().replace('ё', 'е')).split())
-
-    def trim_edge_punctuation(name: str) -> str:
-        return re.sub(r'^[^\w]+|[^\w]+$', '', name)
 
     name_counts: Dict[Tuple[str, str], Dict[str, int]] = {}
     for cur_entity in entities:

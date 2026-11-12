@@ -342,6 +342,30 @@ class TestCanonicalizeArtifacts:
         assert len(set(e.id for e in canonical_entities)) == 1
         assert all(e.entity_name == 'Производственная практика НИР' for e in canonical_entities)
 
+    @pytest.mark.parametrize('name', [
+        'Дексаметазон (DEX)',
+        '[Re6−xMoxSe8(CN)6]n',
+        '(MenacnacDipp)V(µ-H)BEt3(THF)',
+        'XII Всероссийская конференция «Коммуникативная культура: история и современность»',
+        '«Эксперт» (журнал)',
+        'Журнал "Сибирь"',
+    ])
+    def test_edge_brackets_and_quotes_that_pair_inside_the_name_are_kept(self, name):
+        entity = Entity(entity_name=name, entity_type='PRODUCT', description='', source_chunk_id=[])
+        canonical_entities, _ = canonicalize_artifacts([entity], [])
+        assert canonical_entities[0].entity_name == name
+
+    @pytest.mark.parametrize('name, trimmed', [
+        ('Дексаметазон (DEX))', 'Дексаметазон (DEX)'),
+        ('НГУ).', 'НГУ'),
+        ('«НГУ', 'НГУ'),
+        ('— Академгородок —', 'Академгородок'),
+    ])
+    def test_unpaired_edge_punctuation_is_trimmed(self, name, trimmed):
+        entity = Entity(entity_name=name, entity_type='ORGANIZATION', description='', source_chunk_id=[])
+        canonical_entities, _ = canonicalize_artifacts([entity], [])
+        assert canonical_entities[0].entity_name == trimmed
+
     def test_internal_punctuation_is_preserved(self):
         entities = [
             Entity(entity_name='А. В. Бессонов', entity_type='PERSON', description='', source_chunk_id=[]),
