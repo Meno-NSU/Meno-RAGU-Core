@@ -221,8 +221,14 @@ def graph_element_to_text(item: Dict[str, Any],
                     break
     if item.get('kind') == 'relation':
         new_element_description = '**Элемент графа знаний: связь.**\n\n'
-        new_element_description += (f"**Связь:** {item.get('subject')} "
-                                    f"—[{item.get('relation_type')}]→ {item.get('object')}.")
+        relation_type = str(item.get('relation_type') or '')
+        if relation_type.startswith('UNFIT:'):
+            # the graph keeps a relation whose type does not fit its ends as UNFIT:<type>; that type would state a
+            # wrong fact, so the link is shown with its description only
+            new_element_description += f"**Связь:** {item.get('subject')} — {item.get('object')}."
+        else:
+            new_element_description += (f"**Связь:** {item.get('subject')} "
+                                        f"—[{relation_type}]→ {item.get('object')}.")
     else:
         new_element_description = '**Элемент графа знаний: сущность.**\n\n'
         new_element_description += f"**Название:** {item.get('name')} (тип: {item.get('type')})."
