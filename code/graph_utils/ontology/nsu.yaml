@@ -92,10 +92,22 @@ relation_types:
     domain: [PERSON]
     range: [PUBLICATION, PERIODICAL, WORK_OF_ART]
   PUBLISHED_IN:
-    description: links a publication, or a person who published there, to the journal or proceedings it appeared in
+    description: links a publication, or a person who published there, to the journal, proceedings or conference proceedings it appeared in
     domain: [PUBLICATION, THESIS, WORK_OF_ART, PERSON]
-    range: [PERIODICAL]
+    range: [PERIODICAL, CONFERENCE]
     inverse_aliases: [PUBLISHES]
+  LOCATED_IN:
+    description: links a physical entity (a place, organization, event, substance, rock, organism, device or service) to the place it is in or was found in
+    domain: [LOCATION, ORGANIZATION, EVENT, MATERIAL, ORGANISM, PRODUCT, SERVICE]
+    range: [LOCATION]
+    aliases: [SITUATED_IN]
+    retype_when:
+      # A person is not "located in" a place, they reside there.
+      - {domain: [PERSON], range: [LOCATION], to: PLACE_RESIDES_IN}
+  TAKES_PLACE_IN:
+    description: links an event, the classes of a course, a procedure or a process to the place or organization where it happens
+    domain: [EVENT, DISCIPLINE, PROCEDURE, PHENOMENON]
+    range: [LOCATION, ORGANIZATION]
   PRESENTED_AT:
     description: links a person or a talk to the conference or event where it was presented
     domain: [PERSON, PUBLICATION, WORK_OF_ART]
@@ -116,9 +128,9 @@ relation_types:
     range: [ORGANIZATION, PROJECT, EDUCATIONAL_PROGRAM]
     inverse_aliases: [HEADED_BY]
   STUDIES_AT:
-    description: links a student to the university, unit or program where they study
+    description: links a student or graduate to the university, unit, program or level of education where they study or studied (обучается в магистратуре, аспирант, выпускник)
     domain: [PERSON]
-    range: [ORGANIZATION, EDUCATIONAL_PROGRAM, FIELD_OF_STUDY, PROGRAM_TRACK]
+    range: [ORGANIZATION, EDUCATIONAL_PROGRAM, FIELD_OF_STUDY, PROGRAM_TRACK, EDUCATION_LEVEL]
   HAS_DEGREE:
     description: links a person to an academic degree or title they hold
     domain: [PERSON]
