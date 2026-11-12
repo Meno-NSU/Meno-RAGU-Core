@@ -22,12 +22,12 @@ entity_types:
   STUDENT_ORGANIZATION: {description: "a student union, club or community", parent: ORGANIZATION}
   PROJECT: {description: "a research project, collaboration or experiment (e.g. TAIGA), a funded project"}
   # works and documents
-  PUBLICATION: {description: "a scientific article, book, chapter, conference paper or preprint", parent: WORK_OF_ART}
+  PUBLICATION: {description: "a scientific article, book, chapter, conference paper, preprint, textbook or problem book (учебник, задачник, учебное пособие)", parent: WORK_OF_ART}
   PERIODICAL: {description: "a journal, proceedings series or other periodical", parent: WORK_OF_ART}
   THESIS: {description: "a dissertation, thesis or graduation work", parent: WORK_OF_ART}
   REGULATION: {description: "an internal regulation of a university (положение, приказ, правила, порядок)", parent: LAW}
   FEDERAL_LAW: {description: "a federal law, government decree or ministry order", parent: LAW}
-  DOCUMENT: {description: "a form, application, certificate, contract type or other document someone fills in or submits"}
+  DOCUMENT: {description: "a form, application, certificate, contract type, report, list or other document (заявление, справка, отчёт, список выпускников)"}
   # education
   FIELD_OF_STUDY: {description: "a field of study with its code (направление подготовки, e.g. 09.03.01 Информатика и вычислительная техника)"}
   EDUCATIONAL_PROGRAM: {description: "a concrete educational program of a university (образовательная программа)"}
@@ -41,18 +41,18 @@ entity_types:
   EXAM: {description: "an exam or entrance test (ЕГЭ, вступительное испытание, экзамен)", parent: EVENT}
   PROCEDURE: {description: "an administrative procedure (заселение, перевод, восстановление, оформление справки, подача заявления)"}
   BENEFIT: {description: "a benefit, privilege or preference (льгота, квота, особое право при поступлении)"}
-  SERVICE: {description: "a service offered to students or staff (медпункт, библиотечное обслуживание, психологическая помощь)"}
+  SERVICE: {description: "a service offered to students, staff or the public, online ones included (медпункт, библиотечное обслуживание, психологическая помощь, сервис пожертвований на сайте)"}
   SCHOLARSHIP: {description: "a scholarship or stipend", parent: AWARD}
   GRANT: {description: "a research grant", parent: AWARD}
   # science
   RESEARCH_FIELD: {description: "a field or area of science or research"}
   METHOD: {description: "a method, technique, algorithm or model"}
-  PHENOMENON: {description: "a natural process, phenomenon or effect studied by science"}
-  MATERIAL: {description: "a chemical compound, substance, material, mineral or rock"}
-  ORGANISM: {description: "a species, strain, cell line or other organism"}
-  SOFTWARE: {description: "a program, library or information system", parent: PRODUCT}
-  INSTRUMENT: {description: "an instrument, device or experimental installation", parent: PRODUCT}
-  CONCEPT: {description: "an abstract notion or topic that none of the other types names"}
+  PHENOMENON: {description: "a natural or social process, phenomenon or effect (кристаллизация, гипоксия, секуляризация, миграция)"}
+  MATERIAL: {description: "a chemical compound, substance, material, mineral, rock, medium or biological material (белок, белковый комплекс, клеточная линия, ткань)"}
+  ORGANISM: {description: "a species, strain or other living organism"}
+  SOFTWARE: {description: "a program, library, programming language or information system", parent: PRODUCT}
+  INSTRUMENT: {description: "an instrument, device, hardware or experimental installation", parent: PRODUCT}
+  CONCEPT: {description: "an abstract notion, a class of objects (элементарная частица, цивилизация) or a topic that none of the other types names"}
   # events
   CONFERENCE: {description: "a conference, congress, symposium or workshop", parent: EVENT}
   OLYMPIAD: {description: "an olympiad, contest or competition", parent: EVENT}
