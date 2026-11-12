@@ -263,8 +263,10 @@ class Settings(BaseSettings):
     turn_routing: bool = Field(default=True, validation_alias="TURN_ROUTING")
     # Source authority, as prod Menon 1.1 (V2_SOURCE_PRIOR_WEIGHT=2, V2_SOURCE_AUTHORITY=true): relevant candidates are
     # ordered by the log-odds of their score plus this weight * ln(quality_score of the document), and the answer rules
-    # say official documents come before posts. Weight 0: the score alone.
-    source_prior_weight: float = Field(default=2.0, ge=0, validation_alias="SOURCE_PRIOR_WEIGHT")
+    # say official documents come before posts. Weight 0: the score alone. 1 here: on the 323 questions of the 558 with
+    # a gold page (stand v3k, one LLM rerank replayed per weight) it kept the gold page for 236 against 233 at 0 and 2,
+    # with posts 24% -> 20% and NSU news 13% -> 8% of the context chunks.
+    source_prior_weight: float = Field(default=1.0, ge=0, validation_alias="SOURCE_PRIOR_WEIGHT")
     source_authority: bool = Field(default=True, validation_alias="SOURCE_AUTHORITY")
     source_attribution_threshold: float = Field(default=0.5, ge=0, le=1, validation_alias="SOURCE_ATTRIBUTION_THRESHOLD")
     max_sources: int = Field(default=5, ge=1, validation_alias="MAX_SOURCES")
