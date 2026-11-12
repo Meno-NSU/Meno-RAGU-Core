@@ -24,7 +24,7 @@ _CONTENT_SETTINGS = (
     "graph_source_documents", "graph_max_elements", "source_urls_per_document", "embedder_model",
     "engine_reranker_model", "source_attribution", "source_attribution_threshold", "max_sources",
     "rerank_candidates_per_page", "turn_routing", "source_prior_weight", "source_authority",
-    "context_min_rerank_score", "graph_min_rerank_score",
+    "context_min_rerank_score", "graph_min_rerank_score", "llm_rerank",
 )
 
 

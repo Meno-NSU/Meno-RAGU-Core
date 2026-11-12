@@ -85,14 +85,18 @@ class RaguRagPipeline(StandRagPipeline):
                                          self.resources.chunk_mapping, max_source_titles=0)
             return await self._score_document_with_llm(user_question, dialogue_history, text, runtime, candidate.key)
 
-        tasks = [asyncio.create_task(score(candidate)) for candidate in unique.values()]
-        try:
-            values = await asyncio.gather(*tasks)
-        finally:
-            for task in tasks:
-                if not task.done():
-                    task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
+        if self.settings.llm_rerank:
+            tasks = [asyncio.create_task(score(candidate)) for candidate in unique.values()]
+            try:
+                values = await asyncio.gather(*tasks)
+            finally:
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+        else:
+            # as Menon 1.1: the engine's cross-encoder score (bge-reranker) is the relevance, no LLM call
+            values = [float(candidate.score) for candidate in unique.values()]
         scores = dict(zip(unique, values, strict=True))
         order = self._priority
 

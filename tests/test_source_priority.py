@@ -124,6 +124,23 @@ def test_the_context_keeps_only_what_the_reranker_scores_at_least_at_its_floor()
     assert kept_by_relevance(0.0, 0.75) == ([0, 1], [])
 
 
+def test_without_the_llm_reranker_the_cross_encoder_scores_rank_and_no_llm_is_called():
+    """As Menon 1.1: the engine's cross-encoder (bge-reranker) scores alone order and filter the candidates."""
+    p = pipeline(source_prior_weight=0.0, rerank_candidates_per_page=0, llm_rerank=False, context_min_rerank_score=0.3)
+    p.resources.documents[:] = [document("Положение", "https://www.nsu.ru/n/a/", 0.9),
+                                document("Новость", "https://www.nsu.ru/n/b/", 0.9)]
+    p.resources.chunk_mapping.clear()
+    p.resources.chunk_mapping.update({str(i): {"doc_index": i, "local_chunk_index": 0} for i in range(2)})
+
+    async def no_llm(*args, **kwargs):
+        raise AssertionError("the LLM reranker must not be called")
+
+    p._score_chunk_with_llm, p._score_document_with_llm = no_llm, no_llm
+    pool = [Candidate("chunk:1", 0.2, chunk_id=1), Candidate("chunk:0", 0.8, chunk_id=0)]
+    kept = asyncio.run(p._rerank([{"query": "q", "pool": pool}], "q", "", None))
+    assert [(chunk_id, round(score, 3)) for chunk_id, score in kept] == [(0, 0.8)]
+
+
 def test_an_anchor_names_its_own_page_part():
     first = "https://www.nsu.ru/n/sveden/employees/#Мулляджанов_Рустам_Илхамович"
     second = "https://www.nsu.ru/n/sveden/employees/#Абалмасова_Юлия_Михайловна"
