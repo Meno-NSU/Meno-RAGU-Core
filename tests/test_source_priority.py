@@ -90,6 +90,40 @@ def test_one_page_holds_at_most_its_cap_of_the_context_across_queries():
     assert [chunk_id for chunk_id, _ in kept] == [0, 1, 3]
 
 
+def kept_by_relevance(chunk_floor, element_floor):
+    """A query with a chunk the reranker found relevant (1.0), one it found partly relevant (0.5) and a graph
+    element it found partly relevant (0.5)."""
+    p = pipeline(source_prior_weight=0.0, rerank_candidates_per_page=0, context_min_rerank_score=chunk_floor,
+                 graph_min_rerank_score=element_floor)
+    p.resources.documents[:] = [document("Положение", "https://www.nsu.ru/n/a/", 0.9),
+                                document("Новость", "https://www.nsu.ru/n/b/", 0.9)]
+    p.resources.chunk_mapping.clear()
+    p.resources.chunk_mapping.update({str(i): {"doc_index": i, "local_chunk_index": 0} for i in range(2)})
+    llm = {0: 1.0, 1: 0.5}
+
+    async def score_chunk(question, history, chunk_id, runtime):
+        return llm[chunk_id]
+
+    async def score_element(question, history, text, runtime, key):
+        return 0.5
+
+    p._score_chunk_with_llm, p._score_document_with_llm = score_chunk, score_element
+    entity = {"key": "НГУ", "kind": "entity", "name": "НГУ", "type": "ORG", "description": "Университет",
+              "score": 1.0, "sources": [0]}
+    pool = [Candidate("chunk:0", 0.9, chunk_id=0), Candidate("chunk:1", 0.9, chunk_id=1),
+            Candidate("entity:НГУ", 0.9, element=entity)]
+    kept = asyncio.run(p._rerank([{"query": "q", "pool": pool}], "q", "", None))
+    return [chunk_id for chunk_id, _ in kept], [element["key"] for element in kept.elements]
+
+
+def test_the_context_keeps_only_what_the_reranker_scores_at_least_at_its_floor():
+    """Without a floor every candidate the reranker scores above zero fills the context (12 chunks and 3 elements
+    whatever their relevance; context precision 0.27-0.35 against Menon's 0.715)."""
+    assert kept_by_relevance(0.0, 0.0) == ([0, 1], ["НГУ"])
+    assert kept_by_relevance(0.75, 0.0) == ([0], ["НГУ"])
+    assert kept_by_relevance(0.0, 0.75) == ([0, 1], [])
+
+
 def test_an_anchor_names_its_own_page_part():
     first = "https://www.nsu.ru/n/sveden/employees/#Мулляджанов_Рустам_Илхамович"
     second = "https://www.nsu.ru/n/sveden/employees/#Абалмасова_Юлия_Михайловна"

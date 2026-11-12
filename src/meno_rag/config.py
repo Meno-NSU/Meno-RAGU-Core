@@ -249,6 +249,11 @@ class Settings(BaseSettings):
     # Graph elements (entities, relations) in the answer context, on top of MAX_CONTEXT_CHUNKS document
     # chunks: before, both kinds shared those slots and elements pushed documents out. 0 = no graph elements.
     graph_max_elements: int = Field(default=3, ge=0, validation_alias="GRAPH_MAX_ELEMENTS")
+    # Relevance floors of the context: a chunk / a graph element enters it only when the LLM reranker scores it at
+    # least this (its expected label / 2: 0.5 = partly relevant, 1 = relevant). 0 = any score above zero, which let
+    # 12 chunks and 3 elements of any relevance in (context precision 0.27-0.35 against Menon 1.1's 0.715).
+    context_min_rerank_score: float = Field(default=0.0, ge=0, le=1, validation_alias="CONTEXT_MIN_RERANK_SCORE")
+    graph_min_rerank_score: float = Field(default=0.0, ge=0, le=1, validation_alias="GRAPH_MIN_RERANK_SCORE")
     # Links shown per document: a summary of several pages carries up to dozens of URLs under one title.
     source_urls_per_document: int = Field(default=1, ge=1, validation_alias="SOURCE_URLS_PER_DOCUMENT")
     # Sources after the answer, as in Menon 1.1: the context pieces the answer's sentences rest on (the engine

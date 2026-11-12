@@ -95,9 +95,16 @@ class RaguRagPipeline(StandRagPipeline):
             await asyncio.gather(*tasks, return_exceptions=True)
         scores = dict(zip(unique, values, strict=True))
         order = self._priority
+
+        def relevant(candidate):
+            floor = (self.settings.context_min_rerank_score if candidate.chunk_id is not None
+                     else self.settings.graph_min_rerank_score)
+            return scores[candidate.key] >= floor
+
         selected: dict[str, tuple[Candidate, float]] = {}
         for batch in batches:
-            ranked = [(c, rerank_merge_score(c.score, scores[c.key], self.settings.rerank_weight)) for c in batch]
+            ranked = [(c, rerank_merge_score(c.score, scores[c.key], self.settings.rerank_weight)) for c in batch
+                      if relevant(c)]
             ranked = sorted((p for p in ranked if p[1] > 0), key=lambda p: (-order(*p), p[0].key))
             # A query keeps its best chunks and its best graph elements, each kind up to rerank_top_k: elements carry
             # no source prior, so in one shared cut they outranked every penalised chunk of the query.
