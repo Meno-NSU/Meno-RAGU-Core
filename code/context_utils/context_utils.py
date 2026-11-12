@@ -222,9 +222,10 @@ def graph_element_to_text(item: Dict[str, Any],
     if item.get('kind') == 'relation':
         new_element_description = '**Элемент графа знаний: связь.**\n\n'
         relation_type = str(item.get('relation_type') or '')
-        if relation_type.startswith('UNFIT:'):
+        if relation_type.startswith('UNFIT:') or relation_type == 'RELATED_TO':
             # the graph keeps a relation whose type does not fit its ends as UNFIT:<type>; that type would state a
-            # wrong fact, so the link is shown with its description only
+            # wrong fact, so the link is shown with its description only; RELATED_TO (a fact no type of the ontology
+            # names) says nothing beyond its description either
             new_element_description += f"**Связь:** {item.get('subject')} — {item.get('object')}."
         else:
             new_element_description += (f"**Связь:** {item.get('subject')} "

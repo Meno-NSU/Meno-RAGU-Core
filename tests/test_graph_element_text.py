@@ -18,3 +18,11 @@ def test_a_relation_whose_type_does_not_fit_shows_the_link_and_its_description_w
     assert "UNFIT" not in text and "PARTICIPANT_IN" not in text
     assert "**Связь:** Иван Петров — НГУ." in text
     assert "**Описание:** Иван Петров выступил с докладом в НГУ." in text
+
+
+def test_a_relation_retyped_to_related_to_shows_the_link_without_a_type():
+    """Graph v5 retypes a relation whose fact no type of the ontology names to RELATED_TO; its text states the fact,
+    and the generic type says nothing the answer prompt could use."""
+    text = graph_element_to_text(relation("RELATED_TO"), [], {})
+    assert "RELATED_TO" not in text
+    assert "**Связь:** Иван Петров — НГУ." in text
