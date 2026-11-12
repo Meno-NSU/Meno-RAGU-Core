@@ -42,6 +42,33 @@ def test_without_a_prior_weight_the_order_is_the_rerank_score_alone():
     assert order(0.0, {0: 0.6, 1: 0.6}) == [0, 1]
 
 
+def kept_of_one_query(weight, top_k):
+    """What the rerank keeps of a query that found one graph entity and one chunk of a post (quality .6), both
+    judged fully relevant."""
+    p = pipeline(source_prior_weight=weight, rerank_top_k=top_k, rerank_candidates_per_page=0)
+    p.resources.documents[:] = [document("Пост ВКонтакте", "https://vk.com/wall-1_2", 0.6)]
+
+    async def score_chunk(question, history, chunk_id, runtime):
+        return 1.0
+
+    async def score_element(question, history, text, runtime, key):
+        return 1.0
+
+    p._score_chunk_with_llm, p._score_document_with_llm = score_chunk, score_element
+    entity = {"key": "НГУ", "kind": "entity", "name": "НГУ", "type": "ORG", "description": "Университет",
+              "score": 1.0, "sources": [0]}
+    pool = [Candidate("entity:НГУ", 1.0, element=entity), Candidate("chunk:0", 0.9, chunk_id=0)]
+    kept = asyncio.run(p._rerank([{"query": "q", "pool": pool}], "q", "", None))
+    return [chunk_id for chunk_id, _ in kept], [element["key"] for element in kept.elements]
+
+
+def test_graph_elements_take_no_chunk_slots_of_a_query():
+    """Elements have no source prior, so under one shared per-query cut they pushed every penalised chunk out (the
+    question about E. Vityaev kept 2 chunks at weight 2 against 11 at weight 0)."""
+    assert kept_of_one_query(2.0, 1) == ([0], ["НГУ"])
+    assert kept_of_one_query(0.0, 1) == ([0], ["НГУ"])
+
+
 def test_an_anchor_names_its_own_page_part():
     first = "https://www.nsu.ru/n/sveden/employees/#Мулляджанов_Рустам_Илхамович"
     second = "https://www.nsu.ru/n/sveden/employees/#Абалмасова_Юлия_Михайловна"

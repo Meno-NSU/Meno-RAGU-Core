@@ -99,10 +99,15 @@ class RaguRagPipeline(StandRagPipeline):
         for batch in batches:
             ranked = [(c, rerank_merge_score(c.score, scores[c.key], self.settings.rerank_weight)) for c in batch]
             ranked = sorted((p for p in ranked if p[1] > 0), key=lambda p: (-order(*p), p[0].key))
-            for candidate, merged in ranked[: self.settings.rerank_top_k]:
-                previous = selected.get(candidate.key)
-                if previous is None or merged > previous[1]:
-                    selected[candidate.key] = (candidate, merged)
+            # A query keeps its best chunks and its best graph elements, each kind up to rerank_top_k: elements carry
+            # no source prior, so in one shared cut they outranked every penalised chunk of the query.
+            for is_chunk in (True, False):
+                for candidate, merged in [p for p in ranked if (p[0].chunk_id is not None) == is_chunk][
+                    : self.settings.rerank_top_k
+                ]:
+                    previous = selected.get(candidate.key)
+                    if previous is None or merged > previous[1]:
+                        selected[candidate.key] = (candidate, merged)
         # Document chunks and graph elements have separate limits: in one shared list the short element
         # blocks pushed documents out of the context (on NSU v1, 5.9 elements and 4.5 documents per answer).
         ranked_all = sorted(selected.values(), key=lambda p: (-order(*p), p[0].key))
