@@ -69,6 +69,27 @@ def test_graph_elements_take_no_chunk_slots_of_a_query():
     assert kept_of_one_query(0.0, 1) == ([0], ["НГУ"])
 
 
+def test_one_page_holds_at_most_its_cap_of_the_context_across_queries():
+    """The per-page cap held per query only, so two queries let one page fill the context: the teacher corpus gives
+    every publication of a teacher the timetable's URL, and seven such chunks pushed the news of E. Vityaev's death
+    out of his twelve."""
+    p = pipeline(source_prior_weight=0.0, rerank_candidates_per_page=2, max_context_chunks=3)
+    timetable = "https://table.nsu.ru/teacher/93fa5a55"
+    p.resources.documents[:] = [document(f"Публикация {i}", timetable, 0.73) for i in range(3)] + [
+        document("Новость", "https://www.nsu.ru/n/mathematics-mechanics-department/media/news/4567412/", 0.6)]
+    p.resources.chunk_mapping.clear()
+    p.resources.chunk_mapping.update({str(i): {"doc_index": i, "local_chunk_index": 0} for i in range(4)})
+
+    async def score(question, history, chunk_id, runtime):
+        return 1.0
+
+    p._score_chunk_with_llm = score
+    batches = [{"query": "q1", "pool": [Candidate("chunk:0", 0.9, chunk_id=0), Candidate("chunk:1", 0.8, chunk_id=1)]},
+               {"query": "q2", "pool": [Candidate("chunk:2", 0.7, chunk_id=2), Candidate("chunk:3", 0.5, chunk_id=3)]}]
+    kept = asyncio.run(p._rerank(batches, "q", "", None))
+    assert [chunk_id for chunk_id, _ in kept] == [0, 1, 3]
+
+
 def test_an_anchor_names_its_own_page_part():
     first = "https://www.nsu.ru/n/sveden/employees/#Мулляджанов_Рустам_Илхамович"
     second = "https://www.nsu.ru/n/sveden/employees/#Абалмасова_Юлия_Михайловна"

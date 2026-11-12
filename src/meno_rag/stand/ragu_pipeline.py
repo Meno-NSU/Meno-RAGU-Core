@@ -112,7 +112,7 @@ class RaguRagPipeline(StandRagPipeline):
         # blocks pushed documents out of the context (on NSU v1, 5.9 elements and 4.5 documents per answer).
         ranked_all = sorted(selected.values(), key=lambda p: (-order(*p), p[0].key))
         kept = sorted(
-            [p for p in ranked_all if p[0].chunk_id is not None][: self.settings.max_context_chunks]
+            self._capped_chunks([p for p in ranked_all if p[0].chunk_id is not None])
             + [p for p in ranked_all if p[0].chunk_id is None][: self.settings.graph_max_elements],
             key=lambda p: (-order(*p), p[0].key),
         )
@@ -140,6 +140,25 @@ class RaguRagPipeline(StandRagPipeline):
             candidate_scores={c.chunk_id: scores[c.key] for c in unique.values() if c.chunk_id is not None},
             graph_trace=graph_trace,
         )
+
+    def _capped_chunks(self, ranked):
+        """The best chunks for the context, at most ``max_context_chunks``, and at most ``rerank_candidates_per_page``
+        of one page across all the queries (the per-query pools hold that cap each, so several queries could fill the
+        context with one page)."""
+        per_page = self.settings.rerank_candidates_per_page
+        taken: dict[str, int] = {}
+        kept = []
+        for pair in ranked:
+            if len(kept) >= self.settings.max_context_chunks:
+                break
+            if per_page > 0:
+                page = self._page_of(pair[0].chunk_id)
+                if page is not None:
+                    if taken.get(page, 0) >= per_page:
+                        continue
+                    taken[page] = taken.get(page, 0) + 1
+            kept.append(pair)
+        return kept
 
     def _candidate_pool(self, pool):
         """The query's best candidates for the reranker, at most ``rerank_candidates_per_page`` chunks of one page."""
