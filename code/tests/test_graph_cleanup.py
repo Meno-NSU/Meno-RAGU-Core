@@ -218,3 +218,103 @@ def test_relation_marks_name_the_nodes_the_merges_leave(tmp_path):
     inputs = load_cleanup_inputs(None, None, tmp_path / 'merges.jsonl', tmp_path / 'marks.jsonl')
     assert inputs.marked_relations == frozenset({(frozenset({
         ('Новосибирский государственный университет', 'ORGANIZATION'), ('Москва', 'CITY')}), 'ALTERNATIVE_NAME')})
+
+
+def test_inputs_find_nodes_whose_spelling_differs_only_in_punctuation():
+    """Inputs of graph v4 name nodes as v4 spelled them ('Дексаметазон (DEX', its closing bracket cut by the old name
+    trimming); the node of this build ('Дексаметазон (DEX)') is the same one, and keeps this build's spelling."""
+    whole = entity('Дексаметазон (DEX)', 'PRODUCT', 'Глюкокортикоид.')
+    short = entity('DEX', 'PRODUCT', 'Сокращение.')
+    rat = entity('Крысы', 'ORGANISM', 'Животные.')
+    given = relation(rat, short, 'UNFIT:AGENT', 'Крысам вводили DEX.')
+    merges = ((('DEX', 'PRODUCT'), ('Дексаметазон (DEX', 'PRODUCT')),)
+    entities, kept, _ = clean_graph([whole, short, rat], [given], CleanupInputs(merges=merges))
+    assert {(e.entity_name, e.id) for e in entities} == {('Дексаметазон (DEX)', whole.id), ('Крысы', rat.id)}
+    assert [(r.subject_id, r.object_id) for r in kept] == [(rat.id, whole.id)]
+    folded = CleanupInputs(folded=frozenset({('Дексаметазон (DEX', 'PRODUCT')}))
+    entities, _, _ = clean_graph([whole, rat], [relation(rat, whole, 'UNFIT:AGENT', 'Крысам вводили DEX.')], folded)
+    assert [e.entity_name for e in entities] == ['Крысы']
+    _, kept, _ = clean_graph([whole, rat], [relation(rat, whole, 'AGENT', 'Крысам вводили DEX.')],
+                             CleanupInputs(marked_relations=frozenset({(frozenset({
+                                 ('Крысы', 'ORGANISM'), ('Дексаметазон (DEX', 'PRODUCT')}), 'AGENT')})))
+    assert [r.relation_type for r in kept] == ['UNFIT:AGENT']
+
+
+def test_labeled_entities_take_their_subtype_and_relations_follow():
+    chair = entity('Кафедра общей физики', 'ORGANIZATION', 'Кафедра ФФ.')
+    person = entity('Иванов Иван Иванович', 'PERSON', 'Доцент.')
+    fly = entity('Дрозофила', 'PRODUCT', 'Муха.', chunk='c1')
+    fly_too = entity('Дрозофила', 'ORGANIZATION', 'Модельный организм.', chunk='c2')
+    works = relation(person, chair, 'WORKPLACE', 'Иванов работает на кафедре общей физики.')
+    subtypes = ((('Кафедра общей физики', 'ORGANIZATION'), 'DEPARTMENT'), (('Дрозофила', 'PRODUCT'), 'ORGANISM'),
+                (('Дрозофила', 'ORGANIZATION'), 'ORGANISM'), (('Иванов Иван Иванович', 'PERSON'), 'PERSON'))
+    entities, kept, stats = clean_graph([chair, person, fly, fly_too], [works], CleanupInputs(subtypes=subtypes))
+    assert [(e.entity_name, e.entity_type) for e in entities] == [
+        ('Кафедра общей физики', 'DEPARTMENT'), ('Иванов Иван Иванович', 'PERSON'), ('Дрозофила', 'ORGANISM'),
+        ('Дрозофила', 'ORGANISM')]
+    assert entities[2].id == entities[3].id  # one node now: the build joins mentions of one id
+    assert [(r.object_name, r.object_id) for r in kept] == [('Кафедра общей физики', entities[0].id)]
+    assert stats['subtyped_entities'] == 3
+
+
+def test_relations_take_their_new_type_and_direction_and_keep_their_text():
+    """Retypes name the relation by its two ends and its type in the graph they were made on (before the subtypes):
+    'UNFIT:AGENT' from an article to its author becomes AUTHOR_OF from the author to the article."""
+    article = entity('Эволюция волновых пакетов', 'WORK_OF_ART', 'Статья.')
+    journal = entity('Журнал ПМТФ', 'WORK_OF_ART', 'Журнал.')
+    author = entity('Иванов Иван Иванович', 'PERSON', 'Физик.')
+    rector = entity('Ректор', 'PROFESSION', 'Должность.')
+    relations = [relation(article, journal, 'PART_OF', 'Статья опубликована в журнале ПМТФ.'),
+                 relation(article, author, 'UNFIT:AGENT', 'Иванов — автор статьи.'),
+                 relation(author, rector, 'UNFIT:WORKS_AS', 'Иванов подписал приказ ректора.')]
+    retypes = (((('Эволюция волновых пакетов', 'WORK_OF_ART'), ('Журнал ПМТФ', 'WORK_OF_ART'), 'PART_OF'),
+                ('PUBLISHED_IN', False)),
+               ((('Эволюция волновых пакетов', 'WORK_OF_ART'), ('Иванов Иван Иванович', 'PERSON'), 'UNFIT:AGENT'),
+                ('AUTHOR_OF', True)),
+               ((('Иванов Иван Иванович', 'PERSON'), ('Ректор', 'PROFESSION'), 'UNFIT:WORKS_AS'), ('RELATED_TO', False)))
+    _, kept, stats = clean_graph([article, journal, author, rector], relations, CleanupInputs(retypes=retypes))
+    assert [(r.subject_name, r.relation_type, r.object_name, r.description) for r in kept] == [
+        ('Эволюция волновых пакетов', 'PUBLISHED_IN', 'Журнал ПМТФ', 'Статья опубликована в журнале ПМТФ.'),
+        ('Иванов Иван Иванович', 'AUTHOR_OF', 'Эволюция волновых пакетов', 'Иванов — автор статьи.'),
+        ('Иванов Иван Иванович', 'RELATED_TO', 'Ректор', 'Иванов подписал приказ ректора.')]
+    assert [(r.subject_id, r.object_id) for r in kept][1] == (author.id, article.id)
+    assert stats['retyped_relations'] == 3 and stats['reversed_relations'] == 1
+
+
+def test_nodes_that_are_not_objects_fold_into_their_neighbours():
+    """A role ('Ректор'), an identifier, a vague phrase or a garbled name is not an object to find: what its relations
+    say goes into the description of the other end, as values do, and the node goes."""
+    person = entity('Федорук Михаил Петрович', 'PERSON', 'Учёный.')
+    rector = entity('Ректор', 'PROFESSION', 'Руководитель вуза.')
+    room = entity('Ауд. 313', 'FACILITY', 'Аудитория.')
+    field = entity('Нелинейная оптика', 'CONCEPT', 'Раздел физики.')
+    relations = [relation(person, rector, 'WORKS_AS', 'Михаил Федорук — ректор НГУ.'),
+                 relation(person, room, 'LOCATED_IN', 'Федорук принимает в ауд. 313.'),
+                 relation(person, field, 'RESEARCHES', 'Федорук занимается нелинейной оптикой.')]
+    inputs = CleanupInputs(not_objects=frozenset({('Ректор', 'PROFESSION'), ('Ауд. 313', 'FACILITY')}))
+    entities, kept, stats = clean_graph([person, rector, room, field], relations, inputs)
+    assert [(e.entity_name, e.description) for e in entities] == [
+        ('Федорук Михаил Петрович', 'Учёный. Михаил Федорук — ректор НГУ. Федорук принимает в ауд. 313.'),
+        ('Нелинейная оптика', 'Раздел физики.')]
+    assert [r.relation_type for r in kept] == ['RESEARCHES']
+    assert stats['not_object_value_entities'] == 2
+
+
+def test_v5_inputs_load_from_their_files(tmp_path):
+    from graph_utils.graph_cleanup import load_cleanup_inputs
+    (tmp_path / 'merges.jsonl').write_text(json.dumps({'from': ['НГУ', 'ORGANIZATION'], 'to': [
+        'Новосибирский государственный университет', 'ORGANIZATION']}, ensure_ascii=False) + '\n', encoding='utf-8')
+    (tmp_path / 'subtypes.jsonl').write_text('\n'.join(json.dumps(row, ensure_ascii=False) for row in [
+        {'name': 'НГУ', 'type': 'ORGANIZATION', 'subtype': 'UNIVERSITY', 'kind': 'named', 'model': 'm', 'prompt': 'p'},
+        {'name': 'Ректор', 'type': 'PROFESSION', 'subtype': 'POSITION', 'kind': 'role', 'model': 'm', 'prompt': 'p'},
+        {'name': 'Рутил', 'type': 'PRODUCT', 'subtype': 'MATERIAL', 'kind': 'concept', 'model': 'm', 'prompt': 'p'},
+    ]) + '\n', encoding='utf-8')
+    (tmp_path / 'retypes.jsonl').write_text(json.dumps({
+        'subject': ['Статья', 'WORK_OF_ART'], 'object': ['НГУ', 'ORGANIZATION'], 'original': 'UNFIT:AGENT',
+        'type': 'RELATED_TO', 'reverse': False, 'model': 'm', 'prompt': 'p'}, ensure_ascii=False) + '\n', encoding='utf-8')
+    inputs = load_cleanup_inputs(merges_path=tmp_path / 'merges.jsonl', subtypes_path=tmp_path / 'subtypes.jsonl',
+                                 retypes_path=tmp_path / 'retypes.jsonl')
+    university = ('Новосибирский государственный университет', 'ORGANIZATION')
+    assert inputs.subtypes == ((university, 'UNIVERSITY'), (('Рутил', 'PRODUCT'), 'MATERIAL'))
+    assert inputs.not_objects == frozenset({('Ректор', 'PROFESSION')})
+    assert inputs.retypes == (((('Статья', 'WORK_OF_ART'), university, 'UNFIT:AGENT'), ('RELATED_TO', False)),)

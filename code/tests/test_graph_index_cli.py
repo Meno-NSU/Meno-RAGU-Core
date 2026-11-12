@@ -145,7 +145,7 @@ def test_cleanup_inputs_are_hashed_into_the_configuration_and_extra_embedders_ar
                      embedder_extra_urls='http://everest:9026/v1', graph_cleanup=True,
                      checkpoint_seed='/graph-v3/checkpoints', checkpoint_seed_until='06-')
     configuration = checkpoint_configuration(args)
-    assert 'graph_relation_marks' in CLEANUP_INPUTS
+    assert {'graph_relation_marks', 'graph_entity_subtypes', 'graph_relation_retypes'} <= set(CLEANUP_INPUTS)
     assert set(CLEANUP_INPUTS) <= set(configuration['files'])
     assert not {'embedder_extra_urls', 'checkpoint_seed', 'checkpoint_seed_until'} & set(configuration['settings'])
     previous = previous_cleanup_inputs_configuration(configuration)

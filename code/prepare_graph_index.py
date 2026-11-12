@@ -231,6 +231,16 @@ def main():
                         help='With --graph_cleanup: JSONL of refuted relations ({"subject": [name, type], "object": '
                              '[name, type], "relation_type": ...}, names of the graph before --graph_merges); such '
                              'relations between the two, either way, keep their text with the type "UNFIT:<type>".')
+    parser.add_argument('--graph_entity_subtypes', dest='graph_entity_subtypes', type=str, required=False, default=None,
+                        help='With --graph_cleanup: JSONL of ontology labels of nodes ({"name", "type", "subtype", '
+                             '"kind"}, names of the graph after --graph_merges); a node takes its subtype, and a node '
+                             'of kind role, identifier, vague or garbled becomes part of the description of its '
+                             'neighbours, as values do.')
+    parser.add_argument('--graph_relation_retypes', dest='graph_relation_retypes', type=str, required=False,
+                        default=None,
+                        help='With --graph_cleanup: JSONL of retyped relations ({"subject": [name, type], "object": '
+                             '[name, type], "original": type, "type": new type, "reverse": bool}, names and types of '
+                             'the graph after --graph_merges and --graph_relation_marks); the text stays.')
     parser.add_argument('--relation_review_sources', dest='relation_review_sources', type=str, required=False,
                         default='',
                         help='The comma-separated list of content sources whose chunks get the relation review '
@@ -454,7 +464,8 @@ def main():
             relation_review=args.relation_review,
             graph_cleanup=args.graph_cleanup,
             cleanup_inputs=load_cleanup_inputs(args.graph_exclude_chunks, args.graph_entity_labels, args.graph_merges,
-                                             args.graph_relation_marks),
+                                             args.graph_relation_marks, args.graph_entity_subtypes,
+                                             args.graph_relation_retypes),
             review_chunk_ids=review_chunk_ids,
             abbreviations=abbreviations,
             rewrite_concurrency=args.rate_max_simultaneous if args.rate_max_simultaneous > 0 else 8,
