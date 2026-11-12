@@ -1,0 +1,156 @@
+# NSU ontology: NEREL with the domain of Novosibirsk State University and Akademgorodok.
+#
+# Every new entity type is a subtype (`parent`) of a NEREL type, so all NEREL relation constraints keep accepting it;
+# new relation types name what the graph used to squeeze into PRODUCES / PARTICIPANT_IN / PART_OF / AGENT / KNOWS
+# (review of graph v4: 84% of the UNFIT relations are real facts with a type NEREL lacks). `retype_when` rewrites the
+# NEREL type wherever the endpoint types decide the meaning; the rest is retyped by a model from the description.
+# DRAFT for review (12.11.2026).
+
+version: 1
+name: nsu
+extends: nerel
+
+entity_types:
+  # organizations
+  UNIVERSITY: {description: "a university or academy", parent: ORGANIZATION}
+  FACULTY: {description: "a faculty or institute of a university (факультет, институт НГУ)", parent: ORGANIZATION}
+  DEPARTMENT: {description: "a department or chair of a faculty (кафедра)", parent: ORGANIZATION}
+  LABORATORY: {description: "a laboratory, research group or center", parent: ORGANIZATION}
+  RESEARCH_INSTITUTE: {description: "a research institute (институты СО РАН и др.)", parent: ORGANIZATION}
+  SCHOOL: {description: "a school or a pre-university center (СУНЦ, школы)", parent: ORGANIZATION}
+  ENTERPRISE: {description: "a company or enterprise", parent: ORGANIZATION}
+  STUDENT_ORGANIZATION: {description: "a student union, club or community", parent: ORGANIZATION}
+  RESEARCH_PROJECT: {description: "a research project, collaboration or experiment (e.g. TAIGA)", parent: ORGANIZATION}
+  # works and documents
+  PUBLICATION: {description: "a scientific article, book, chapter, conference paper or preprint", parent: WORK_OF_ART}
+  PERIODICAL: {description: "a journal, proceedings series or other periodical", parent: WORK_OF_ART}
+  THESIS: {description: "a dissertation, thesis or graduation work", parent: WORK_OF_ART}
+  REGULATION: {description: "an internal regulation of a university (положение, приказ, правила, порядок)", parent: LAW}
+  FEDERAL_LAW: {description: "a federal law, government decree or ministry order", parent: LAW}
+  DOCUMENT: {description: "a form, application, certificate, contract type or other document someone fills in or submits", parent: PRODUCT}
+  # education and science
+  DISCIPLINE: {description: "a taught course or subject (учебная дисциплина)", parent: PRODUCT}
+  EDUCATIONAL_PROGRAM: {description: "an educational program, field of study or profile (направление подготовки, программа)", parent: PRODUCT}
+  RESEARCH_FIELD: {description: "a field or area of science", parent: PRODUCT}
+  METHOD: {description: "a method, technique, algorithm or model", parent: PRODUCT}
+  MATERIAL: {description: "a chemical compound, material, mineral or rock", parent: PRODUCT}
+  ORGANISM: {description: "a species, strain, cell line or other organism", parent: PRODUCT}
+  SOFTWARE: {description: "a program, library or information system", parent: PRODUCT}
+  INSTRUMENT: {description: "an instrument, device or installation", parent: PRODUCT}
+  PHENOMENON: {description: "a natural process, phenomenon or effect studied by science", parent: PRODUCT}
+  # people's positions and levels
+  POSITION: {description: "a job position (доцент как должность, заведующий кафедрой, декан)", parent: PROFESSION}
+  ACADEMIC_DEGREE: {description: "an academic degree or title (кандидат наук, доктор наук, профессор)", parent: PROFESSION}
+  EDUCATION_LEVEL: {description: "a level of education (бакалавриат, магистратура, аспирантура, специалитет)", parent: PROFESSION}
+  # events, places, awards
+  CONFERENCE: {description: "a conference, congress, symposium or workshop", parent: EVENT}
+  OLYMPIAD: {description: "an olympiad, contest or competition", parent: EVENT}
+  EXAM: {description: "an exam or entrance test (ЕГЭ, вступительное испытание)", parent: EVENT}
+  ACADEMIC_EVENT: {description: "a lecture, seminar, school, open day or other university event", parent: EVENT}
+  CAMPUS_BUILDING: {description: "a building or campus", parent: FACILITY}
+  DORMITORY: {description: "a dormitory", parent: FACILITY}
+  ROOM: {description: "a room, auditorium or office", parent: FACILITY}
+  SCHOLARSHIP: {description: "a scholarship or stipend", parent: AWARD}
+  GRANT: {description: "a research grant", parent: AWARD}
+
+relation_types:
+  # PRODUCES without the alias AUTHOR_OF, which is its own type here
+  PRODUCES:
+    description: links a creator to a product or work it produces
+    domain: [ORGANIZATION, COUNTRY, PERSON]
+    range: [PRODUCT, WORK_OF_ART]
+    aliases: [CREATOR_OF, MANUFACTURES]
+    inverse_aliases: [DIRECTED_BY, PRODUCED_BY, PERFORMED_BY, CREATED_BY, RELEASED_BY, COMPOSED_BY, DEVELOPED_BY, MANUFACTURED_BY, CREATOR]
+    retype_when:
+      - {domain: [PERSON], range: [PUBLICATION, THESIS], to: AUTHOR_OF}
+      - {domain: [PERSON], range: [DISCIPLINE], to: TEACHES}
+      - {domain: [ORGANIZATION], range: [EDUCATIONAL_PROGRAM], to: OFFERS_PROGRAM}
+  PARTICIPANT_IN:
+    description: links a person or organization to an event or production they took part in
+    domain: [PERSON, ORGANIZATION, COUNTRY]
+    range: [EVENT, WORK_OF_ART]
+    retype_when:
+      - {domain: [PERSON], range: [PUBLICATION, THESIS], to: AUTHOR_OF}
+      - {domain: [PUBLICATION], range: [PERIODICAL, CONFERENCE], to: PUBLISHED_IN}
+  AGENT:
+    description: links an event to its active agent or performer
+    domain: [EVENT]
+    range: [PERSON, ORGANIZATION, COUNTRY]
+    retype_when:
+      - {domain: [PUBLICATION, THESIS], range: [PERSON], to: AUTHOR_OF, swap: true}
+      - {domain: [WORK_OF_ART, PRODUCT], to: PRODUCES, swap: true}
+  PART_OF:
+    description: links a component entity to the larger whole it belongs to
+    inverse_aliases: [HAS_PART, CONTAINS, INCLUDES, COMPRISES]
+    retype_when:
+      - {domain: [PUBLICATION], range: [PERIODICAL, CONFERENCE], to: PUBLISHED_IN}
+      - {domain: [DISCIPLINE], range: [EDUCATIONAL_PROGRAM], to: IN_PROGRAM}
+      - {domain: [RESEARCH_FIELD], range: [RESEARCH_FIELD], to: SUBFIELD_OF}
+      - {domain: [EDUCATIONAL_PROGRAM], range: [FACULTY, DEPARTMENT, UNIVERSITY, RESEARCH_INSTITUTE], to: OFFERS_PROGRAM, swap: true}
+  AUTHOR_OF:
+    description: links a person to a publication or thesis they wrote
+    domain: [PERSON]
+    range: [PUBLICATION, THESIS, WORK_OF_ART]
+    aliases: [AUTHOR, WROTE]
+    inverse_aliases: [WRITTEN_BY, AUTHORED_BY]
+  COAUTHOR_OF:
+    description: links two people who wrote a publication together
+    domain: [PERSON]
+    range: [PERSON]
+    symmetric: true
+  PUBLISHED_IN:
+    description: links a publication to the journal, proceedings or conference it appeared in
+    domain: [PUBLICATION, THESIS, WORK_OF_ART]
+    range: [PERIODICAL, CONFERENCE, WORK_OF_ART, EVENT]
+    inverse_aliases: [PUBLISHES]
+  TEACHES:
+    description: links a teacher to a course, discipline or program they teach
+    domain: [PERSON]
+    range: [DISCIPLINE, EDUCATIONAL_PROGRAM]
+    inverse_aliases: [TAUGHT_BY]
+  SUPERVISES:
+    description: links a scientific supervisor to the student, postgraduate or thesis they supervise
+    domain: [PERSON]
+    range: [PERSON, THESIS]
+    inverse_aliases: [SUPERVISED_BY]
+  HEAD_OF:
+    description: links a person to the organization or unit they head (декан, заведующий, директор, руководитель)
+    domain: [PERSON]
+    range: [ORGANIZATION]
+    inverse_aliases: [HEADED_BY]
+  STUDIES_AT:
+    description: links a student to the university, unit or program where they study
+    domain: [PERSON]
+    range: [ORGANIZATION, EDUCATIONAL_PROGRAM]
+  HAS_DEGREE:
+    description: links a person to an academic degree or title they hold
+    domain: [PERSON]
+    range: [ACADEMIC_DEGREE]
+  OFFERS_PROGRAM:
+    description: links a university unit to an educational program it runs
+    domain: [ORGANIZATION]
+    range: [EDUCATIONAL_PROGRAM, DISCIPLINE]
+  IN_PROGRAM:
+    description: links a discipline to the educational program that includes it
+    domain: [DISCIPLINE]
+    range: [EDUCATIONAL_PROGRAM]
+    inverse_aliases: [PROGRAM_INCLUDES]
+  REQUIRES:
+    description: links a program, admission or procedure to an exam, document or condition it requires
+    domain: [EDUCATIONAL_PROGRAM, EVENT, ORGANIZATION, SCHOLARSHIP, LAW]
+    range: [EXAM, DOCUMENT, DISCIPLINE, EDUCATION_LEVEL, ACADEMIC_DEGREE]
+  SUBFIELD_OF:
+    description: links a field, discipline or program to the broader one it belongs to
+    domain: [RESEARCH_FIELD, DISCIPLINE, EDUCATIONAL_PROGRAM]
+    range: [RESEARCH_FIELD, DISCIPLINE, EDUCATIONAL_PROGRAM]
+  RESEARCHES:
+    description: links a researcher, unit or publication to what it studies
+    domain: [PERSON, ORGANIZATION, PUBLICATION, THESIS, RESEARCH_PROJECT]
+  USES:
+    description: links a study, unit or method to a method, device, software or material it uses
+    range: [METHOD, INSTRUMENT, SOFTWARE, MATERIAL, ORGANISM]
+  REGULATES:
+    description: links a law or regulation to what it governs
+    domain: [LAW]
+  RELATED_TO:
+    description: a stated relation between two entities that no other type names; the description says what it is
