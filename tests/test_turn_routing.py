@@ -85,8 +85,8 @@ def test_routing_can_be_switched_off():
     assert outcome.context and "# Как отвечать на эту реплику" not in outcome.qa_messages[0]["content"]
 
 
-def test_a_history_of_several_messages_of_one_side_in_a_row_becomes_whole_turns():
-    from meno_rag.stand.pipeline import extract_question_and_history
+def test_the_history_keeps_every_message_in_order_and_the_nine_word_format_joins_whole_turns():
+    from meno_rag.stand.pipeline import _answered_turns, extract_question_and_history
 
     messages = [ChatMessage(role="assistant", content="Здравствуйте!"),
                 ChatMessage(role="user", content="Где ФИТ?"), ChatMessage(role="user", content="И как туда попасть?"),
@@ -96,12 +96,15 @@ def test_a_history_of_several_messages_of_one_side_in_a_row_becomes_whole_turns(
                 ChatMessage(role="user", content="А часы работы?")]
     question, history = extract_question_and_history(messages)
     assert question == "А часы работы?"
-    assert history == [{"role": "user", "content": "Где ФИТ?\nИ как туда попасть?"},
-                       {"role": "assistant", "content": "ФИТ в главном корпусе.\nВход с Пирогова."}]
+    assert [m["content"] for m in history] == ["Где ФИТ?", "И как туда попасть?", "ФИТ в главном корпусе.",
+                                               "Вход с Пирогова.", "Без ответа"]
+    assert _answered_turns(history) == [{"role": "user", "content": "Где ФИТ?\nИ как туда попасть?"},
+                                        {"role": "assistant", "content": "ФИТ в главном корпусе.\nВход с Пирогова."}]
 
 
-def test_a_question_after_an_unanswered_one_is_still_answered():
-    p = pipeline()
+def test_a_question_after_an_unanswered_one_is_answered_with_that_turn_in_the_history():
     messages = [ChatMessage(role="user", content="Привет"), ChatMessage(role="user", content="ФИТ")]
-    outcome = asyncio.run(p.prepare(messages=messages, runtime=RUNTIME))
+    outcome = asyncio.run(pipeline().prepare(messages=messages, runtime=RUNTIME))
+    assert outcome.question == "ФИТ" and "Привет" in outcome.prepared_dialogue_history
+    outcome = asyncio.run(pipeline(dialogue_memory=False).prepare(messages=messages, runtime=RUNTIME))
     assert outcome.question == "ФИТ" and outcome.prepared_dialogue_history == ""

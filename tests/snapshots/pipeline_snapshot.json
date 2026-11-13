@@ -30,7 +30,11 @@
       "search_queries": [
         "Какие факультеты есть в НГУ?"
       ],
-      "route": "nsu"
+      "route": "nsu",
+      "standalone_question": "Какие факультеты есть в НГУ?",
+      "subqueries": [],
+      "analysis_fallback": true,
+      "focus": ""
     },
     "retrieval": {
       "chunks_found": 1,

@@ -17,7 +17,8 @@ router = APIRouter()
 
 _CONTENT_SETTINGS = (
     "default_model", "top_k", "rerank_top_k", "rerank_candidates_per_query", "rerank_weight",
-    "min_document_quality", "max_history_answer_words", "max_output_tokens", "min_output_tokens",
+    "min_document_quality", "max_history_answer_words", "dialogue_memory", "history_budget_tokens",
+    "summary_budget_tokens", "max_output_tokens", "min_output_tokens",
     "generation_temperature", "max_rewrite_queries", "max_context_chunks", "max_qa_prompt_chars",
     "stand_compat_context_order", "qa_fewshots_enabled", "n_few_shots", "max_fewshots_chars",
     "rag_rewrite_rerank_model", "graph_top_k", "engine_rerank_top_k", "graph_related_candidates",

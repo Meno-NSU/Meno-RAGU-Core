@@ -269,6 +269,12 @@ class Settings(BaseSettings):
     # The kind of every turn, as in Menon 1.1 (stand/routing.py): general questions may use general knowledge,
     # small talk and turns about the dialogue skip the search. Off: every turn is searched and answered from documents.
     turn_routing: bool = Field(default=True, validation_alias="TURN_ROUTING")
+    # Menon 1.1's dialogue memory: the recent turns whole within HISTORY_BUDGET_TOKENS, older ones summarized in
+    # SUMMARY_BUDGET_TOKENS, and one analysis call for the route and a question that stands without the history.
+    # false: the earlier nine-word crop of each answer (MAX_HISTORY_ANSWER_WORDS) and the route-only call.
+    dialogue_memory: bool = Field(default=True, validation_alias="DIALOGUE_MEMORY")
+    history_budget_tokens: int = Field(default=5000, ge=200, validation_alias="HISTORY_BUDGET_TOKENS")
+    summary_budget_tokens: int = Field(default=800, ge=100, validation_alias="SUMMARY_BUDGET_TOKENS")
     # Source authority, as prod Menon 1.1 (V2_SOURCE_PRIOR_WEIGHT=2, V2_SOURCE_AUTHORITY=true): relevant candidates are
     # ordered by the log-odds of their score plus this weight * ln(quality_score of the document), and the answer rules
     # say official documents come before posts. Weight 0: the score alone. 1 here: on the 323 questions of the 558 with

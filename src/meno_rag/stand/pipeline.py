@@ -8,7 +8,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, cast
 
 import httpx
@@ -36,6 +36,7 @@ from meno_rag.stand.context import (
     prepare_relevant_documents,
 )
 from meno_rag.stand.dialogue_history import prepare_dialogue_history
+from meno_rag.stand.dialogue_memory import SummaryStore, build_memory, render_history
 from meno_rag.stand.qa import prepare_prompt_for_question_answering, system_prompt_with_datetime
 from meno_rag.stand.rerank import (
     build_prompt,
@@ -61,6 +62,7 @@ from meno_rag.stand.rewriting import (
 from meno_rag.stand.sampling import QaSampling, RerankSampling, RewriteSampling
 from meno_rag.stand.search import combine_relevant_chunks
 from meno_rag.stand.trace import build_pipeline_trace, model_runtime_trace
+from meno_rag.stand.turn_analysis import analyze
 
 logger = structlog.get_logger(__name__)
 
@@ -118,6 +120,8 @@ class StandRagPipeline:
         # With a scorer the sources are attributed after the answer (finalize_sources); without one they stay the
         # context documents, shown before the answer.
         self.source_scorer = source_scorer
+        # summaries of the older turns of the dialogues (dialogue_memory), shared by the requests of this process
+        self.summary_store = SummaryStore()
 
     @property
     def late_sources(self) -> bool:
@@ -137,10 +141,17 @@ class StandRagPipeline:
         generation_max_tokens: int | None = None,
     ) -> PipelineOutcome:
         question, history = extract_question_and_history(messages)
-        prepared_dialogue_history = prepare_dialogue_history(
-            source_dialogue=history,
-            max_words=self.settings.max_history_answer_words,
-        )
+        memory = None
+        if self.settings.dialogue_memory:
+            # Menon 1.1's memory: the recent turns whole, older ones summarized; every user turn counts
+            memory = await build_memory(history, question, self.llm_router, runtime.core, self.summary_store,
+                                        self.settings)
+            prepared_dialogue_history = render_history(memory.recent, memory.summary, memory.recalled)
+        else:
+            prepared_dialogue_history = prepare_dialogue_history(
+                source_dialogue=_answered_turns(history),
+                max_words=self.settings.max_history_answer_words,
+            )
 
         stage_durations: dict[str, float] = {}
         stage_details: dict[str, dict[str, Any]] = {}
@@ -165,26 +176,50 @@ class StandRagPipeline:
             stage_details,
         )
 
-        # The kind of the turn (routing.py) is asked next to the rewrite, so it costs no extra latency.
-        route_task = (asyncio.create_task(self._route_turn(question, prepared_dialogue_history, runtime.core))
-                      if self.settings.turn_routing else None)
-        try:
-            search_queries = await self._timed_stage(
-                StageName.QUERY_REWRITE,
-                emit,
-                lambda: self._rewrite_question(question, prepared_dialogue_history, runtime.core),
-                stage_durations,
-                stage_details,
-                model_id=runtime.core.model_id,
-            )
-        except BaseException:
-            if route_task is not None:
-                route_task.cancel()
-            raise
-        route = await route_task if route_task is not None else None
-        if route is not None:
-            stage_details.setdefault(StageName.QUERY_REWRITE, {})["route"] = route
-        searching = route not in NO_SEARCH_ROUTES
+        search_question = question  # what the search and the relevance check work from
+        if memory is not None and self.settings.turn_routing:
+            # One analysis call (Menon 1.1): the route and a question that stands without the history; the rewrite
+            # then works from that question, and the sub-queries of comparisons and lists join the search.
+            analysis = await analyze(self.llm_router, runtime.core, question=question, recent=memory.recent,
+                                     summary=memory.summary, today=date.today(),
+                                     timeout_s=self.settings.rewrite_timeout_seconds)
+            route, search_question = analysis.route, analysis.standalone_question
+            searching = route not in NO_SEARCH_ROUTES
+            search_queries = []
+            if searching:
+                search_queries = await self._timed_stage(
+                    StageName.QUERY_REWRITE,
+                    emit,
+                    lambda: self._rewrite_question(search_question, prepared_dialogue_history, runtime.core),
+                    stage_durations,
+                    stage_details,
+                    model_id=runtime.core.model_id,
+                )
+                search_queries = list(dict.fromkeys([*search_queries, *analysis.subqueries]))
+            details = stage_details.setdefault(StageName.QUERY_REWRITE, {})
+            details.update(route=route, standalone_question=search_question, subqueries=analysis.subqueries,
+                           analysis_fallback=analysis.fallback, focus=analysis.focus)
+        else:
+            # The kind of the turn (routing.py) is asked next to the rewrite, so it costs no extra latency.
+            route_task = (asyncio.create_task(self._route_turn(question, prepared_dialogue_history, runtime.core))
+                          if self.settings.turn_routing else None)
+            try:
+                search_queries = await self._timed_stage(
+                    StageName.QUERY_REWRITE,
+                    emit,
+                    lambda: self._rewrite_question(question, prepared_dialogue_history, runtime.core),
+                    stage_durations,
+                    stage_details,
+                    model_id=runtime.core.model_id,
+                )
+            except BaseException:
+                if route_task is not None:
+                    route_task.cancel()
+                raise
+            route = await route_task if route_task is not None else None
+            if route is not None:
+                stage_details.setdefault(StageName.QUERY_REWRITE, {})["route"] = route
+            searching = route not in NO_SEARCH_ROUTES
 
         # Few-shot selection is fail-safe and surfaced as its own stage so the
         # UI can show "found a similar case". Only run (and emit) when enabled
@@ -219,7 +254,8 @@ class StandRagPipeline:
             reranked_global_chunks = await self._timed_stage(
                 StageName.RERANK,
                 emit,
-                lambda: self._rerank(fused_batches, question, prepared_dialogue_history, runtime.core),
+                lambda: self._rerank(fused_batches, search_question,
+                                     "" if memory is not None else prepared_dialogue_history, runtime.core),
                 stage_durations,
                 stage_details,
                 model_id=runtime.core.model_id,
@@ -1035,6 +1071,9 @@ def _log_rerank_choice(response: dict[str, Any], *, chunk_id: int, model_id: str
 
 
 def extract_question_and_history(messages: list[ChatMessage]) -> tuple[str, list[dict[str, str]]]:
+    """The last user message is the question; the messages before it are the history, in order. A user turn that got
+    no answer stays (a dialogue dump without the assistant's replies, a request that failed); an answer before any
+    question does not."""
     if not messages:
         raise ValueError("messages must not be empty")
     user_indices = [idx for idx, msg in enumerate(messages) if msg.role == "user"]
@@ -1044,20 +1083,30 @@ def extract_question_and_history(messages: list[ChatMessage]) -> tuple[str, list
     question = " ".join(messages[last_user_idx].content.strip().split()).strip()
     if not question:
         raise ValueError("The current user question is empty.")
-    # Whole turns: several messages of one side in a row join (two questions before an answer, an answer in parts),
-    # an answer before any question and a question left without an answer stay out. The history must alternate.
-    turns: list[list[str | None]] = []
+    history: list[dict[str, str]] = []
     for msg in messages[:last_user_idx]:
-        if msg.role == "user":
+        if msg.role not in ("user", "assistant") or not msg.content.strip():
+            continue
+        if msg.role == "assistant" and not history:
+            continue
+        history.append({"role": msg.role, "content": msg.content})
+    return question, history
+
+
+def _answered_turns(history: list[dict[str, str]]) -> list[dict[str, str]]:
+    """The strictly alternating history of the nine-word history format (DIALOGUE_MEMORY=false): several messages of
+    one side in a row join, and a question left without an answer stays out."""
+    turns: list[list[str | None]] = []
+    for msg in history:
+        if msg["role"] == "user":
             if turns and turns[-1][1] is None:
-                turns[-1][0] = f"{turns[-1][0]}\n{msg.content}"
+                turns[-1][0] = f"{turns[-1][0]}\n{msg['content']}"
             else:
-                turns.append([msg.content, None])
-        elif msg.role == "assistant" and turns:
-            turns[-1][1] = msg.content if turns[-1][1] is None else f"{turns[-1][1]}\n{msg.content}"
-    raw_history = []
+                turns.append([msg["content"], None])
+        elif turns:
+            turns[-1][1] = msg["content"] if turns[-1][1] is None else f"{turns[-1][1]}\n{msg['content']}"
+    out: list[dict[str, str]] = []
     for user_content, assistant_content in turns:
         if assistant_content is not None:
-            raw_history += [{"role": "user", "content": user_content},
-                            {"role": "assistant", "content": assistant_content}]
-    return question, raw_history
+            out += [{"role": "user", "content": user_content}, {"role": "assistant", "content": assistant_content}]
+    return out
