@@ -1,7 +1,25 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
+
+
+def format_document_date(raw: str | None) -> str:
+    """A document date as Menon 1.1 shows it (v2/prompting.py _format_date): 2026-10-13 -> 13.10.2026,
+    2026-10 -> 10.2026, 2026 -> 2026 г.; empty for no date."""
+    s = str(raw).strip() if raw else ""
+    if not s:
+        return ""
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})(?:[T ].*)?", s)
+    if m:
+        return f"{m[3]}.{m[2]}.{m[1]}"
+    m = re.fullmatch(r"(\d{4})-(\d{2})", s)
+    if m:
+        return f"{m[2]}.{m[1]}"
+    if re.fullmatch(r"\d{4}", s):
+        return f"{s} г."
+    return s
 
 
 def normalize_urls(value: str | list[str] | None) -> list[str]:
@@ -68,6 +86,9 @@ def document_to_text(document_index: int, chunk_indices: list[int], documents: l
             new_document_description += "."
     else:
         new_document_description = "Документ без названия."
+    doc_date = format_document_date(documents[document_index].get("date"))
+    if doc_date:
+        new_document_description += f"\n\n**Дата документа:** {doc_date}."
     if len(doc_annotation) > 0:
         new_document_description += f"\n\n**Аннотация документа:** {doc_annotation}"
         if doc_annotation[-1] not in {".", ",", "?", "!", ":", ";"}:

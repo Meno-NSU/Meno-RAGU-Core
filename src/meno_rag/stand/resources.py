@@ -125,7 +125,12 @@ class StandResources:
     fewshot_retriever: Any = None
 
 
+DOCUMENT_DATES_NAME = "document_dates.json"
+
+
 def _load_documents(path: Path) -> tuple[list[dict[str, Any]], int]:
+    """The stand corpus; documents get their dates from ``document_dates.json`` next to it (document index ->
+    date, from the KB release's chunk metadata), when the stand has one."""
     documents = []
     missing = 0
     with path.open(encoding="utf-8") as fp:
@@ -141,6 +146,11 @@ def _load_documents(path: Path) -> tuple[list[dict[str, Any]], int]:
                 doc["quality_score"] = 1.0
                 missing += 1
             documents.append(doc)
+    dates_path = path.parent / DOCUMENT_DATES_NAME
+    if dates_path.is_file():
+        for index, date in json.loads(dates_path.read_text(encoding="utf-8")).items():
+            if date and 0 <= int(index) < len(documents):
+                documents[int(index)].setdefault("date", date)
     return documents, missing
 
 
