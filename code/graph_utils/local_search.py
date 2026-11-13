@@ -4,13 +4,23 @@ from collections import Counter
 
 from ragu.chunker.types import Chunk
 from ragu.common.logger import logger
-from ragu.search_engine.local_search import LocalSearchEngine, LocalSearchResult, LocalSearchRetrieve
+from ragu.search_engine.local_search import LocalParams, LocalSearchEngine, LocalSearchResult, LocalSearchRetrieve
 from ragu.search_engine.search_functional import (
     _find_documents_id,
     _find_most_related_community_from_entities,
     _find_most_related_edges_from_entities,
-    _rerank_items,
+    _prefetch_entity_edges,
 )
+
+
+async def rerank_with_scores(query, items, text_getter, reranker):
+    """ragu's ``_rerank_items`` (the items in the cross-encoder's order, the same scorer call) that also returns
+    the cross-encoder's scores, aligned with the items; ``None`` without a reranker."""
+    if reranker is None or not items:
+        return items, None
+    ranked = [(index, float(score)) for index, score in await reranker.score(query, [text_getter(item) for item in items])
+              if 0 <= index < len(items)]
+    return [items[index] for index, _ in ranked], [score for _, score in ranked]
 
 
 async def find_related_text_units(entities, knowledge_graph, edges_by_entity, neighbor_chunks):
@@ -58,9 +68,46 @@ async def find_related_text_units(entities, knowledge_graph, edges_by_entity, ne
 
 
 class EfficientLocalSearchEngine(LocalSearchEngine):
+    """ragu's local search with a cheaper chunk lookup, a budget of related candidates before the cross-encoder,
+    and the cross-encoder's scores kept in the metrics (``chunk_scores``, ``relation_scores``, the anchor entities'
+    ``rerank_score``): the same model scores the chunk channel, so these put both channels on one scale."""
     max_related_candidates: int | None = None
 
-    async def _assemble(self, query, entities, entity_hits, ranked_entities, edges_by_entity, neighbor_chunks):
+    async def batch_search(self, queries, params=None):
+        if not queries:
+            return []
+        params = params or LocalParams()
+        entity_results = await self.retriever.query_entities(queries, top_k=params.top_k)
+        ranked = await asyncio.gather(*[
+            self._rank_entities_scored(query, entities, params.rerank_top_k)
+            for query, (entities, _) in zip(queries, entity_results, strict=True)
+        ])
+        edges_by_entity, neighbor_chunks = await _prefetch_entity_edges(
+            [entity.id for entities, _ in ranked for entity in entities if entity and entity.id],
+            self.knowledge_graph,
+        )
+        return list(await asyncio.gather(*[
+            self._assemble(query, entities, entity_hits, anchors, edges_by_entity, neighbor_chunks,
+                           entity_scores=scores)
+            for query, (entities, entity_hits), (anchors, scores) in zip(queries, entity_results, ranked, strict=True)
+        ]))
+
+    async def _rank_entities_scored(self, query, entities, rerank_top_k=None):
+        """ragu's ``_rank_entities`` that also returns the anchors' cross-encoder scores by entity id."""
+        entities, scores = await rerank_with_scores(
+            query, entities, lambda entity: f'{entity.entity_name}\n{entity.entity_type}\n{entity.description}',
+            self.reranker)
+        if self.reranker is not None and rerank_top_k is not None:
+            entities = entities[:rerank_top_k]
+        by_id = {entity.id: score for entity, score in zip(entities, scores or [], strict=False)
+                 if entity and entity.id}
+        return entities, by_id
+
+    async def _rank_entities(self, query, entities, rerank_top_k=None):
+        return (await self._rank_entities_scored(query, entities, rerank_top_k))[0]
+
+    async def _assemble(self, query, entities, entity_hits, ranked_entities, edges_by_entity, neighbor_chunks,
+                        entity_scores=None):
         started = time.monotonic()
         entity_scores_by_id = {
             entity.id: hit.distance
@@ -86,13 +133,13 @@ class EfficientLocalSearchEngine(LocalSearchEngine):
             chunks = chunks[:self.max_related_candidates]
             logger.info('Локальный поиск RAGU: пул для переранжирования ограничен {} кандидатами каждого вида.',
                         self.max_related_candidates)
-        relations, summaries, chunks = await asyncio.gather(
-            _rerank_items(query, relations, lambda relation: (
+        (relations, relation_scores), (summaries, _), (chunks, chunk_scores) = await asyncio.gather(
+            rerank_with_scores(query, relations, lambda relation: (
                 f'{relation.subject_name}\n{relation.relation_type}\n'
                 f'{relation.object_name}\n{relation.description}'
             ), self.reranker),
-            _rerank_items(query, summaries, lambda summary: summary.summary, self.reranker),
-            _rerank_items(query, chunks, lambda chunk: chunk.content, self.reranker),
+            rerank_with_scores(query, summaries, lambda summary: summary.summary, self.reranker),
+            rerank_with_scores(query, chunks, lambda chunk: chunk.content, self.reranker),
         )
         logger.info('Локальный поиск RAGU: переранжирование завершено; всего {:.2f} с.',
                     time.monotonic() - started)
@@ -102,9 +149,14 @@ class EfficientLocalSearchEngine(LocalSearchEngine):
                 entities=entities, relations=relations, summaries=summaries,
                 chunks=chunks, documents_id=documents_id,
             ),
-            metrics={'entities': [
-                {'id': entity.id, 'name': entity.entity_name, 'rank': index,
-                 'relevance_score': entity_scores_by_id.get(entity.id)}
-                for index, entity in enumerate(entities)
-            ]},
+            metrics={
+                'entities': [
+                    {'id': entity.id, 'name': entity.entity_name, 'rank': index,
+                     'relevance_score': entity_scores_by_id.get(entity.id),
+                     'rerank_score': (entity_scores or {}).get(entity.id)}
+                    for index, entity in enumerate(entities)
+                ],
+                'chunk_scores': chunk_scores,
+                'relation_scores': relation_scores,
+            },
         )

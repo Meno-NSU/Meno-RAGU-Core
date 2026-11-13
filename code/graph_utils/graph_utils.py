@@ -180,6 +180,12 @@ def _normalize_scores(raw_scores: List[Optional[float]]) -> List[float]:
             for score in _rank_scores(len(raw_scores))]
 
 
+def _metric(retrieval: Any, key: str) -> Optional[List[float]]:
+    metrics = retrieval.metrics if isinstance(getattr(retrieval, 'metrics', None), dict) else {}
+    value = metrics.get(key)
+    return list(value) if value is not None else None
+
+
 class GraphSearchEngines:
     def __init__(self, local_engine: LocalSearchEngine, naive_engine: NaiveSearchEngine,
                  chunk_to_global: Dict[str, int], event_loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
@@ -211,8 +217,16 @@ class GraphSearchEngines:
 
         local_retrieval, naive_retrieval = await search_both()
 
-        local_chunks = self._chunks_from_retrieval(local_retrieval, rank_based=True)
-        naive_chunks = self._chunks_from_retrieval(naive_retrieval, rank_based=False)
+        local_scores = _metric(local_retrieval, 'chunk_scores')
+        naive_scores = list(getattr(naive_retrieval.result, 'scores', None) or [])
+        if (local_scores is not None and len(local_scores) == len(local_retrieval.result.chunks)
+                and len(naive_scores) == len(naive_retrieval.result.chunks)):
+            # one cross-encoder scored both channels for this query: its scores are comparable as they are
+            local_chunks = self._map_chunks(local_retrieval.result.chunks, local_scores)
+            naive_chunks = self._map_chunks(naive_retrieval.result.chunks, naive_scores)
+        else:
+            local_chunks = self._chunks_from_retrieval(local_retrieval, rank_based=True)
+            naive_chunks = self._chunks_from_retrieval(naive_retrieval, rank_based=False)
         chunks = combine_relevant_chunks(local_chunks, naive_chunks)
         entities = self._entities_from_local(local_retrieval)
         relations = self._relations_from_local(local_retrieval)
@@ -232,10 +246,13 @@ class GraphSearchEngines:
             raw_scores = list(result.scores)
             if len(raw_scores) != len(result.chunks):
                 raw_scores = _rank_scores(len(result.chunks))
-        normalized_scores = _normalize_scores(raw_scores)
+        return self._map_chunks(result.chunks, _normalize_scores(raw_scores))
+
+    def _map_chunks(self, chunks: List[Any], scores: List[float]) -> List[Tuple[int, float]]:
+        """The chunks as global indices with their scores (the best one of an index), best first."""
         united_chunks = dict()
         num_unknown_chunks = 0
-        for chunk, normalized_score in zip(result.chunks, normalized_scores):
+        for chunk, normalized_score in zip(chunks, scores):
             global_idx = self.chunk_to_global.get(chunk.id)
             if global_idx is None:
                 global_idx = self.chunk_to_global.get(
@@ -284,6 +301,13 @@ class GraphSearchEngines:
                 'score': raw_score,
                 'sources': self._map_source_chunks(list(cur_entity.source_chunk_id or []))
             })
+        rerank_scores = [metric.get('rerank_score') if isinstance(metric, dict) else None
+                         for metric in metric_entities[:len(items)]]
+        if items and len(rerank_scores) == len(items) and all(score is not None for score in rerank_scores):
+            # the cross-encoder's scores, on the scale of the chunks'
+            for it, score in zip(items, rerank_scores):
+                it['score'] = float(score)
+            return items
         normalized_scores = _normalize_scores([it['score'] for it in items])
         for it, normalized_score in zip(items, normalized_scores):
             it['score'] = normalized_score
@@ -291,7 +315,11 @@ class GraphSearchEngines:
 
     def _relations_from_local(self, local_retrieval: Any) -> List[Dict[str, Any]]:
         relations = list(getattr(local_retrieval.result, 'relations', []))
-        normalized_scores = _normalize_scores(_rank_scores(len(relations)))
+        rerank_scores = _metric(local_retrieval, 'relation_scores')
+        if rerank_scores is not None and len(rerank_scores) == len(relations):
+            normalized_scores = [float(score) for score in rerank_scores]  # the cross-encoder's, as the chunks'
+        else:
+            normalized_scores = _normalize_scores(_rank_scores(len(relations)))
         items = []
         for cur_relation, normalized_score in zip(relations, normalized_scores):
             items.append({
@@ -316,9 +344,10 @@ def find_relevant_items_by_graph(graph_engines: GraphSearchEngines, search_query
     Runs the local (graph neighborhood) and naive (hybrid chunk vector + sparse) search
     modes of RAGU for one search query and merges their results into a united pool of
     chunks, entities, and relations. The chunk identifiers are mapped back to the global
-    chunk indices of the Meno knowledge base. The scores of each source are normalized
-    so that they sum up to one (the local chunks and the relations use rank-based scores,
-    because RAGU does not provide per-item relevance scores for them).
+    chunk indices of the Meno knowledge base. With the engine's cross-encoder, every item keeps
+    the cross-encoder's score for the query, so the two channels' chunks and the graph elements
+    are on one scale; without it the scores of each source are normalized so that they sum up to
+    one (the local chunks and the relations use rank-based scores).
     """
     return graph_engines.search(
         search_query=search_query,

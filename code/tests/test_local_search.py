@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 import pytest
 from graph_utils.local_search import EfficientLocalSearchEngine, find_related_text_units
 from ragu.graph.types import Entity, Relation
-from ragu.search_engine.local_search import LocalSearchEngine
+from ragu.search_engine.local_search import LocalParams, LocalSearchEngine
 from ragu.search_engine.search_functional import _find_most_related_text_unit_from_entities
 
 
@@ -76,6 +76,10 @@ def test_subclass_assembles_identical_context_and_metrics_to_upstream(rerank):
         hits = [SimpleNamespace(distance=0.8), SimpleNamespace(distance=0.5)]
         original = await before._assemble('вопрос', entities, hits, entities, edges, neighbors)
         optimized = await after._assemble('вопрос', entities, hits, entities, edges, neighbors)
+        optimized.metrics.pop('chunk_scores')
+        optimized.metrics.pop('relation_scores')
+        for metric in optimized.metrics['entities']:
+            assert metric.pop('rerank_score') is None
         assert asdict(optimized) == asdict(original)
         if rerank:
             assert before.reranker.score.call_args_list == after.reranker.score.call_args_list
@@ -134,4 +138,68 @@ def test_chunk_order_matches_upstream_across_overlapping_graph_neighborhoods(see
         original = await _find_most_related_text_unit_from_entities(entities, graph(payloads), edges, neighbors)
         optimized = await find_related_text_units(entities, graph(payloads), edges, neighbors)
         assert [asdict(item) for item in optimized] == [asdict(item) for item in original]
+    asyncio.run(run())
+
+
+def scored_reranker(scores, default=0.2):
+    """A cross-encoder stub: the score of a text is looked up by a substring of it, best first like ScorerOpenAI."""
+    def score(query, texts):
+        values = [next((value for key, value in scores.items() if key in text), default) for text in texts]
+        return sorted(enumerate(values), key=lambda pair: -pair[1])
+    return SimpleNamespace(score=AsyncMock(side_effect=score))
+
+
+def test_the_cross_encoder_scores_are_kept_next_to_the_order_they_give():
+    # The engine already scores every related chunk and relation with the cross-encoder; the scores are what puts
+    # the graph channel and the chunk channel on one scale, so they are reported with the items, best first.
+    async def run():
+        entities, edges, neighbors, payloads = fixture()
+        entities = [entity for entity in entities[:3] if entity]
+        engine = object.__new__(EfficientLocalSearchEngine)
+        engine.knowledge_graph = graph(payloads)
+        engine.reranker = scored_reranker({'Текст c1': 0.9, 'Текст c2': 0.1, 'Текст c3': 0.5, 'Текст c4': 0.7,
+                                           'Текст c5': 0.3, 'SECOND': 0.6})
+        hits = [SimpleNamespace(distance=0.8), SimpleNamespace(distance=0.5)]
+        result = await engine._assemble('вопрос', entities, hits, entities, edges, neighbors,
+                                        entity_scores={'a': 0.8, 'b': 0.4})
+        assert [chunk.content for chunk in result.result.chunks] == [
+            'Текст c1', 'Текст c4', 'Текст c3', 'Текст c5', 'Текст c2']
+        assert result.metrics['chunk_scores'] == [0.9, 0.7, 0.5, 0.3, 0.1]
+        assert result.result.relations[0].relation_type == 'SECOND'
+        assert result.metrics['relation_scores'][0] == 0.6
+        assert len(result.metrics['relation_scores']) == len(result.result.relations)
+        assert [m['rerank_score'] for m in result.metrics['entities']] == [0.8, 0.4]
+        assert [m['relevance_score'] for m in result.metrics['entities']] == [0.8, 0.5]
+    asyncio.run(run())
+
+
+def test_without_a_cross_encoder_no_scores_are_reported():
+    async def run():
+        entities, edges, neighbors, payloads = fixture()
+        entities = [entity for entity in entities[:3] if entity]
+        engine = object.__new__(EfficientLocalSearchEngine)
+        engine.knowledge_graph = graph(payloads)
+        engine.reranker = None
+        hits = [SimpleNamespace(distance=0.8), SimpleNamespace(distance=0.5)]
+        result = await engine._assemble('вопрос', entities, hits, entities, edges, neighbors)
+        assert result.metrics.get('chunk_scores') is None and result.metrics.get('relation_scores') is None
+        assert all(m.get('rerank_score') is None for m in result.metrics['entities'])
+    asyncio.run(run())
+
+
+def test_search_passes_the_cross_encoder_scores_of_the_anchor_entities(monkeypatch):
+    async def run():
+        entities, edges, neighbors, payloads = fixture()
+        entities = [entity for entity in entities[:3] if entity]
+        engine = object.__new__(EfficientLocalSearchEngine)
+        engine.knowledge_graph = graph(payloads)
+        engine.reranker = scored_reranker({'Факультет': 0.95, 'НГУ': 0.4})
+        hits = [SimpleNamespace(distance=0.8), SimpleNamespace(distance=0.5)]
+        engine.retriever = SimpleNamespace(query_entities=AsyncMock(return_value=[(entities, hits)]))
+        monkeypatch.setattr('graph_utils.local_search._prefetch_entity_edges',
+                            AsyncMock(return_value=(edges, neighbors)))
+        [result] = await engine.batch_search(['вопрос'], params=LocalParams(top_k=2, rerank_top_k=1))
+        assert [entity.id for entity in result.result.entities] == ['b']
+        assert result.metrics['entities'] == [{'id': 'b', 'name': 'Факультет', 'rank': 0, 'relevance_score': 0.5,
+                                               'rerank_score': 0.95}]
     asyncio.run(run())

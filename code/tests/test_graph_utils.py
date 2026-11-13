@@ -258,6 +258,71 @@ class TestRelationsFromLocal:
         assert abs(sum(it['score'] for it in items) - 1.0) < 1e-9
 
 
+class TestCrossEncoderScale:
+    """Both channels are reranked by the same cross-encoder for the same query, so their chunks merge on its score.
+    The graph channel used to get 1/(rank+1) normalised over its ~200 related chunks and the chunk channel its 30
+    scores normalised over 30, so a graph chunk ranked 8th or lower went below every chunk-channel result."""
+
+    @staticmethod
+    def _engines(local, naive, mapping):
+        return GraphSearchEngines(local_engine=SimpleNamespace(search=_returning(local)),
+                                  naive_engine=SimpleNamespace(search=_returning(naive)), chunk_to_global=mapping)
+
+    @staticmethod
+    def _chunks(count):
+        texts = [f'фрагмент номер {index}' for index in range(count)]
+        mapping = build_chunk_mapping(texts, list(range(count)))
+        return [_make_chunk(compute_mdhash_id(t, prefix=CHUNK_ID_PREFIX), t) for t in texts], mapping
+
+    def test_graph_chunks_keep_their_cross_encoder_score_next_to_the_chunk_channel(self):
+        chunks, mapping = self._chunks(12)
+        local = _make_retrieval(chunks[:10])
+        local.metrics['chunk_scores'] = [round(0.99 - 0.04 * index, 2) for index in range(10)]
+        naive = _make_retrieval(chunks[10:], scores=[0.3, 0.2])
+        pool = asyncio.run(self._engines(local, naive, mapping).asearch('вопрос'))
+        assert [index for index, _ in pool['chunks']] == list(range(12))
+        assert pool['chunks'][9][1] == pytest.approx(0.63)
+        assert pool['chunks'][10][1] == pytest.approx(0.3)
+
+    def test_a_chunk_found_by_both_channels_keeps_its_best_score(self):
+        chunks, mapping = self._chunks(2)
+        local = _make_retrieval([chunks[0], chunks[1]])
+        local.metrics['chunk_scores'] = [0.5, 0.4]
+        naive = _make_retrieval([chunks[1]], scores=[0.45])
+        pool = asyncio.run(self._engines(local, naive, mapping).asearch('вопрос'))
+        assert pool['chunks'] == [(0, 0.5), (1, 0.45)]
+
+    def test_elements_get_their_cross_encoder_scores(self):
+        entities = [SimpleNamespace(id='e1', entity_name='А', entity_type='X', description='', source_chunk_id=[]),
+                    SimpleNamespace(id='e2', entity_name='Б', entity_type='X', description='', source_chunk_id=[])]
+        relations = [SimpleNamespace(id='r1', subject_name='А', object_name='Б', relation_type='T', description='',
+                                     source_chunk_id=[])]
+        local = _make_retrieval([], entities=entities, relations=relations,
+                                entity_metrics=[{'relevance_score': 0.7, 'rerank_score': 0.9},
+                                                {'relevance_score': 0.6, 'rerank_score': 0.2}])
+        local.metrics['chunk_scores'] = []
+        local.metrics['relation_scores'] = [0.35]
+        pool = asyncio.run(self._engines(local, _make_retrieval([], scores=[]), {}).asearch('вопрос'))
+        assert [(it['key'], it['score']) for it in pool['entities']] == [('e1', 0.9), ('e2', 0.2)]
+        assert [(it['key'], it['score']) for it in pool['relations']] == [('r1', 0.35)]
+
+    def test_without_cross_encoder_scores_the_channels_merge_as_before(self):
+        chunks, mapping = self._chunks(3)
+        local = _make_retrieval(chunks[:2])
+        naive = _make_retrieval(chunks[2:], scores=[0.9])
+        engines = self._engines(local, naive, mapping)
+        pool = asyncio.run(engines.asearch('вопрос'))
+        expected = sorted([*engines._chunks_from_retrieval(local, rank_based=True),
+                           *engines._chunks_from_retrieval(naive, rank_based=False)], key=lambda it: (-it[1], it[0]))
+        assert pool['chunks'] == expected
+
+
+def _returning(value):
+    async def search(query, params=None):
+        return value
+    return search
+
+
 def _make_abbr_dict():
     return {
         'нгу': {'abbreviation': 'НГУ', 'explanation': ['Новосибирский государственный университет']},
