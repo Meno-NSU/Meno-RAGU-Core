@@ -88,3 +88,17 @@ def test_a_question_about_the_dialogue_is_answered_from_the_whole_history_withou
 def test_the_answer_prompt_asks_to_check_the_dates_of_the_documents():
     assert "не выдавайте прошедшее за текущее" in QA_SYSTEM_PROMPT
     assert "опирайтесь на более свежий" in QA_SYSTEM_PROMPT
+
+
+def test_a_question_about_the_dialogue_gets_only_what_was_asked():
+    # The judge scored RAGU's correct answers to "what did I ask first?" at ~0.43 against Menon's ~0.99: RAGU named the
+    # question and then retold its own answer to it ("Я ответил вам, что…"), which the user did not ask for.
+    from meno_rag.stand.qa import prepare_prompt_for_question_answering
+    from meno_rag.stand.routing import with_route_rules
+
+    system = with_route_rules(QA_SYSTEM_PROMPT, "meta_dialog", has_context=False)
+    assert "не пересказывайте свой ответ" in system
+    user = prepare_prompt_for_question_answering(
+        user_question="О чём был мой первый вопрос?", dialogue_history="Пользователь: Привет", context="",
+        abbr_dict={}, route="meta_dialog")
+    assert "только на то, о чём спрашивают" in user

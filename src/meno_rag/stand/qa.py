@@ -89,7 +89,10 @@ def prepare_prompt_for_question_answering(
     input_prompt += "==========\nCURRENT QUESTION\n==========\n\n"
     input_prompt += user_question + "\n\n"
     input_prompt += "==========\nINSTRUCTION\n==========\n\n"
-    if route in ("meta_dialog", "rework"):
+    if route == "meta_dialog":
+        input_prompt += ("Ответьте, пожалуйста, на реплику из раздела CURRENT QUESTION по разделу DIALOGUE HISTORY, "
+                         "как сказано в системном промпте: коротко и только на то, о чём спрашивают.")
+    elif route == "rework":
         input_prompt += ("Ответьте, пожалуйста, на реплику из раздела CURRENT QUESTION по разделу DIALOGUE HISTORY, "
                          "как сказано в системном промпте.")
     elif route in ("chitchat", "off_topic", "prompt_injection"):
