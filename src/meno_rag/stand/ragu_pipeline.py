@@ -50,12 +50,20 @@ class RaguRagPipeline(StandRagPipeline):
         return math.log(p / (1 - p)) + weight * math.log(min(max(prior, 0.05), 1.0))
 
     async def _retrieve(self, search_queries):
-        batches = []
-        for query in search_queries:
+        # The queries of one question run at once (still within embed_semaphore): the search mostly waits for the
+        # embedder, Qdrant and the cross-encoder, and three rewrites used to wait for three searches in a row.
+        async def one(query):
             async with self.embed_semaphore:
-                pool = await self.resources.graph.search(query)
-            batches.append({"query": query, "graph": pool})
-        return batches
+                return {"query": query, "graph": await self.resources.graph.search(query)}
+
+        tasks = [asyncio.create_task(one(query)) for query in search_queries]
+        try:
+            return list(await asyncio.gather(*tasks))
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     def _fuse(self, retrieval_batches):
         fused = []
