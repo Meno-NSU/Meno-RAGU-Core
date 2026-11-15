@@ -352,6 +352,16 @@ class TestFindAbbreviationCandidates:
         counts = count_abbreviation_occurrences('НГУ, НГУ и ещё раз НГУ, а также ММФ.', _make_abbr_dict())
         assert counts == {'нгу': 3, 'ммф': 1}
 
+    def test_abbreviation_patterns_are_compiled_once(self):
+        # the graph build checks 450 abbreviations in every chunk: recompiling the patterns
+        # (re's own cache holds 512) took 45 ms per chunk
+        from graph_utils.graph_utils import _abbreviation_pattern
+        find_abbreviation_candidates('НГУ и ММФ', _make_abbr_dict())
+        misses = _abbreviation_pattern.cache_info().misses
+        find_abbreviation_candidates('Другой текст про ЕГЭ', _make_abbr_dict())
+        count_abbreviation_occurrences('НГУ, НГУ', _make_abbr_dict())
+        assert _abbreviation_pattern.cache_info().misses == misses
+
     def test_occurrence_counting_respects_word_boundaries(self):
         counts = count_abbreviation_occurrences('НГУ и НГУшка, но не нгу.', _make_abbr_dict())
         assert counts == {'нгу': 1}
@@ -396,6 +406,30 @@ class TestCanonicalizeArtifacts:
         canonical_entities, _ = canonicalize_artifacts(entities, [])
         assert len(set(e.id for e in canonical_entities)) == 1
         assert all(e.entity_name == 'Производственная практика НИР' for e in canonical_entities)
+
+    @pytest.mark.parametrize('name', [
+        'Дексаметазон (DEX)',
+        '[Re6−xMoxSe8(CN)6]n',
+        '(MenacnacDipp)V(µ-H)BEt3(THF)',
+        'XII Всероссийская конференция «Коммуникативная культура: история и современность»',
+        '«Эксперт» (журнал)',
+        'Журнал "Сибирь"',
+    ])
+    def test_edge_brackets_and_quotes_that_pair_inside_the_name_are_kept(self, name):
+        entity = Entity(entity_name=name, entity_type='PRODUCT', description='', source_chunk_id=[])
+        canonical_entities, _ = canonicalize_artifacts([entity], [])
+        assert canonical_entities[0].entity_name == name
+
+    @pytest.mark.parametrize('name, trimmed', [
+        ('Дексаметазон (DEX))', 'Дексаметазон (DEX)'),
+        ('НГУ).', 'НГУ'),
+        ('«НГУ', 'НГУ'),
+        ('— Академгородок —', 'Академгородок'),
+    ])
+    def test_unpaired_edge_punctuation_is_trimmed(self, name, trimmed):
+        entity = Entity(entity_name=name, entity_type='ORGANIZATION', description='', source_chunk_id=[])
+        canonical_entities, _ = canonicalize_artifacts([entity], [])
+        assert canonical_entities[0].entity_name == trimmed
 
     def test_internal_punctuation_is_preserved(self):
         entities = [

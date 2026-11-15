@@ -60,6 +60,32 @@ def test_indexing_keys_come_from_environment_and_cli_has_priority(monkeypatch, e
     assert parsed[0].embedder_tokens == 4096
     assert parsed[0].log_level == 'DEBUG'
     assert parsed[0].checkpoint_dir == '/data/graph-checkpoints'
+    assert parsed[0].relation_review is False
+    assert parsed[0].graph_cleanup is False
+    assert parsed[0].relation_review_sources == ''
+
+
+def test_relation_review_is_requested_explicitly(monkeypatch):
+    arguments = ['prepare_graph_index.py', '-i', 'corpus.jsonl', '-r', 'mapping.json', '-e', 'bge-m3',
+                 '--relation_review', '--relation_review_sources', 'menon,teaching', '--graph_cleanup']
+    monkeypatch.setattr(sys, 'argv', arguments)
+    original = ArgumentParser.parse_args
+    parsed = []
+
+    class Parsed(Exception):
+        pass
+
+    def capture(parser, *args, **kwargs):
+        parsed.append(original(parser, *args, **kwargs))
+        raise Parsed
+
+    monkeypatch.setattr(ArgumentParser, 'parse_args', capture)
+    script = Path(__file__).resolve().parents[1] / 'prepare_graph_index.py'
+    with pytest.raises(Parsed):
+        runpy.run_path(str(script), run_name='__main__')
+    assert parsed[0].relation_review is True
+    assert parsed[0].relation_review_sources == 'menon,teaching'
+    assert parsed[0].graph_cleanup is True
 
 
 @pytest.mark.parametrize('prompt_tokens, allowed', [(7, True), (8, False)])
@@ -105,3 +131,24 @@ def test_context_guard_distinguishes_oversized_input_from_completion_budget_and_
         asyncio.run(llm.chat_completion(conversation))
     assert tokenizer.calls == 1
     llm.client.chat_completion.assert_not_awaited()
+
+
+def test_cleanup_inputs_are_hashed_into_the_configuration_and_extra_embedders_are_not(tmp_path):
+    from argparse import Namespace
+
+    from graph_utils.checkpoints import CLEANUP_INPUTS, checkpoint_configuration, previous_cleanup_inputs_configuration
+    files = {}
+    for name in ('input_name', 'reverse_index_name', *CLEANUP_INPUTS):
+        files[name] = tmp_path / f'{name}.json'
+        files[name].write_text(f'["{name}"]', encoding='utf-8')
+    args = Namespace(**{name: str(path) for name, path in files.items()}, abbr_fname=None,
+                     embedder_extra_urls='http://everest:9026/v1', graph_cleanup=True,
+                     checkpoint_seed='/graph-v3/checkpoints', checkpoint_seed_until='06-')
+    configuration = checkpoint_configuration(args)
+    assert {'graph_relation_marks', 'graph_entity_subtypes', 'graph_relation_retypes'} <= set(CLEANUP_INPUTS)
+    assert set(CLEANUP_INPUTS) <= set(configuration['files'])
+    assert not {'embedder_extra_urls', 'checkpoint_seed', 'checkpoint_seed_until'} & set(configuration['settings'])
+    previous = previous_cleanup_inputs_configuration(configuration)
+    assert not set(CLEANUP_INPUTS) & (set(previous['files']) | set(previous['settings']))
+    files['graph_merges'].write_text('["other"]', encoding='utf-8')
+    assert checkpoint_configuration(args)['files']['graph_merges'] != configuration['files']['graph_merges']

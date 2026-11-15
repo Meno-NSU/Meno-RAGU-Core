@@ -52,6 +52,9 @@ from graph_utils.checkpoints import (
     GraphCheckpoints,
     checkpoint_configuration,
 )
+from graph_utils.compact_embeddings import CompactEmbeddingClient
+from graph_utils.graph_cleanup import load_cleanup_inputs
+from graph_utils.relation_review import chunk_ids
 from rewriting_utils.rewriting_utils import load_abbreviations
 from tokenization_utils.tokenization_utils import load_hf_tokenizer
 
@@ -114,6 +117,12 @@ def main():
                         help='The output directory for the RAGU knowledge graph.')
     parser.add_argument('--checkpoints', dest='checkpoint_dir', type=str,
                         help='Каталог снимков завершённых проходов графа; по умолчанию соседний с --output.')
+    parser.add_argument('--checkpoint_seed', dest='checkpoint_seed', type=str, required=False, default=None,
+                        help='Каталог снимков другой сборки: новый каталог --checkpoints начинает с её этапов до '
+                             '--checkpoint_seed_until (жёсткие ссылки). Только для сборки, которая отличается '
+                             'с этого этапа (например, входами очистки 06).')
+    parser.add_argument('--checkpoint_seed_until', dest='checkpoint_seed_until', type=str, required=False,
+                        default='06-', help='Первый этап, который --checkpoint_seed не берёт (по умолчанию 06-).')
     parser.add_argument('--sources', dest='content_sources', type=str, required=False,
                         default='summary,teachers,news,base',
                         help='The comma-separated list of content sources whose documents are '
@@ -165,6 +174,9 @@ def main():
     parser.add_argument('--embedder_url', dest='embedder_base_url', type=str, required=False, default=None,
                         help='Your URL prefix for the OpenAI-compatible embeddings API '
                              '(the "--url" value is used if it is not specified).')
+    parser.add_argument('--embedder_extra_urls', dest='embedder_extra_urls', type=str, required=False, default='',
+                        help='Comma-separated URL prefixes of more servers of the same embedding model; vectorization '
+                             'sends each batch to the least busy server. Does not change the graph or its checkpoints.')
     parser.add_argument('--embedder_key', dest='embedder_api_key', type=str, required=False, default=os.getenv('MENO_INDEX_EMBEDDER_KEY'),
                         help='Your secret OpenAI API key for the embeddings API '
                              '(the "--key" value is used if it is not specified).')
@@ -177,6 +189,9 @@ def main():
     parser.add_argument('--cache', dest='cache_dir', type=str, required=False, default=None,
                         help='The directory for the LLM response cache. It makes the graph building '
                              'resumable across restarts.')
+    parser.add_argument('--cache_fallback', dest='cache_fallback_dir', type=str, required=False, default=None,
+                        help='The LLM response cache of an earlier build, read only: prompts of unchanged chunks '
+                             'are answered from it, new answers go to --cache. It may be read-only on disk.')
     parser.add_argument('--rate_max_simultaneous', dest='rate_max_simultaneous', type=int, required=False,
                         default=8, help='The maximum number of simultaneous LLM requests (0 means no limit).')
     parser.add_argument('--rate_max_per_minute', dest='rate_max_per_minute', type=int, required=False,
@@ -194,6 +209,43 @@ def main():
                              'the in-context learning).')
     parser.add_argument('--no_validation', dest='no_validation', action='store_true',
                         help='Disable the entity and relation validation during the extraction.')
+    parser.add_argument('--relation_review', dest='relation_review', action='store_true',
+                        help='Validate the extracted relations by one verdict per relation instead of rewriting the '
+                             'whole list: kept relations stay as extracted, fixes must fit the ontology, and relations '
+                             'without a fitting ontology type are kept with the type "UNFIT:<type>".')
+    parser.add_argument('--graph_cleanup', dest='graph_cleanup', action='store_true',
+                        help='Clean the extracted artifacts before their summarization: values (numbers, dates, '
+                             'times, ages, money, percents, ordinals) become part of the description of what they '
+                             'describe instead of nodes; one name under several types takes its most frequent type '
+                             '(not for people); person name variants join the only full name they fit.')
+    parser.add_argument('--graph_exclude_chunks', dest='graph_exclude_chunks', type=str, required=False, default=None,
+                        help='With --graph_cleanup: a JSON list of chunk ids whose artifacts stay out of the graph '
+                             '(the chunks stay in the chunk index).')
+    parser.add_argument('--graph_entity_labels', dest='graph_entity_labels', type=str, required=False, default=None,
+                        help='With --graph_cleanup: JSONL of entity labels (name, type, label); entities labeled '
+                             '"value" or "junk" become part of the description of what they describe, as values do.')
+    parser.add_argument('--graph_merges', dest='graph_merges', type=str, required=False, default=None,
+                        help='With --graph_cleanup: JSONL of confirmed duplicates ({"from": [name, type], "to": '
+                             '[name, type]}); a duplicate joins its target and relations follow.')
+    parser.add_argument('--graph_relation_marks', dest='graph_relation_marks', type=str, required=False, default=None,
+                        help='With --graph_cleanup: JSONL of refuted relations ({"subject": [name, type], "object": '
+                             '[name, type], "relation_type": ...}, names of the graph before --graph_merges); such '
+                             'relations between the two, either way, keep their text with the type "UNFIT:<type>".')
+    parser.add_argument('--graph_entity_subtypes', dest='graph_entity_subtypes', type=str, required=False, default=None,
+                        help='With --graph_cleanup: JSONL of ontology labels of nodes ({"name", "type", "subtype", '
+                             '"kind"}, names of the graph after --graph_merges); a node takes its subtype, and a node '
+                             'of kind role, identifier, vague or garbled becomes part of the description of its '
+                             'neighbours, as values do.')
+    parser.add_argument('--graph_relation_retypes', dest='graph_relation_retypes', type=str, required=False,
+                        default=None,
+                        help='With --graph_cleanup: JSONL of retyped relations ({"subject": [name, type], "object": '
+                             '[name, type], "original": type, "type": new type, "reverse": bool}, names and types of '
+                             'the graph after --graph_merges and --graph_relation_marks); the text stays.')
+    parser.add_argument('--relation_review_sources', dest='relation_review_sources', type=str, required=False,
+                        default='',
+                        help='The comma-separated list of content sources whose chunks get the relation review '
+                             '(all chunks if it is not specified). The relations of the other chunks are kept as '
+                             'extracted, and those without a fitting ontology type get the type "UNFIT:<type>".')
     parser.add_argument('--no_clustering', dest='no_clustering', action='store_true',
                         help='Disable the entity clustering before their summarization.')
     parser.add_argument('--no_community_summary', dest='no_community_summary', action='store_true',
@@ -290,6 +342,23 @@ def main():
         enrich_sources=chunk_header_sources,
         stats=enrichment_stats
     )
+    review_chunk_ids: Optional[Set[str]] = None
+    if args.relation_review and len(args.relation_review_sources.strip()) > 0:
+        review_sources = {it.strip().lower() for it in args.relation_review_sources.split(',') if it.strip()}
+        if content_sources is not None:
+            review_sources &= content_sources
+        review_texts, _ = collect_knowledge_base_chunks(
+            documents=documents,
+            chunk_mapping=chunk_reverse_index,
+            content_sources=review_sources,
+            max_num_chunks=args.max_chunks,
+            enrich_mode=args.chunk_header,
+            enrich_sources=chunk_header_sources,
+            stats=dict()
+        )
+        review_chunk_ids = chunk_ids(review_texts)
+        del review_texts
+        print(f'{len(review_chunk_ids)} chunks of the sources {sorted(review_sources)} get the relation review.')
     del documents, chunk_reverse_index
     gc.collect()
     print(f'{len(chunk_texts)} chunks are selected for the knowledge graph.')
@@ -312,7 +381,13 @@ def main():
     Settings.embedder_token_limit = args.embedder_tokens
 
     embedder_client = CachedAsyncOpenAI(base_url=embedder_base_url, api_key=embedder_api_key)
-    dense_embedder = EmbedderOpenAI(client=embedder_client, model_name=args.embedder_name)
+    extra_embedders = [CachedAsyncOpenAI(base_url=url.strip(), api_key=embedder_api_key)
+                       for url in args.embedder_extra_urls.split(',') if url.strip()]
+    # vectors as float32 arrays: the index keeps all of them until it stores them (see compact_embeddings)
+    dense_embedder = EmbedderOpenAI(client=CompactEmbeddingClient(embedder_client, *extra_embedders),
+                                    model_name=args.embedder_name, max_concurrent_batches=5 * (1 + len(extra_embedders)))
+    if extra_embedders:
+        print(f'Vectorization shares batches between {1 + len(extra_embedders)} embedding servers.')
     sparse_embedder = RagUBM25(language=SPARSE_MODEL_LANGUAGE)
     print(f'The sparse embedder is the fastembed BM25 model for the "{SPARSE_MODEL_LANGUAGE}" language.')
 
@@ -331,7 +406,15 @@ def main():
         artifact_extractor = None
         print('The vector-only mode is used: no entity and relation extraction will be performed.')
     else:
+        from graph_utils.prompt_cache import cache_prompt_templates
+        cache_prompt_templates()
         llm_tokenizer = load_hf_tokenizer(args.llm_tokenizer or args.llm_name)
+        llm_cache = args.cache_dir if args.cache_dir is not None else os.path.join(graph_dir, 'llm_cache')
+        if args.cache_fallback_dir is not None:
+            from ragu.utils.ragu_utils import get_disk_cache
+            from graph_utils.llm_cache import LayeredCache, ReadOnlyDiskCache
+            llm_cache = LayeredCache(get_disk_cache(llm_cache), ReadOnlyDiskCache(args.cache_fallback_dir))
+            print(f'The LLM response cache "{args.cache_fallback_dir}" of an earlier build is read as a fallback.')
         llm_client = CachedAsyncOpenAI(
             base_url=args.openai_base_url,
             api_key=args.openai_api_key,
@@ -339,17 +422,23 @@ def main():
             rate_max_per_minute=args.rate_max_per_minute if args.rate_max_per_minute > 0 else None,
             rate_min_delay=args.rate_min_delay if args.rate_min_delay > 0 else None,
             max_completion_tokens=args.max_completion_tokens,
-            cache=args.cache_dir if args.cache_dir is not None else os.path.join(graph_dir, 'llm_cache'),
+            cache=llm_cache,
             debug_errors_storage=os.path.join(graph_dir, 'llm_debug')
         )
+        from graph_utils.llm_limits import effective_context_tokens, served_context_tokens
+        served_context = served_context_tokens(args.openai_base_url, args.llm_name, args.openai_api_key)
+        llm_context_tokens = effective_context_tokens(args.llm_context_tokens, served_context)
+        if llm_context_tokens < args.llm_context_tokens:
+            print(f'The model "{args.llm_name}" serves {served_context} context tokens, so prompts are planned for '
+                  f'{llm_context_tokens} instead of --llm_context_tokens {args.llm_context_tokens}.')
         llm = ContextBudgetLLM(
             client=llm_client, model_name=args.llm_name, temperature=args.temperature,
-            tokenizer=llm_tokenizer, context_tokens=args.llm_context_tokens,
+            tokenizer=llm_tokenizer, context_tokens=llm_context_tokens,
             completion_tokens=args.max_completion_tokens,
         )
         Settings.tokenizer_llm_backend = 'local'
         Settings.tokenizer_llm_name = args.llm_tokenizer or args.llm_name
-        Settings.llm_context_token_limit = args.llm_context_tokens
+        Settings.llm_context_token_limit = llm_context_tokens
         icl_config = None
         icl_embedder = None
         if args.icl_examples > 0:
@@ -372,11 +461,17 @@ def main():
             icl_config=icl_config,
             do_entity_validation=not args.no_validation,
             do_relation_validation=not args.no_validation,
+            relation_review=args.relation_review,
+            graph_cleanup=args.graph_cleanup,
+            cleanup_inputs=load_cleanup_inputs(args.graph_exclude_chunks, args.graph_entity_labels, args.graph_merges,
+                                             args.graph_relation_marks, args.graph_entity_subtypes,
+                                             args.graph_relation_retypes),
+            review_chunk_ids=review_chunk_ids,
             abbreviations=abbreviations,
             rewrite_concurrency=args.rate_max_simultaneous if args.rate_max_simultaneous > 0 else 8,
         )
         info_msg = (f'The two-stage artifact extractor is prepared (ICL examples: {args.icl_examples}, '
-                    f'validation: {not args.no_validation}, '
+                    f'validation: {not args.no_validation}, relation review: {args.relation_review}, '
                     f'abbreviations: {len(abbreviations) if abbreviations is not None else 0}).')
         print(info_msg)
 
@@ -412,8 +507,9 @@ def main():
                 if llm is not None and llm.overflow_count:
                     raise CheckpointError('Превышен контекст LLM; неполный проход графа не сохранён.')
 
+            seed = (args.checkpoint_seed, args.checkpoint_seed_until) if args.checkpoint_seed else None
             with GraphCheckpoints(checkpoint_dir, checkpoint_configuration(args),
-                                  before_save=validate_context) as checkpoints:
+                                  before_save=validate_context, seed=seed) as checkpoints:
                 if artifact_extractor is not None:
                     artifact_extractor.checkpoints = checkpoints
                 knowledge_graph.pipeline = CheckpointedGraphBuilder.from_pipeline(knowledge_graph.pipeline, checkpoints)

@@ -7,14 +7,21 @@ from unittest.mock import AsyncMock
 
 import pytest
 from graph_utils.checkpoints import (
+    RELATION_REVIEW_PREVIOUS_CODE,
+    REVIEW_SOURCES_PREVIOUS_CODE,
     CheckpointedExtractor,
     CheckpointedGraphBuilder,
     CheckpointError,
     GraphCheckpoints,
     checkpoint_configuration,
     previous_completion_configuration,
+    previous_context_baseline_configuration,
+    previous_context_cleanup_configuration,
+    previous_relation_review_configuration,
+    previous_review_sources_configuration,
     previous_summary_configuration,
 )
+from graph_utils.relation_review import RelationReviewModel
 from ragu import KnowledgeGraph, Settings, StorageArguments
 from ragu.chunker.types import Chunk
 from ragu.common.prompts.default_models import EntitiesExtractionModel, RelationsExtractionModel
@@ -318,6 +325,75 @@ def test_summary_budget_upgrade_preserves_01_to_06_and_invalidates_only_later_sn
         assert core_path.exists() and summary_path.exists()
 
 
+def test_previous_relation_review_configuration_is_the_code_before_the_review():
+    configuration = {'settings': {'model': 'gemma', 'relation_review': True, 'relation_review_sources': 'menon'},
+                     'files': {'source': 'unchanged'},
+                     'code': {'graph_utils/relation_review.py': 'new-stage', 'graph_utils/checkpoints.py': 'new',
+                              'other-helper': 'unchanged'}}
+    previous = previous_relation_review_configuration(configuration)
+    assert previous['settings'] == {'model': 'gemma'}
+    assert previous['files'] == {'source': 'unchanged'}
+    assert previous['code'] == {'other-helper': 'unchanged', **RELATION_REVIEW_PREVIOUS_CODE}
+    assert configuration['settings']['relation_review'] is True
+
+
+def test_previous_review_sources_configuration_is_the_review_of_every_chunk():
+    configuration = {'settings': {'model': 'gemma', 'relation_review': True, 'relation_review_sources': 'menon'},
+                     'files': {'source': 'unchanged'},
+                     'code': {'graph_utils/relation_review.py': 'selective', 'other-helper': 'unchanged'}}
+    previous = previous_review_sources_configuration(configuration)
+    assert previous['settings'] == {'model': 'gemma', 'relation_review': True}
+    assert previous['code'] == {'other-helper': 'unchanged', **REVIEW_SOURCES_PREVIOUS_CODE}
+    assert 'graph_utils/relation_review.py' in REVIEW_SOURCES_PREVIOUS_CODE
+
+
+@pytest.mark.parametrize('previous_of', [previous_relation_review_configuration, previous_review_sources_configuration])
+@pytest.mark.parametrize('changed', [None, 'settings', 'files'])
+def test_relation_review_upgrade_preserves_01_to_04_and_invalidates_later_snapshots(tmp_path, changed, previous_of):
+    configuration = {'settings': {'model': 'gemma', 'relation_review': True, 'relation_review_sources': 'menon'},
+                     'files': {'source': 'unchanged'},
+                     'code': {'graph_utils/relation_review.py': 'new-stage', 'other-helper': 'unchanged'}}
+    with GraphCheckpoints(tmp_path, previous_of(configuration)) as store:
+        store.save('04-relations', ([RelationsExtractionModel()],), (RelationsExtractionModel,))
+        store.save('05-relation-validation', ([RelationsExtractionModel()],), (RelationsExtractionModel,))
+        store.save('05-relation-review', ([RelationReviewModel()],), (RelationReviewModel,))
+        store.save('06-artifacts', ([], []), (Entity, Relation))
+        kept_path = tmp_path / store.manifest['stages']['04-relations']['file']
+    before = (tmp_path / 'manifest.json').read_bytes()
+    if changed:
+        configuration[changed]['different'] = 'must not migrate'
+        with pytest.raises(CheckpointError, match='Изменились входы'):
+            with GraphCheckpoints(tmp_path, configuration):
+                pytest.fail('Changed content must not migrate')
+        assert (tmp_path / 'manifest.json').read_bytes() == before
+        return
+    with GraphCheckpoints(tmp_path, configuration) as store:
+        assert set(store.manifest['stages']) == {'04-relations'}
+        assert store.load('04-relations', (RelationsExtractionModel,)) == ([RelationsExtractionModel()],)
+    backup = ('manifest.before-relation-review.json' if previous_of is previous_relation_review_configuration
+              else 'manifest.before-review-sources.json')
+    assert (tmp_path / backup).read_bytes() == before
+    assert kept_path.exists()
+
+
+@pytest.mark.parametrize('previous_of, dropped', [
+    (previous_context_baseline_configuration, {'graph_cleanup'}),
+    (previous_context_cleanup_configuration, set()),
+])
+def test_served_context_upgrade_keeps_01_to_06_of_the_running_graph_v2_builds(tmp_path, previous_of, dropped):
+    configuration = {'settings': {'model': 'gemma', 'graph_cleanup': bool(dropped)}, 'files': {'source': 'unchanged'},
+                     'code': {'graph_utils/llm_limits.py': 'new', 'graph_utils/graph_cleanup.py': 'new',
+                              'other-helper': 'unchanged'}}
+    previous = previous_of(configuration)
+    assert set(configuration['settings']) - set(previous['settings']) == dropped
+    assert 'graph_utils/llm_limits.py' not in previous['code']
+    with GraphCheckpoints(tmp_path, previous) as store:
+        store.save('06-artifacts', ([], []), (Entity, Relation))
+        store.save('07-entity-summaries', ([],), (Entity,))
+    with GraphCheckpoints(tmp_path, configuration) as store:
+        assert set(store.manifest['stages']) == {'06-artifacts'}
+
+
 def test_corrupted_manifest_fails_before_running_any_pass(tmp_path):
     with GraphCheckpoints(tmp_path, {}) as store:
         store.save('02-entities', ([EntitiesExtractionModel()],), (EntitiesExtractionModel,))
@@ -365,3 +441,22 @@ def test_graph_checkpoint_configuration_detects_content_changes_but_allows_execu
     corpus.write_text('modified')
     assert checkpoint_configuration(args) != original
     assert 'secret' not in json.dumps(original)
+
+
+def test_a_new_build_starts_from_the_earlier_stages_of_another_build(tmp_path):
+    """Graph v4 changes only the cleanup inputs (06): it starts from graph v3's stages 01-05, hard-linked, under its
+    own configuration; a folder that has a manifest is never seeded again."""
+    source, target = tmp_path / 'v3', tmp_path / 'v4'
+    with GraphCheckpoints(source, {'cleanup': 'v3'}) as store:
+        store.save('02-entities', ([EntitiesExtractionModel()],), (EntitiesExtractionModel,))
+        store.save('06-artifacts', ([], []), (Entity, Relation))
+        entities_file = store.manifest['stages']['02-entities']['file']
+    source_manifest = (source / 'manifest.json').read_bytes()
+    with GraphCheckpoints(target, {'cleanup': 'v4'}, seed=(source, '06-')) as store:
+        assert sorted(store.manifest['stages']) == ['02-entities']
+        assert store.load('02-entities', (EntitiesExtractionModel,)) == ([EntitiesExtractionModel()],)
+        assert store.load('06-artifacts', (Entity, Relation)) is None
+    assert (target / entities_file).stat().st_ino == (source / entities_file).stat().st_ino
+    assert (source / 'manifest.json').read_bytes() == source_manifest
+    with GraphCheckpoints(target, {'cleanup': 'v4'}, seed=(source, '07-')) as store:
+        assert sorted(store.manifest['stages']) == ['02-entities']

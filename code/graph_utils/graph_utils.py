@@ -1,5 +1,6 @@
 import asyncio
 import codecs
+import functools
 import json
 import os
 from pathlib import Path
@@ -31,6 +32,8 @@ except ImportError as err:
 
 from search_utils.search_utils import combine_relevant_chunks
 from graph_utils.local_search import EfficientLocalSearchEngine
+from graph_utils.graph_cleanup import CleanupInputs, clean_graph
+from graph_utils.relation_review import RelationReviewMixin
 
 try:
     from context_utils.context_utils import global_chunk_index_to_local
@@ -460,12 +463,19 @@ ABBREVIATION_REWRITE_SYSTEM_PROMPT = (
 )
 
 
+@functools.lru_cache(maxsize=None)
+def _abbreviation_pattern(original: str) -> 're.Pattern[str]':
+    # compiled once per abbreviation: re's own cache (512 patterns) is too small for the 450 abbreviations
+    # checked in every chunk together with all other expressions, so they were recompiled each time
+    return re.compile(rf'(?<![\w]){re.escape(original)}(?![\w])')
+
+
 def find_abbreviation_candidates(text: str,
                                  abbreviations: Dict[str, Dict[str, Any]]) -> List[str]:
     norm_abbreviations = []
     for cur_norm_abbr, cur_record in abbreviations.items():
         cur_original = cur_record.get('abbreviation', cur_norm_abbr) if isinstance(cur_record, dict) else cur_norm_abbr
-        if re.search(rf'(?<![\w]){re.escape(cur_original)}(?![\w])', text):
+        if _abbreviation_pattern(cur_original).search(text):
             norm_abbreviations.append(cur_norm_abbr)
     return norm_abbreviations
 
@@ -475,10 +485,38 @@ def count_abbreviation_occurrences(text: str,
     occurrences = {}
     for cur_norm_abbr, cur_record in abbreviations.items():
         cur_original = cur_record.get('abbreviation', cur_norm_abbr) if isinstance(cur_record, dict) else cur_norm_abbr
-        cur_count = len(re.findall(rf'(?<![\w]){re.escape(cur_original)}(?![\w])', text))
+        cur_count = len(_abbreviation_pattern(cur_original).findall(text))
         if cur_count > 0:
             occurrences[cur_norm_abbr] = cur_count
     return occurrences
+
+
+_OPENER_OF = {')': '(', ']': '[', '}': '{', '»': '«', '”': '“', '“': '„'}
+_CLOSER_OF = {'(': ')', '[': ']', '{': '}', '«': '»', '„': '“', '“': '”'}
+_WORD_CHAR = re.compile(r'\w')
+
+
+def trim_edge_punctuation(name: str) -> str:
+    """Trims punctuation and spaces at both ends of a name, but keeps a bracket or quote whose pair is inside the
+    name: 'Дексаметазон (DEX)' and '«Эксперт» (журнал)' stay whole, 'НГУ).' becomes 'НГУ'."""
+    end = len(name)
+    while end > 0 and not _WORD_CHAR.match(name[end - 1]):
+        mark, body = name[end - 1], name[:end - 1]
+        if mark in _OPENER_OF and body.count(_OPENER_OF[mark]) > body.count(mark):
+            break
+        if mark == '"' and body.count(mark) % 2 == 1:
+            break
+        end -= 1
+    name = name[:end]
+    start = 0
+    while start < len(name) and not _WORD_CHAR.match(name[start]):
+        mark, rest = name[start], name[start + 1:]
+        if mark in _CLOSER_OF and rest.count(_CLOSER_OF[mark]) > rest.count(mark):
+            break
+        if mark == '"' and rest.count(mark) % 2 == 1:
+            break
+        start += 1
+    return name[start:]
 
 
 def canonicalize_artifacts(entities: List[Entity],
@@ -486,9 +524,6 @@ def canonicalize_artifacts(entities: List[Entity],
     def normalize_name(name: str) -> str:
         # '_' is a word character for \w, so it is a separator here explicitly ('Практика_НИР' = 'Практика НИР')
         return ' '.join(re.sub(r'[^\w\s]|_', ' ', str(name).casefold().replace('ё', 'е')).split())
-
-    def trim_edge_punctuation(name: str) -> str:
-        return re.sub(r'^[^\w]+|[^\w]+$', '', name)
 
     name_counts: Dict[Tuple[str, str], Dict[str, int]] = {}
     for cur_entity in entities:
@@ -542,7 +577,7 @@ def canonicalize_artifacts(entities: List[Entity],
     return canonical_entities, canonical_relations
 
 
-class AbbreviationExpandingExtractor(TwoStageArtifactsExtractorLLM):
+class AbbreviationExpandingExtractor(RelationReviewMixin, TwoStageArtifactsExtractorLLM):
     """
     Two-stage extractor with an abbreviation-expansion pre-stage and artifact
     canonicalization. Chunks are stored in the knowledge base verbatim: the
@@ -554,12 +589,17 @@ class AbbreviationExpandingExtractor(TwoStageArtifactsExtractorLLM):
     """
 
     def __init__(self, *args, abbreviations: Optional[Dict[str, Dict[str, Any]]] = None,
-                 rewrite_concurrency: int = 8, **kwargs):
+                 rewrite_concurrency: int = 8, graph_cleanup: bool = False,
+                 cleanup_inputs: Optional[CleanupInputs] = None, **kwargs):
         if type(rewrite_concurrency) is not int or rewrite_concurrency < 1:
             raise ValueError('rewrite_concurrency must be a positive integer.')
+        if cleanup_inputs not in (None, CleanupInputs()) and not graph_cleanup:
+            raise ValueError('Excluded chunks, entity labels and merges need the graph cleanup.')
         super().__init__(*args, **kwargs)
         self.abbreviations = abbreviations if abbreviations is not None else {}
         self.rewrite_concurrency = rewrite_concurrency
+        self.graph_cleanup = graph_cleanup
+        self.cleanup_inputs = cleanup_inputs
         self.num_rewritten_chunks = 0
         self.num_rejected_rewrites = 0
         self.num_failed_rewrites = 0
@@ -567,7 +607,11 @@ class AbbreviationExpandingExtractor(TwoStageArtifactsExtractorLLM):
     async def extract(self, chunks: List[Chunk], *args: Any, **kwargs: Any) -> Tuple[List[Entity], List[Relation]]:
         rewritten_chunks = await self._expand_abbreviations(chunks)
         extracted_entities, extracted_relations = await super().extract(rewritten_chunks, *args, **kwargs)
-        return canonicalize_artifacts(extracted_entities, extracted_relations)
+        entities, relations = canonicalize_artifacts(extracted_entities, extracted_relations)
+        if self.graph_cleanup:
+            entities, relations, stats = clean_graph(entities, relations, self.cleanup_inputs)
+            logger.info('Graph cleanup: {}', ', '.join(f'{key}={value}' for key, value in stats.items()))
+        return entities, relations
 
     async def _expand_abbreviations(self, chunks: List[Chunk]) -> List[Chunk]:
         if len(self.abbreviations) == 0 or not chunks:
