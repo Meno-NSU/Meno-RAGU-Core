@@ -1,0 +1,60 @@
+run,label,metric,metric_name,diff,low,high,n,better,same,worse
+m10-lite,Менон 1.0 · meno-lite,answer_correctness,Answer correctness,-0.1894,-0.2085,-0.1704,949,214,117,618
+m10-lite,Менон 1.0 · meno-lite,factual_correctness,Factual correctness,-0.152,-0.1769,-0.1296,951,234,196,521
+m10-lite,Менон 1.0 · meno-lite,faithfulness,Faithfulness,-0.3314,-0.3573,-0.3045,951,158,154,639
+m10-lite,Менон 1.0 · meno-lite,answer_relevancy,Answer relevancy,-0.0328,-0.0535,-0.0122,954,316,367,271
+m10-lite,Менон 1.0 · meno-lite,context_recall,Context recall,-0.4817,-0.5156,-0.4488,954,57,318,579
+m10-lite,Менон 1.0 · meno-lite,context_precision,Context precision,-0.3996,-0.4337,-0.365,954,145,221,588
+m10-lite,Менон 1.0 · meno-lite,context_entity_recall,Context entity recall,-0.0889,-0.1066,-0.0719,954,96,585,273
+m10-gemma,Менон 1.0 · gemma,answer_correctness,Answer correctness,-0.213,-0.2328,-0.1931,951,196,120,635
+m10-gemma,Менон 1.0 · gemma,factual_correctness,Factual correctness,-0.1468,-0.1708,-0.124,948,255,169,524
+m10-gemma,Менон 1.0 · gemma,faithfulness,Faithfulness,-0.0708,-0.0884,-0.0529,951,279,207,465
+m10-gemma,Менон 1.0 · gemma,answer_relevancy,Answer relevancy,-0.2788,-0.3047,-0.2521,954,142,309,503
+m10-gemma,Менон 1.0 · gemma,context_recall,Context recall,-0.4767,-0.5093,-0.4429,954,56,321,577
+m10-gemma,Менон 1.0 · gemma,context_precision,Context precision,-0.3829,-0.4181,-0.3489,954,150,223,581
+m10-gemma,Менон 1.0 · gemma,context_entity_recall,Context entity recall,-0.0911,-0.1095,-0.0742,954,91,590,273
+m10-occ,Менон 1.0 · OCC-RAG,answer_correctness,Answer correctness,-0.356,-0.3764,-0.3364,941,110,64,767
+m10-occ,Менон 1.0 · OCC-RAG,factual_correctness,Factual correctness,-0.2311,-0.2555,-0.2075,948,160,179,609
+m10-occ,Менон 1.0 · OCC-RAG,faithfulness,Faithfulness,-0.5629,-0.5915,-0.5343,947,106,132,709
+m10-occ,Менон 1.0 · OCC-RAG,answer_relevancy,Answer relevancy,-0.4979,-0.5191,-0.4748,954,33,91,830
+m10-occ,Менон 1.0 · OCC-RAG,context_recall,Context recall,-0.4813,-0.5153,-0.4495,954,53,323,578
+m10-occ,Менон 1.0 · OCC-RAG,context_precision,Context precision,-0.4018,-0.4352,-0.3672,954,142,215,597
+m10-occ,Менон 1.0 · OCC-RAG,context_entity_recall,Context entity recall,-0.0925,-0.1112,-0.0736,954,91,584,279
+m11-lite,Менон 1.1 · meno-lite,answer_correctness,Answer correctness,-0.001,-0.0152,0.0132,951,392,192,367
+m11-lite,Менон 1.1 · meno-lite,factual_correctness,Factual correctness,-0.014,-0.0356,0.0065,949,376,188,385
+m11-lite,Менон 1.1 · meno-lite,faithfulness,Faithfulness,-0.1162,-0.137,-0.0958,951,235,287,429
+m11-lite,Менон 1.1 · meno-lite,answer_relevancy,Answer relevancy,0.0204,0.0057,0.0348,954,298,400,256
+m11-lite,Менон 1.1 · meno-lite,context_recall,Context recall,0.0123,-0.0054,0.0306,951,74,807,70
+m11-lite,Менон 1.1 · meno-lite,context_precision,Context precision,0.0287,0.0084,0.0479,953,253,521,179
+m11-lite,Менон 1.1 · meno-lite,context_entity_recall,Context entity recall,-0.003,-0.0148,0.0095,954,101,754,99
+m11-occ,Менон 1.1 · OCC-RAG,answer_correctness,Answer correctness,-0.092,-0.111,-0.0727,944,307,141,496
+m11-occ,Менон 1.1 · OCC-RAG,factual_correctness,Factual correctness,0.0134,-0.0117,0.0381,948,407,142,399
+m11-occ,Менон 1.1 · OCC-RAG,faithfulness,Faithfulness,-0.1735,-0.2005,-0.148,944,269,314,361
+m11-occ,Менон 1.1 · OCC-RAG,answer_relevancy,Answer relevancy,-0.2507,-0.2681,-0.2338,953,54,128,771
+m11-occ,Менон 1.1 · OCC-RAG,context_recall,Context recall,0.0133,-0.0049,0.0322,953,78,808,67
+m11-occ,Менон 1.1 · OCC-RAG,context_precision,Context precision,0.0291,0.0092,0.0489,953,254,514,185
+m11-occ,Менон 1.1 · OCC-RAG,context_entity_recall,Context entity recall,0.0022,-0.0094,0.0144,953,104,753,96
+nsuv1-lite,RAGU NSUv1 · meno-lite,factual_correctness,Factual correctness,-0.1679,-0.1901,-0.1433,950,226,198,526
+nsuv1-lite,RAGU NSUv1 · meno-lite,faithfulness,Faithfulness,-0.3118,-0.3402,-0.2837,952,179,175,598
+nsuv1-lite,RAGU NSUv1 · meno-lite,answer_relevancy,Answer relevancy,-0.0005,-0.0186,0.0171,953,348,354,251
+nsuv1-lite,RAGU NSUv1 · meno-lite,context_recall,Context recall,-0.4527,-0.4863,-0.418,953,76,304,573
+nsuv1-lite,RAGU NSUv1 · meno-lite,context_precision,Context precision,-0.5275,-0.5544,-0.4982,953,97,106,750
+nsuv1-gemma,RAGU NSUv1 · gemma,factual_correctness,Factual correctness,-0.1381,-0.163,-0.1151,950,268,168,514
+nsuv1-gemma,RAGU NSUv1 · gemma,faithfulness,Faithfulness,0.0219,0.0058,0.0368,953,345,300,308
+nsuv1-gemma,RAGU NSUv1 · gemma,answer_relevancy,Answer relevancy,-0.1994,-0.2254,-0.1751,954,199,323,432
+nsuv1-gemma,RAGU NSUv1 · gemma,context_recall,Context recall,-0.4423,-0.4782,-0.4089,954,82,306,566
+nsuv1-gemma,RAGU NSUv1 · gemma,context_precision,Context precision,-0.5179,-0.5458,-0.4896,954,105,93,756
+ragu-v3-gemma,RAGU v3 · gemma,answer_correctness,Answer correctness,0.02,0.0057,0.0346,941,410,207,324
+ragu-v3-gemma,RAGU v3 · gemma,factual_correctness,Factual correctness,0.0644,0.0422,0.0864,938,472,174,292
+ragu-v3-gemma,RAGU v3 · gemma,faithfulness,Faithfulness,0.0664,0.0519,0.0806,948,385,374,189
+ragu-v3-gemma,RAGU v3 · gemma,answer_relevancy,Answer relevancy,0.0049,-0.0107,0.0202,954,239,500,215
+ragu-v3-gemma,RAGU v3 · gemma,context_recall,Context recall,0.0272,0.0039,0.0511,954,135,722,97
+ragu-v3-gemma,RAGU v3 · gemma,context_precision,Context precision,-0.299,-0.3688,-0.2335,147,34,14,99
+ragu-v3-gemma,RAGU v3 · gemma,context_entity_recall,Context entity recall,-0.0538,-0.0695,-0.0379,953,114,615,224
+ragu-v3k-gemma,RAGU v3k · gemma,answer_correctness,Answer correctness,0.0111,-0.0032,0.0253,935,379,210,346
+ragu-v3k-gemma,RAGU v3k · gemma,factual_correctness,Factual correctness,0.0442,0.0236,0.0647,935,426,206,303
+ragu-v3k-gemma,RAGU v3k · gemma,faithfulness,Faithfulness,0.0783,0.0641,0.0928,944,400,389,155
+ragu-v3k-gemma,RAGU v3k · gemma,answer_relevancy,Answer relevancy,0.0236,0.0105,0.0364,952,242,498,212
+ragu-v3k-gemma,RAGU v3k · gemma,context_recall,Context recall,0.0226,0.0016,0.0464,953,123,739,91
+ragu-v3k-gemma,RAGU v3k · gemma,context_precision,Context precision,-0.4477,-0.5174,-0.3731,127,18,10,99
+ragu-v3k-gemma,RAGU v3k · gemma,context_entity_recall,Context entity recall,-0.051,-0.0678,-0.0345,952,125,604,223
