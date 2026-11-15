@@ -46,6 +46,11 @@ from meno_rag.stand.rerank import (
     score_from_logprobs,
 )
 from meno_rag.stand.resources import StandResources
+from meno_rag.stand.rewriting import (
+    find_candidates_to_abbreviations,
+    parse_rewritten_queries,
+    prepare_prompt_for_rewriting,
+)
 from meno_rag.stand.routing import (
     FALLBACK_ROUTE,
     NO_SEARCH_ROUTES,
@@ -53,11 +58,6 @@ from meno_rag.stand.routing import (
     parse_route,
     route_messages,
     with_route_rules,
-)
-from meno_rag.stand.rewriting import (
-    find_candidates_to_abbreviations,
-    parse_rewritten_queries,
-    prepare_prompt_for_rewriting,
 )
 from meno_rag.stand.sampling import QaSampling, RerankSampling, RewriteSampling
 from meno_rag.stand.search import combine_relevant_chunks
@@ -177,6 +177,7 @@ class StandRagPipeline:
         )
 
         search_question = question  # what the search and the relevance check work from
+        route: str | None  # None: turn routing is off
         if memory is not None and self.settings.turn_routing:
             # One analysis call (Menon 1.1): the route and a question that stands without the history; the rewrite
             # then works from that question, and the sub-queries of comparisons and lists join the search.
@@ -1107,6 +1108,6 @@ def _answered_turns(history: list[dict[str, str]]) -> list[dict[str, str]]:
             turns[-1][1] = msg["content"] if turns[-1][1] is None else f"{turns[-1][1]}\n{msg['content']}"
     out: list[dict[str, str]] = []
     for user_content, assistant_content in turns:
-        if assistant_content is not None:
+        if user_content is not None and assistant_content is not None:
             out += [{"role": "user", "content": user_content}, {"role": "assistant", "content": assistant_content}]
     return out

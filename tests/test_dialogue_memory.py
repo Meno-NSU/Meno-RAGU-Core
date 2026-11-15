@@ -77,7 +77,7 @@ def test_the_search_uses_the_question_that_stands_without_the_history_and_its_su
 
 
 def test_a_question_about_the_dialogue_is_answered_from_the_whole_history_without_search():
-    p, outcome = prepare(
+    _p, outcome = prepare(
         {"route": "meta_dialog", "standalone_question": "О чём был первый вопрос?", "subqueries": [], "chain": False,
          "focus": ""},
         [("user", "Привет, как ты?"), ("user", "аываы"), ("user", "А в самом начале диалога, что я спрашивал?")])
