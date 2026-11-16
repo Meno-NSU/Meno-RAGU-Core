@@ -1,0 +1,343 @@
+set,group,system_a,system_b,n,metric,a,b,b_minus_a,ci_low,ci_high
+A,ALL,menon,ragu,200,vital_recall,0.576,0.577,0.001,-0.05,0.052
+A,ALL,menon,ragu,200,recall,0.576,0.577,0.001,-0.044,0.043
+A,ALL,menon,ragu,200,contradiction,0.12,0.14,0.02,-0.025,0.065
+A,ALL,menon,ragu,200,any_unsupported,0.095,0.15,0.055,-0.005,0.115
+A,ALL,menon,ragu,200,refusal,0.13,0.085,-0.045,-0.08,-0.01
+A,ALL,menon,ragu,200,solved,0.42,0.44,0.02,-0.035,0.08
+A,ALL,menon,ragu_nf30,153,vital_recall,0.587,0.569,-0.017,-0.072,0.036
+A,ALL,menon,ragu_nf30,153,recall,0.586,0.589,0.003,-0.04,0.044
+A,ALL,menon,ragu_nf30,153,contradiction,0.111,0.118,0.007,-0.052,0.065
+A,ALL,menon,ragu_nf30,153,any_unsupported,0.085,0.105,0.02,-0.046,0.085
+A,ALL,menon,ragu_nf30,153,refusal,0.098,0.111,0.013,-0.026,0.052
+A,ALL,menon,ragu_nf30,153,solved,0.431,0.405,-0.026,-0.105,0.046
+A,ALL,ragu,ragu_nf30,155,vital_recall,0.583,0.562,-0.021,-0.073,0.029
+A,ALL,ragu,ragu_nf30,155,recall,0.58,0.587,0.007,-0.033,0.047
+A,ALL,ragu,ragu_nf30,155,contradiction,0.142,0.116,-0.026,-0.084,0.026
+A,ALL,ragu,ragu_nf30,155,any_unsupported,0.148,0.103,-0.045,-0.11,0.019
+A,ALL,ragu,ragu_nf30,155,refusal,0.071,0.11,0.039,0.013,0.071
+A,ALL,ragu,ragu_nf30,155,solved,0.452,0.4,-0.052,-0.11,0.013
+A,chitchat,menon,ragu,5,vital_recall,0.883,0.767,-0.117,-0.45,0.15
+A,chitchat,menon,ragu,5,recall,0.935,0.89,-0.045,-0.16,0.055
+A,chitchat,menon,ragu,5,contradiction,0.0,0.0,-0.0,-0.0,-0.0
+A,chitchat,menon,ragu,5,any_unsupported,0.0,0.2,0.2,-0.0,0.6
+A,chitchat,menon,ragu,5,refusal,0.0,0.0,-0.0,-0.0,-0.0
+A,chitchat,menon,ragu,5,solved,0.6,0.6,-0.0,-0.6,0.6
+A,complex,menon,ragu,25,vital_recall,0.557,0.733,0.177,0.047,0.313
+A,complex,menon,ragu,25,recall,0.581,0.699,0.118,0.028,0.216
+A,complex,menon,ragu,25,contradiction,0.08,0.08,-0.0,-0.16,0.16
+A,complex,menon,ragu,25,any_unsupported,0.08,0.12,0.04,-0.12,0.24
+A,complex,menon,ragu,25,refusal,0.0,0.0,-0.0,-0.0,-0.0
+A,complex,menon,ragu,25,solved,0.28,0.56,0.28,0.12,0.44
+A,complex,menon,ragu_nf30,25,vital_recall,0.557,0.69,0.133,-0.013,0.28
+A,complex,menon,ragu_nf30,25,recall,0.581,0.646,0.065,-0.038,0.17
+A,complex,menon,ragu_nf30,25,contradiction,0.08,0.16,0.08,-0.12,0.28
+A,complex,menon,ragu_nf30,25,any_unsupported,0.08,0.08,-0.0,-0.12,0.12
+A,complex,menon,ragu_nf30,25,refusal,0.0,0.0,-0.0,-0.0,-0.0
+A,complex,menon,ragu_nf30,25,solved,0.28,0.44,0.16,-0.04,0.36
+A,complex,ragu,ragu_nf30,25,vital_recall,0.733,0.69,-0.043,-0.18,0.107
+A,complex,ragu,ragu_nf30,25,recall,0.699,0.646,-0.053,-0.146,0.028
+A,complex,ragu,ragu_nf30,25,contradiction,0.08,0.16,0.08,-0.08,0.24
+A,complex,ragu,ragu_nf30,25,any_unsupported,0.12,0.08,-0.04,-0.2,0.12
+A,complex,ragu,ragu_nf30,25,refusal,0.0,0.0,-0.0,-0.0,-0.0
+A,complex,ragu,ragu_nf30,25,solved,0.56,0.44,-0.12,-0.32,0.08
+A,factual,menon,ragu,69,vital_recall,0.64,0.626,-0.014,-0.094,0.06
+A,factual,menon,ragu,69,recall,0.602,0.605,0.003,-0.064,0.069
+A,factual,menon,ragu,69,contradiction,0.101,0.101,-0.0,-0.043,0.043
+A,factual,menon,ragu,69,any_unsupported,0.087,0.043,-0.043,-0.116,0.029
+A,factual,menon,ragu,69,refusal,0.043,0.043,-0.0,-0.043,0.043
+A,factual,menon,ragu,69,solved,0.507,0.464,-0.043,-0.145,0.043
+A,factual,menon,ragu_nf30,69,vital_recall,0.64,0.605,-0.035,-0.105,0.031
+A,factual,menon,ragu_nf30,69,recall,0.602,0.588,-0.014,-0.071,0.04
+A,factual,menon,ragu_nf30,69,contradiction,0.101,0.101,-0.0,-0.058,0.058
+A,factual,menon,ragu_nf30,69,any_unsupported,0.087,0.101,0.014,-0.087,0.116
+A,factual,menon,ragu_nf30,69,refusal,0.043,0.043,-0.0,-0.043,0.043
+A,factual,menon,ragu_nf30,69,solved,0.507,0.449,-0.058,-0.159,0.043
+A,factual,ragu,ragu_nf30,70,vital_recall,0.617,0.597,-0.02,-0.092,0.055
+A,factual,ragu,ragu_nf30,70,recall,0.601,0.586,-0.015,-0.064,0.038
+A,factual,ragu,ragu_nf30,70,contradiction,0.1,0.1,-0.0,-0.057,0.057
+A,factual,ragu,ragu_nf30,70,any_unsupported,0.043,0.1,0.057,-0.014,0.143
+A,factual,ragu,ragu_nf30,70,refusal,0.043,0.043,-0.0,-0.0,-0.0
+A,factual,ragu,ragu_nf30,70,solved,0.457,0.443,-0.014,-0.1,0.071
+A,general,menon,ragu,15,vital_recall,0.337,0.319,-0.018,-0.2,0.132
+A,general,menon,ragu,15,recall,0.371,0.381,0.01,-0.098,0.118
+A,general,menon,ragu,15,contradiction,0.067,0.133,0.067,-0.0,0.2
+A,general,menon,ragu,15,any_unsupported,0.133,0.267,0.133,-0.2,0.467
+A,general,menon,ragu,15,refusal,0.2,0.067,-0.133,-0.333,-0.0
+A,general,menon,ragu,15,solved,0.067,0.0,-0.067,-0.2,-0.0
+A,long_dialog,menon,ragu,5,vital_recall,0.5,0.4,-0.1,-0.7,0.5
+A,long_dialog,menon,ragu,5,recall,0.337,0.433,0.097,-0.287,0.55
+A,long_dialog,menon,ragu,5,contradiction,0.6,0.6,-0.0,-0.6,0.6
+A,long_dialog,menon,ragu,5,any_unsupported,0.4,0.0,-0.4,-0.8,-0.0
+A,long_dialog,menon,ragu,5,refusal,0.0,0.0,-0.0,-0.0,-0.0
+A,long_dialog,menon,ragu,5,solved,0.4,0.4,-0.0,-0.6,0.6
+A,multi_turn,menon,ragu,30,vital_recall,0.572,0.561,-0.011,-0.161,0.128
+A,multi_turn,menon,ragu,30,recall,0.574,0.524,-0.051,-0.181,0.069
+A,multi_turn,menon,ragu,30,contradiction,0.133,0.133,-0.0,-0.133,0.133
+A,multi_turn,menon,ragu,30,any_unsupported,0.067,0.267,0.2,0.033,0.367
+A,multi_turn,menon,ragu,30,refusal,0.1,0.033,-0.067,-0.2,0.067
+A,multi_turn,menon,ragu,30,solved,0.467,0.467,-0.0,-0.167,0.167
+A,multi_turn,menon,ragu_nf30,30,vital_recall,0.572,0.511,-0.061,-0.217,0.083
+A,multi_turn,menon,ragu_nf30,30,recall,0.574,0.58,0.006,-0.121,0.115
+A,multi_turn,menon,ragu_nf30,30,contradiction,0.133,0.1,-0.033,-0.2,0.133
+A,multi_turn,menon,ragu_nf30,30,any_unsupported,0.067,0.1,0.033,-0.1,0.167
+A,multi_turn,menon,ragu_nf30,30,refusal,0.1,0.1,-0.0,-0.133,0.133
+A,multi_turn,menon,ragu_nf30,30,solved,0.467,0.367,-0.1,-0.3,0.1
+A,multi_turn,ragu,ragu_nf30,30,vital_recall,0.561,0.511,-0.05,-0.172,0.056
+A,multi_turn,ragu,ragu_nf30,30,recall,0.524,0.58,0.056,-0.031,0.147
+A,multi_turn,ragu,ragu_nf30,30,contradiction,0.133,0.1,-0.033,-0.2,0.133
+A,multi_turn,ragu,ragu_nf30,30,any_unsupported,0.267,0.1,-0.167,-0.3,-0.033
+A,multi_turn,ragu,ragu_nf30,30,refusal,0.033,0.1,0.067,-0.0,0.167
+A,multi_turn,ragu,ragu_nf30,30,solved,0.467,0.367,-0.1,-0.233,-0.0
+A,off_topic,menon,ragu,8,vital_recall,0.438,0.438,-0.0,-0.0,0
+A,off_topic,menon,ragu,8,recall,0.469,0.5,0.031,-0.0,0.094
+A,off_topic,menon,ragu,8,contradiction,0.25,0.0,-0.25,-0.625,-0.0
+A,off_topic,menon,ragu,8,any_unsupported,0.25,0.25,-0.0,-0.0,-0.0
+A,off_topic,menon,ragu,8,refusal,0.25,0.25,-0.0,-0.0,-0.0
+A,off_topic,menon,ragu,8,solved,0.375,0.375,-0.0,-0.0,-0.0
+A,prompt_injection,menon,ragu,7,vital_recall,0.857,0.857,-0.0,0,0
+A,prompt_injection,menon,ragu,7,recall,0.857,0.857,-0.0,0,0
+A,prompt_injection,menon,ragu,7,contradiction,0.143,0.143,-0.0,-0.0,-0.0
+A,prompt_injection,menon,ragu,7,any_unsupported,0.0,0.0,-0.0,-0.0,-0.0
+A,prompt_injection,menon,ragu,7,refusal,0.857,0.429,-0.429,-0.857,-0.143
+A,prompt_injection,menon,ragu,7,solved,0.857,0.857,-0.0,-0.0,-0.0
+A,time_sensitive,menon,ragu,7,vital_recall,0.571,0.714,0.143,-0.286,0.571
+A,time_sensitive,menon,ragu,7,recall,0.565,0.577,0.012,-0.25,0.304
+A,time_sensitive,menon,ragu,7,contradiction,0.0,0.0,-0.0,-0.0,-0.0
+A,time_sensitive,menon,ragu,7,any_unsupported,0.0,0.0,-0.0,-0.0,-0.0
+A,time_sensitive,menon,ragu,7,refusal,0.0,0.0,-0.0,-0.0,-0.0
+A,time_sensitive,menon,ragu,7,solved,0.429,0.571,0.143,-0.286,0.571
+A,unanswerable,menon,ragu,29,vital_recall,0.5,0.414,-0.086,-0.23,0.057
+A,unanswerable,menon,ragu,29,recall,0.564,0.486,-0.078,-0.227,0.068
+A,unanswerable,menon,ragu,29,contradiction,0.138,0.31,0.172,-0.0,0.345
+A,unanswerable,menon,ragu,29,any_unsupported,0.103,0.31,0.207,-0.0,0.414
+A,unanswerable,menon,ragu,29,refusal,0.31,0.241,-0.069,-0.207,0.069
+A,unanswerable,menon,ragu,29,solved,0.345,0.345,-0.0,-0.138,0.138
+A,unanswerable,menon,ragu_nf30,29,vital_recall,0.5,0.44,-0.06,-0.19,0.066
+A,unanswerable,menon,ragu_nf30,29,recall,0.564,0.549,-0.015,-0.104,0.077
+A,unanswerable,menon,ragu_nf30,29,contradiction,0.138,0.138,-0.0,-0.138,0.138
+A,unanswerable,menon,ragu_nf30,29,any_unsupported,0.103,0.138,0.034,-0.138,0.207
+A,unanswerable,menon,ragu_nf30,29,refusal,0.31,0.379,0.069,-0.069,0.207
+A,unanswerable,menon,ragu_nf30,29,solved,0.345,0.31,-0.034,-0.172,0.069
+A,unanswerable,ragu,ragu_nf30,30,vital_recall,0.4,0.425,0.025,-0.1,0.156
+A,unanswerable,ragu,ragu_nf30,30,recall,0.487,0.547,0.06,-0.051,0.188
+A,unanswerable,ragu,ragu_nf30,30,contradiction,0.3,0.133,-0.167,-0.3,-0.033
+A,unanswerable,ragu,ragu_nf30,30,any_unsupported,0.3,0.133,-0.167,-0.333,-0.0
+A,unanswerable,ragu,ragu_nf30,30,refusal,0.233,0.367,0.133,0.033,0.267
+A,unanswerable,ragu,ragu_nf30,30,solved,0.333,0.3,-0.033,-0.167,0.1
+B,ALL,menon,ragu,527,vital_recall,0.688,0.745,0.057,0.018,0.097
+B,ALL,menon,ragu,527,recall,0.639,0.676,0.037,0.001,0.07
+B,ALL,menon,ragu,527,contradiction,0.118,0.161,0.044,0.008,0.08
+B,ALL,menon,ragu,527,any_unsupported,0.11,0.139,0.028,-0.01,0.069
+B,ALL,menon,ragu,527,refusal,0.046,0.021,-0.025,-0.049,-0.002
+B,ALL,menon,ragu,527,solved,0.482,0.52,0.038,-0.012,0.084
+B,ALL,menon,ragu_nf30,155,vital_recall,0.648,0.622,-0.026,-0.103,0.046
+B,ALL,menon,ragu_nf30,155,recall,0.604,0.579,-0.024,-0.094,0.036
+B,ALL,menon,ragu_nf30,155,contradiction,0.11,0.148,0.039,-0.029,0.109
+B,ALL,menon,ragu_nf30,155,any_unsupported,0.116,0.226,0.11,0.034,0.188
+B,ALL,menon,ragu_nf30,155,refusal,0.052,0.097,0.045,-0.007,0.101
+B,ALL,menon,ragu_nf30,155,solved,0.439,0.426,-0.013,-0.097,0.065
+B,ALL,ragu,ragu_nf30,155,vital_recall,0.727,0.622,-0.105,-0.168,-0.044
+B,ALL,ragu,ragu_nf30,155,recall,0.656,0.579,-0.076,-0.122,-0.031
+B,ALL,ragu,ragu_nf30,155,contradiction,0.148,0.148,-0.0,-0.056,0.059
+B,ALL,ragu,ragu_nf30,155,any_unsupported,0.174,0.226,0.052,-0.019,0.123
+B,ALL,ragu,ragu_nf30,155,refusal,0.013,0.097,0.084,0.045,0.128
+B,ALL,ragu,ragu_nf30,155,solved,0.497,0.426,-0.071,-0.142,-0.0
+B,G (graph types),menon,ragu,333,vital_recall,0.561,0.66,0.099,0.048,0.151
+B,G (graph types),menon,ragu,333,recall,0.529,0.605,0.076,0.03,0.122
+B,G (graph types),menon,ragu,333,contradiction,0.147,0.204,0.057,0.006,0.109
+B,G (graph types),menon,ragu,333,any_unsupported,0.138,0.171,0.033,-0.021,0.088
+B,G (graph types),menon,ragu,333,refusal,0.069,0.024,-0.045,-0.081,-0.015
+B,G (graph types),menon,ragu,333,solved,0.276,0.348,0.072,0.006,0.135
+B,G (graph types),menon,ragu_nf30,105,vital_recall,0.526,0.535,0.009,-0.081,0.096
+B,G (graph types),menon,ragu_nf30,105,recall,0.507,0.501,-0.005,-0.085,0.07
+B,G (graph types),menon,ragu_nf30,105,contradiction,0.133,0.19,0.057,-0.038,0.152
+B,G (graph types),menon,ragu_nf30,105,any_unsupported,0.143,0.229,0.086,-0.017,0.198
+B,G (graph types),menon,ragu_nf30,105,refusal,0.076,0.124,0.048,-0.032,0.125
+B,G (graph types),menon,ragu_nf30,105,solved,0.238,0.267,0.029,-0.071,0.121
+B,G (graph types),ragu,ragu_nf30,105,vital_recall,0.635,0.535,-0.1,-0.184,-0.018
+B,G (graph types),ragu,ragu_nf30,105,recall,0.587,0.501,-0.085,-0.144,-0.026
+B,G (graph types),ragu,ragu_nf30,105,contradiction,0.19,0.19,-0.0,-0.077,0.078
+B,G (graph types),ragu,ragu_nf30,105,any_unsupported,0.19,0.229,0.038,-0.053,0.139
+B,G (graph types),ragu,ragu_nf30,105,refusal,0.019,0.124,0.105,0.051,0.164
+B,G (graph types),ragu,ragu_nf30,105,solved,0.333,0.267,-0.067,-0.168,0.045
+B,L (single-doc controls),menon,ragu,194,vital_recall,0.907,0.891,-0.017,-0.061,0.031
+B,L (single-doc controls),menon,ragu,194,recall,0.829,0.798,-0.031,-0.066,0.005
+B,L (single-doc controls),menon,ragu,194,contradiction,0.067,0.088,0.021,-0.026,0.065
+B,L (single-doc controls),menon,ragu,194,any_unsupported,0.062,0.082,0.021,-0.039,0.077
+B,L (single-doc controls),menon,ragu,194,refusal,0.005,0.015,0.01,-0.01,0.03
+B,L (single-doc controls),menon,ragu,194,solved,0.835,0.814,-0.021,-0.085,0.046
+B,L (single-doc controls),menon,ragu_nf30,50,vital_recall,0.905,0.805,-0.1,-0.228,0.013
+B,L (single-doc controls),menon,ragu_nf30,50,recall,0.807,0.743,-0.064,-0.157,0.031
+B,L (single-doc controls),menon,ragu_nf30,50,contradiction,0.06,0.06,-0.0,-0.078,0.08
+B,L (single-doc controls),menon,ragu_nf30,50,any_unsupported,0.06,0.22,0.16,0.021,0.294
+B,L (single-doc controls),menon,ragu_nf30,50,refusal,0.0,0.04,0.04,-0.0,0.093
+B,L (single-doc controls),menon,ragu_nf30,50,solved,0.86,0.76,-0.1,-0.224,0.02
+B,L (single-doc controls),ragu,ragu_nf30,50,vital_recall,0.92,0.805,-0.115,-0.213,-0.034
+B,L (single-doc controls),ragu,ragu_nf30,50,recall,0.801,0.743,-0.058,-0.131,0.006
+B,L (single-doc controls),ragu,ragu_nf30,50,contradiction,0.06,0.06,-0.0,-0.078,0.082
+B,L (single-doc controls),ragu,ragu_nf30,50,any_unsupported,0.14,0.22,0.08,-0.064,0.222
+B,L (single-doc controls),ragu,ragu_nf30,50,refusal,0.0,0.04,0.04,-0.0,0.093
+B,L (single-doc controls),ragu,ragu_nf30,50,solved,0.84,0.76,-0.08,-0.17,-0.0
+B,G1,menon,ragu,61,vital_recall,0.501,0.688,0.186,0.091,0.293
+B,G1,menon,ragu,61,recall,0.447,0.575,0.128,0.039,0.225
+B,G1,menon,ragu,61,contradiction,0.098,0.131,0.033,-0.073,0.132
+B,G1,menon,ragu,61,any_unsupported,0.098,0.131,0.033,-0.079,0.14
+B,G1,menon,ragu,61,refusal,0.131,0.049,-0.082,-0.176,-0.0
+B,G1,menon,ragu,61,solved,0.246,0.459,0.213,0.098,0.328
+B,G1,menon,ragu_nf30,15,vital_recall,0.378,0.538,0.16,-0.064,0.362
+B,G1,menon,ragu_nf30,15,recall,0.369,0.418,0.049,-0.148,0.191
+B,G1,menon,ragu_nf30,15,contradiction,0.067,0.067,-0.0,-0.188,0.188
+B,G1,menon,ragu_nf30,15,any_unsupported,0.067,0.0,-0.067,-0.214,-0.0
+B,G1,menon,ragu_nf30,15,refusal,0.133,0.267,0.133,-0.118,0.4
+B,G1,menon,ragu_nf30,15,solved,0.133,0.4,0.267,-0.0,0.538
+B,G1,ragu,ragu_nf30,15,vital_recall,0.602,0.538,-0.064,-0.308,0.177
+B,G1,ragu,ragu_nf30,15,recall,0.549,0.418,-0.131,-0.331,0.054
+B,G1,ragu,ragu_nf30,15,contradiction,0.133,0.067,-0.067,-0.286,0.133
+B,G1,ragu,ragu_nf30,15,any_unsupported,0.133,0.0,-0.133,-0.357,-0.0
+B,G1,ragu,ragu_nf30,15,refusal,0.067,0.267,0.2,-0.0,0.462
+B,G1,ragu,ragu_nf30,15,solved,0.467,0.4,-0.067,-0.357,0.214
+B,G2,menon,ragu,42,vital_recall,0.569,0.731,0.162,0.065,0.27
+B,G2,menon,ragu,42,recall,0.534,0.687,0.153,0.061,0.256
+B,G2,menon,ragu,42,contradiction,0.143,0.262,0.119,-0.026,0.261
+B,G2,menon,ragu,42,any_unsupported,0.167,0.262,0.095,-0.049,0.233
+B,G2,menon,ragu,42,refusal,0.095,0.0,-0.095,-0.195,-0.022
+B,G2,menon,ragu,42,solved,0.214,0.405,0.19,0.065,0.341
+B,G2,menon,ragu_nf30,15,vital_recall,0.546,0.598,0.052,-0.133,0.304
+B,G2,menon,ragu_nf30,15,recall,0.492,0.527,0.035,-0.14,0.279
+B,G2,menon,ragu_nf30,15,contradiction,0.267,0.333,0.067,-0.167,0.278
+B,G2,menon,ragu_nf30,15,any_unsupported,0.2,0.333,0.133,-0.25,0.421
+B,G2,menon,ragu_nf30,15,refusal,0.067,0.133,0.067,-0.167,0.235
+B,G2,menon,ragu_nf30,15,solved,0.2,0.267,0.067,-0.214,0.385
+B,G2,ragu,ragu_nf30,15,vital_recall,0.619,0.598,-0.021,-0.177,0.2
+B,G2,ragu,ragu_nf30,15,recall,0.592,0.527,-0.065,-0.178,0.078
+B,G2,ragu,ragu_nf30,15,contradiction,0.4,0.333,-0.067,-0.385,0.231
+B,G2,ragu,ragu_nf30,15,any_unsupported,0.333,0.333,-0.0,-0.333,0.211
+B,G2,ragu,ragu_nf30,15,refusal,0.0,0.133,0.133,-0.0,0.25
+B,G2,ragu,ragu_nf30,15,solved,0.267,0.267,-0.0,-0.2,0.188
+B,G3,menon,ragu,81,vital_recall,0.686,0.705,0.019,-0.079,0.112
+B,G3,menon,ragu,81,recall,0.645,0.66,0.014,-0.07,0.093
+B,G3,menon,ragu,81,contradiction,0.198,0.235,0.037,-0.07,0.143
+B,G3,menon,ragu,81,any_unsupported,0.086,0.111,0.025,-0.085,0.133
+B,G3,menon,ragu,81,refusal,0.025,0.025,-0.0,-0.05,0.047
+B,G3,menon,ragu,81,solved,0.444,0.444,-0.0,-0.146,0.146
+B,G3,menon,ragu_nf30,15,vital_recall,0.653,0.588,-0.066,-0.334,0.254
+B,G3,menon,ragu_nf30,15,recall,0.662,0.528,-0.134,-0.357,0.121
+B,G3,menon,ragu_nf30,15,contradiction,0.333,0.267,-0.067,-0.385,0.231
+B,G3,menon,ragu_nf30,15,any_unsupported,0.2,0.267,0.067,-0.231,0.385
+B,G3,menon,ragu_nf30,15,refusal,0.0,0.2,0.2,-0.0,0.412
+B,G3,menon,ragu_nf30,15,solved,0.4,0.333,-0.067,-0.385,0.308
+B,G3,ragu,ragu_nf30,15,vital_recall,0.768,0.588,-0.18,-0.39,0.058
+B,G3,ragu,ragu_nf30,15,recall,0.681,0.528,-0.153,-0.349,0.056
+B,G3,ragu,ragu_nf30,15,contradiction,0.2,0.267,0.067,-0.0,0.231
+B,G3,ragu,ragu_nf30,15,any_unsupported,0.067,0.267,0.2,-0.067,0.533
+B,G3,ragu,ragu_nf30,15,refusal,0.0,0.2,0.2,-0.0,0.412
+B,G3,ragu,ragu_nf30,15,solved,0.467,0.333,-0.133,-0.412,0.231
+B,G4,menon,ragu,43,vital_recall,0.546,0.539,-0.007,-0.11,0.095
+B,G4,menon,ragu,43,recall,0.54,0.566,0.026,-0.038,0.097
+B,G4,menon,ragu,43,contradiction,0.023,0.07,0.047,-0.042,0.146
+B,G4,menon,ragu,43,any_unsupported,0.256,0.349,0.093,-0.068,0.256
+B,G4,menon,ragu,43,refusal,0.023,0.0,-0.023,-0.073,-0.0
+B,G4,menon,ragu,43,solved,0.256,0.163,-0.093,-0.216,0.025
+B,G4,menon,ragu_nf30,15,vital_recall,0.656,0.467,-0.189,-0.372,-0.022
+B,G4,menon,ragu_nf30,15,recall,0.608,0.481,-0.127,-0.241,-0.024
+B,G4,menon,ragu_nf30,15,contradiction,0.0,0.067,0.067,-0.0,0.2
+B,G4,menon,ragu_nf30,15,any_unsupported,0.2,0.4,0.2,-0.133,0.533
+B,G4,menon,ragu_nf30,15,refusal,0.0,0.0,-0.0,-0.0,-0.0
+B,G4,menon,ragu_nf30,15,solved,0.467,0.133,-0.333,-0.6,-0.133
+B,G4,ragu,ragu_nf30,15,vital_recall,0.65,0.467,-0.183,-0.317,-0.072
+B,G4,ragu,ragu_nf30,15,recall,0.628,0.481,-0.147,-0.24,-0.065
+B,G4,ragu,ragu_nf30,15,contradiction,0.067,0.067,-0.0,-0.0,-0.0
+B,G4,ragu,ragu_nf30,15,any_unsupported,0.333,0.4,0.067,-0.2,0.333
+B,G4,ragu,ragu_nf30,15,refusal,0.0,0.0,-0.0,-0.0,-0.0
+B,G4,ragu,ragu_nf30,15,solved,0.333,0.133,-0.2,-0.4,-0.0
+B,G5,menon,ragu,40,vital_recall,0.442,0.579,0.137,0.013,0.258
+B,G5,menon,ragu,40,recall,0.398,0.496,0.099,-0.005,0.201
+B,G5,menon,ragu,40,contradiction,0.15,0.125,-0.025,-0.178,0.119
+B,G5,menon,ragu,40,any_unsupported,0.225,0.175,-0.05,-0.225,0.125
+B,G5,menon,ragu,40,refusal,0.1,0.025,-0.075,-0.163,-0.0
+B,G5,menon,ragu,40,solved,0.125,0.25,0.125,-0.053,0.3
+B,G5,menon,ragu_nf30,15,vital_recall,0.489,0.4,-0.089,-0.238,0.039
+B,G5,menon,ragu_nf30,15,recall,0.415,0.407,-0.008,-0.164,0.119
+B,G5,menon,ragu_nf30,15,contradiction,0.0,0.067,0.067,-0.0,0.214
+B,G5,menon,ragu_nf30,15,any_unsupported,0.2,0.2,-0.0,-0.286,0.235
+B,G5,menon,ragu_nf30,15,refusal,0.2,0.067,-0.133,-0.294,-0.0
+B,G5,menon,ragu_nf30,15,solved,0.133,0.067,-0.067,-0.214,-0.0
+B,G5,ragu,ragu_nf30,15,vital_recall,0.617,0.4,-0.217,-0.423,-0.056
+B,G5,ragu,ragu_nf30,15,recall,0.514,0.407,-0.107,-0.23,-0.01
+B,G5,ragu,ragu_nf30,15,contradiction,0.0,0.067,0.067,-0.0,0.214
+B,G5,ragu,ragu_nf30,15,any_unsupported,0.2,0.2,-0.0,-0.286,0.25
+B,G5,ragu,ragu_nf30,15,refusal,0.0,0.067,0.067,-0.0,0.214
+B,G5,ragu,ragu_nf30,15,solved,0.267,0.067,-0.2,-0.429,-0.0
+B,G6,menon,ragu,24,vital_recall,0.631,0.756,0.125,-0.004,0.254
+B,G6,menon,ragu,24,recall,0.628,0.707,0.078,-0.061,0.207
+B,G6,menon,ragu,24,contradiction,0.0,0.208,0.208,0.045,0.391
+B,G6,menon,ragu,24,any_unsupported,0.083,0.125,0.042,-0.083,0.2
+B,G6,menon,ragu,24,refusal,0.0,0.0,-0.0,-0.0,-0.0
+B,G6,menon,ragu,24,solved,0.333,0.292,-0.042,-0.333,0.222
+B,G6,menon,ragu_nf30,15,vital_recall,0.566,0.66,0.094,-0.086,0.292
+B,G6,menon,ragu_nf30,15,recall,0.576,0.656,0.08,-0.072,0.255
+B,G6,menon,ragu_nf30,15,contradiction,0.0,0.333,0.333,0.125,0.6
+B,G6,menon,ragu_nf30,15,any_unsupported,0.133,0.267,0.133,-0.133,0.4
+B,G6,menon,ragu_nf30,15,refusal,0.0,0.067,0.067,-0.0,0.214
+B,G6,menon,ragu_nf30,15,solved,0.2,0.4,0.2,-0.067,0.5
+B,G6,ragu,ragu_nf30,15,vital_recall,0.751,0.66,-0.091,-0.254,0.048
+B,G6,ragu,ragu_nf30,15,recall,0.729,0.656,-0.074,-0.195,0.023
+B,G6,ragu,ragu_nf30,15,contradiction,0.2,0.333,0.133,-0.125,0.4
+B,G6,ragu,ragu_nf30,15,any_unsupported,0.2,0.267,0.067,-0.214,0.333
+B,G6,ragu,ragu_nf30,15,refusal,0.0,0.067,0.067,-0.0,0.214
+B,G6,ragu,ragu_nf30,15,solved,0.333,0.4,0.067,-0.2,0.357
+B,G7,menon,ragu,42,vital_recall,0.486,0.61,0.124,0.006,0.257
+B,G7,menon,ragu,42,recall,0.475,0.543,0.068,-0.016,0.156
+B,G7,menon,ragu,42,contradiction,0.333,0.405,0.071,-0.135,0.286
+B,G7,menon,ragu,42,any_unsupported,0.095,0.095,-0.0,-0.119,0.111
+B,G7,menon,ragu,42,refusal,0.095,0.048,-0.048,-0.116,-0.0
+B,G7,menon,ragu,42,solved,0.19,0.262,0.071,-0.093,0.237
+B,G7,menon,ragu_nf30,15,vital_recall,0.394,0.494,0.101,0.011,0.204
+B,G7,menon,ragu_nf30,15,recall,0.425,0.494,0.069,-0.034,0.167
+B,G7,menon,ragu_nf30,15,contradiction,0.267,0.2,-0.067,-0.357,0.214
+B,G7,menon,ragu_nf30,15,any_unsupported,0.0,0.133,0.133,-0.0,0.312
+B,G7,menon,ragu_nf30,15,refusal,0.133,0.133,-0.0,-0.0,-0.0
+B,G7,menon,ragu_nf30,15,solved,0.133,0.267,0.133,-0.0,0.357
+B,G7,ragu,ragu_nf30,15,vital_recall,0.442,0.494,0.053,-0.17,0.276
+B,G7,ragu,ragu_nf30,15,recall,0.412,0.494,0.082,-0.058,0.247
+B,G7,ragu,ragu_nf30,15,contradiction,0.333,0.2,-0.133,-0.357,-0.0
+B,G7,ragu,ragu_nf30,15,any_unsupported,0.067,0.133,0.067,-0.0,0.231
+B,G7,ragu,ragu_nf30,15,refusal,0.067,0.133,0.067,-0.0,0.231
+B,G7,ragu,ragu_nf30,15,solved,0.2,0.267,0.067,-0.154,0.308
+B,L1,menon,ragu,104,vital_recall,0.896,0.927,0.031,-0.034,0.095
+B,L1,menon,ragu,104,recall,0.83,0.819,-0.011,-0.061,0.038
+B,L1,menon,ragu,104,contradiction,0.048,0.067,0.019,-0.027,0.065
+B,L1,menon,ragu,104,any_unsupported,0.087,0.096,0.01,-0.071,0.088
+B,L1,menon,ragu,104,refusal,0.0,0.0,-0.0,-0.0,-0.0
+B,L1,menon,ragu,104,solved,0.827,0.846,0.019,-0.083,0.126
+B,L1,menon,ragu_nf30,25,vital_recall,0.87,0.85,-0.02,-0.184,0.123
+B,L1,menon,ragu_nf30,25,recall,0.825,0.83,0.005,-0.112,0.124
+B,L1,menon,ragu_nf30,25,contradiction,0.08,0.04,-0.04,-0.174,0.083
+B,L1,menon,ragu_nf30,25,any_unsupported,0.08,0.28,0.2,-0.0,0.417
+B,L1,menon,ragu_nf30,25,refusal,0.0,0.0,-0.0,-0.0,-0.0
+B,L1,menon,ragu_nf30,25,solved,0.8,0.76,-0.04,-0.217,0.125
+B,L1,ragu,ragu_nf30,25,vital_recall,0.907,0.85,-0.057,-0.132,0.007
+B,L1,ragu,ragu_nf30,25,recall,0.808,0.83,0.022,-0.053,0.105
+B,L1,ragu,ragu_nf30,25,contradiction,0.04,0.04,-0.0,-0.12,0.125
+B,L1,ragu,ragu_nf30,25,any_unsupported,0.2,0.28,0.08,-0.167,0.333
+B,L1,ragu,ragu_nf30,25,refusal,0.0,0.0,-0.0,-0.0,-0.0
+B,L1,ragu,ragu_nf30,25,solved,0.8,0.76,-0.04,-0.185,0.083
+B,L2,menon,ragu,90,vital_recall,0.92,0.849,-0.071,-0.135,-0.01
+B,L2,menon,ragu,90,recall,0.827,0.774,-0.053,-0.101,-0.001
+B,L2,menon,ragu,90,contradiction,0.089,0.111,0.022,-0.035,0.082
+B,L2,menon,ragu,90,any_unsupported,0.033,0.067,0.033,-0.022,0.089
+B,L2,menon,ragu,90,refusal,0.011,0.033,0.022,-0.021,0.067
+B,L2,menon,ragu,90,solved,0.844,0.778,-0.067,-0.138,-0.0
+B,L2,menon,ragu_nf30,25,vital_recall,0.94,0.76,-0.18,-0.362,0
+B,L2,menon,ragu_nf30,25,recall,0.789,0.655,-0.134,-0.272,-0.0
+B,L2,menon,ragu_nf30,25,contradiction,0.04,0.08,0.04,-0.0,0.12
+B,L2,menon,ragu_nf30,25,any_unsupported,0.04,0.16,0.12,-0.042,0.286
+B,L2,menon,ragu_nf30,25,refusal,0.0,0.08,0.08,-0.0,0.192
+B,L2,menon,ragu_nf30,25,solved,0.92,0.76,-0.16,-0.355,0.043
+B,L2,ragu,ragu_nf30,25,vital_recall,0.933,0.76,-0.173,-0.359,-0.025
+B,L2,ragu,ragu_nf30,25,recall,0.794,0.655,-0.139,-0.255,-0.043
+B,L2,ragu,ragu_nf30,25,contradiction,0.08,0.08,-0.0,-0.111,0.125
+B,L2,ragu,ragu_nf30,25,any_unsupported,0.08,0.16,0.08,-0.071,0.24
+B,L2,ragu,ragu_nf30,25,refusal,0.0,0.08,0.08,-0.0,0.192
+B,L2,ragu,ragu_nf30,25,solved,0.88,0.76,-0.12,-0.25,-0.0

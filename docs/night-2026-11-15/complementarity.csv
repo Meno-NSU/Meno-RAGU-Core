@@ -1,0 +1,7 @@
+set,system_a,system_b,n,both_solved,only_a,only_b,neither
+A,menon,ragu,200,68,16,20,96
+A,menon,ragu_nf30,153,47,19,15,72
+A,ragu,ragu_nf30,155,54,16,8,77
+B,menon,ragu,527,197,57,77,196
+B,menon,ragu_nf30,155,46,22,20,67
+B,ragu,ragu_nf30,155,55,22,11,67
