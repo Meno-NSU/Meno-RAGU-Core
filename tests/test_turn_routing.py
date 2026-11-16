@@ -108,3 +108,64 @@ def test_a_question_after_an_unanswered_one_is_answered_with_that_turn_in_the_hi
     assert outcome.question == "ФИТ" and "Привет" in outcome.prepared_dialogue_history
     outcome = asyncio.run(pipeline(dialogue_memory=False).prepare(messages=messages, runtime=RUNTIME))
     assert outcome.question == "ФИТ" and outcome.prepared_dialogue_history == ""
+
+
+class RecordingLLM(RoutedLLM):
+    """Writes each LLM call into the log the stage events go to, so their order shows."""
+
+    def __init__(self, route, log, failing_stage=None):
+        super().__init__(route)
+        self.log, self.failing_stage = log, failing_stage
+
+    async def chat_completion_text(self, **kwargs):
+        self.log.append(("llm", kwargs.get("stage")))
+        if kwargs.get("stage") == self.failing_stage:
+            raise RuntimeError("model down")
+        return await super().chat_completion_text(**kwargs)
+
+
+def staged(route, question="Спасибо!", failing_stage=None):
+    log, events = [], []
+    p = pipeline()
+    p.llm_router = RecordingLLM(route, log, failing_stage)
+
+    async def sink(event):
+        log.append((event.stage, event.status))
+        events.append(event)
+
+    run = p.prepare(messages=[ChatMessage(role="user", content=question)], runtime=RUNTIME, stage_sink=sink)
+    try:
+        outcome = asyncio.run(run)
+    except RuntimeError:
+        outcome = None
+    return log, [event for event in events if event.stage == "query_rewrite"], outcome
+
+
+def test_the_rewrite_stage_opens_before_the_turn_analysis_and_closes_after_the_rewrite():
+    log, events, outcome = staged("nsu", "Как поступить на ФИТ?")
+    assert [event.status for event in events] == ["started", "completed"]
+    assert (log.index(("query_rewrite", "started")) < log.index(("llm", "turn_routing"))
+            < log.index(("llm", "query_rewrite")) < log.index(("query_rewrite", "completed")))
+    detail = outcome.stage_details["query_rewrite"]
+    assert events[1].detail == detail and detail["route"] == "nsu" and detail["search_queries"]
+    assert set(detail) == {"resolved_coreferences", "search_queries", "route", "standalone_question", "subqueries",
+                           "analysis_fallback", "focus"}
+    assert outcome.stage_durations_ms["query_rewrite"] == events[1].duration_ms
+
+
+def test_a_turn_without_search_still_shows_the_rewrite_stage_with_its_route():
+    log, events, outcome = staged("chitchat")
+    assert [event.status for event in events] == ["started", "completed"]
+    assert log.index(("query_rewrite", "started")) < log.index(("llm", "turn_routing")) < log.index(
+        ("query_rewrite", "completed"))
+    assert ("llm", "query_rewrite") not in log
+    assert events[1].detail == outcome.stage_details["query_rewrite"] == {
+        "route": "chitchat", "standalone_question": "Спасибо!", "subqueries": [], "analysis_fallback": False,
+        "focus": ""}
+    assert outcome.stage_durations_ms["query_rewrite"] == events[1].duration_ms
+
+
+def test_a_failed_rewrite_fails_the_stage_opened_before_the_turn_analysis():
+    log, events, outcome = staged("nsu", "Как поступить на ФИТ?", failing_stage="query_rewrite")
+    assert outcome is None and [event.status for event in events] == ["started", "failed"]
+    assert log.index(("query_rewrite", "started")) < log.index(("llm", "turn_routing"))

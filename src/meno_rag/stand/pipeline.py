@@ -62,7 +62,7 @@ from meno_rag.stand.routing import (
 from meno_rag.stand.sampling import QaSampling, RerankSampling, RewriteSampling
 from meno_rag.stand.search import combine_relevant_chunks
 from meno_rag.stand.trace import build_pipeline_trace, model_runtime_trace
-from meno_rag.stand.turn_analysis import analyze
+from meno_rag.stand.turn_analysis import TurnAnalysis, analyze
 
 logger = structlog.get_logger(__name__)
 
@@ -183,26 +183,37 @@ class StandRagPipeline:
         route: str | None  # None: turn routing is off
         if memory is not None and self.settings.turn_routing:
             # One analysis call (Menon 1.1): the route and a question that stands without the history; the rewrite
-            # then works from that question, and the sub-queries of comparisons and lists join the search.
-            analysis = await analyze(self.llm_router, runtime.core, question=question, recent=memory.recent,
-                                     summary=memory.summary, today=date.today(),
-                                     timeout_s=self.settings.rewrite_timeout_seconds)
+            # then works from that question, and the sub-queries of comparisons and lists join the search. Both run
+            # in the rewrite stage, so the site shows it in progress from the start of the analysis (Menon 1.1 too).
+            async def analyze_and_rewrite() -> tuple[TurnAnalysis, list[str] | None]:
+                analysis = await analyze(self.llm_router, runtime.core, question=question, recent=memory.recent,
+                                         summary=memory.summary, today=date.today(),
+                                         timeout_s=self.settings.rewrite_timeout_seconds)
+                if analysis.route in NO_SEARCH_ROUTES:
+                    return analysis, None
+                rewritten = await self._rewrite_question(analysis.standalone_question, prepared_dialogue_history,
+                                                         runtime.core)
+                return analysis, rewritten
+
+            def analysis_detail(result: tuple[TurnAnalysis, list[str] | None]) -> dict[str, Any]:
+                analysis, rewritten = result
+                detail = {} if rewritten is None else self._stage_detail(StageName.QUERY_REWRITE, rewritten)
+                return {**detail, "route": analysis.route, "standalone_question": analysis.standalone_question,
+                        "subqueries": analysis.subqueries, "analysis_fallback": analysis.fallback,
+                        "focus": analysis.focus}
+
+            analysis, rewritten = await self._timed_stage(
+                StageName.QUERY_REWRITE,
+                emit,
+                analyze_and_rewrite,
+                stage_durations,
+                stage_details,
+                model_id=runtime.core.model_id,
+                detail_of=analysis_detail,
+            )
             route, search_question = analysis.route, analysis.standalone_question
-            searching = route not in NO_SEARCH_ROUTES
-            search_queries = []
-            if searching:
-                search_queries = await self._timed_stage(
-                    StageName.QUERY_REWRITE,
-                    emit,
-                    lambda: self._rewrite_question(search_question, prepared_dialogue_history, runtime.core),
-                    stage_durations,
-                    stage_details,
-                    model_id=runtime.core.model_id,
-                )
-                search_queries = list(dict.fromkeys([*search_queries, *analysis.subqueries]))
-            details = stage_details.setdefault(StageName.QUERY_REWRITE, {})
-            details.update(route=route, standalone_question=search_question, subqueries=analysis.subqueries,
-                           analysis_fallback=analysis.fallback, focus=analysis.focus)
+            searching = rewritten is not None
+            search_queries = list(dict.fromkeys([*rewritten, *analysis.subqueries])) if rewritten is not None else []
         else:
             # The kind of the turn (routing.py) is asked next to the rewrite, so it costs no extra latency.
             route_task = (asyncio.create_task(self._route_turn(question, prepared_dialogue_history, runtime.core))
@@ -497,7 +508,9 @@ class StandRagPipeline:
         durations: dict[str, float],
         details: dict[str, dict[str, Any]],
         model_id: str | None = None,
+        detail_of: Callable[[Any], dict[str, Any]] | None = None,
     ) -> Any:
+        """`detail_of` builds the stage detail from the result instead of `_stage_detail`."""
         await emit(stage_name, StageStatus.STARTED, None, None, model_id)
         started = time.perf_counter()
         try:
@@ -505,7 +518,7 @@ class StandRagPipeline:
             if hasattr(result, "__await__"):
                 result = await result
             duration_ms = round((time.perf_counter() - started) * 1000, 2)
-            detail = self._stage_detail(stage_name, result)
+            detail = detail_of(result) if detail_of is not None else self._stage_detail(stage_name, result)
             durations[stage_name] = duration_ms
             details[stage_name] = detail
             await emit(stage_name, StageStatus.COMPLETED, duration_ms, detail, model_id)
