@@ -94,3 +94,46 @@ def test_context_budget_drops_oversize_graph_and_its_sources():
     context, sources = p._assemble_context(selection)
     assert len(context) <= 20
     assert sources == []
+
+
+@pytest.mark.asyncio
+async def test_the_search_queries_of_one_question_run_at_once_and_keep_their_order():
+    # They used to run one after another: a question with three rewrites waited for three searches in a row.
+    p = pipeline()
+    p.embed_semaphore = asyncio.Semaphore(8)
+    state = {"active": 0, "maximum": 0}
+    original = p.resources.graph.search
+
+    async def slow(query):
+        state["active"] += 1
+        state["maximum"] = max(state["maximum"], state["active"])
+        await asyncio.sleep(0.01)
+        state["active"] -= 1
+        return await original(query)
+
+    p.resources.graph.search = slow
+    batches = await p._retrieve(["ФИТ", "ММФ", "ФИТ НГУ"])
+    assert [b["query"] for b in batches] == ["ФИТ", "ММФ", "ФИТ НГУ"]
+    assert state["maximum"] == 3
+
+
+@pytest.mark.asyncio
+async def test_a_short_prompt_is_not_sent_to_the_tokenizer_once_the_context_length_is_known():
+    # A token is at least one character, so a prompt shorter than the context in characters always fits; the
+    # tokenizer round trip (one per reranked candidate) is needed only near the limit.
+    p = pipeline()
+    calls = []
+
+    async def tokenize(*, runtime, messages, chat_template_kwargs=None):
+        calls.append(sum(len(m["content"]) for m in messages))
+        return sum(len(m["content"]) for m in messages), 1000
+
+    p.llm_router.tokenize_messages = tokenize
+    runtime = ModelRuntime("meno", "http://fake/v1")
+    short = [{"role": "user", "content": "а" * 100}]
+    long = [{"role": "user", "content": "а" * 990}]
+    assert await p._prompt_fits(short, runtime, 20)  # first call learns the context length
+    assert await p._prompt_fits(short, runtime, 20)
+    assert len(calls) == 1
+    assert not await p._prompt_fits(long, runtime, 20)  # near the limit the tokenizer still decides
+    assert len(calls) == 2

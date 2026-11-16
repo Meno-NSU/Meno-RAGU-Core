@@ -23,13 +23,28 @@ async def rerank_with_scores(query, items, text_getter, reranker):
     return [items[index] for index, _ in ranked], [score for _, score in ranked]
 
 
-async def find_related_text_units(entities, knowledge_graph, edges_by_entity, neighbor_chunks):
+async def find_related_text_units(entities, knowledge_graph, edges_by_entity, neighbor_chunks, limit=None):
+    """The source chunks of the entities, in entity order and, within an entity, by how many of its relations lead
+    to neighbors that share the chunk (ragu's ordering). With ``limit`` only the first ``limit`` chunks are built: the
+    caller keeps no more than that, and the order puts every chunk of an earlier entity first, so entities after the
+    one that fills the limit cannot change the result. A hub entity (the university, a faculty) has tens of thousands
+    of relations and source chunks; building all of them took 10–15 s of CPU on the one search thread."""
     lookup = {}
+    neighbor_sets = {}
+    kept = 0
+
+    def chunk_set(neighbor_id):
+        found = neighbor_sets.get(neighbor_id)
+        if found is None:
+            found = neighbor_sets[neighbor_id] = frozenset(neighbor_chunks[neighbor_id])
+        return found
+
     for order, entity in enumerate(entity for entity in entities if entity and entity.id):
         await asyncio.sleep(0)
         source_ids = dict.fromkeys(chunk_id for chunk_id in entity.source_chunk_id if chunk_id not in lookup)
         if not source_ids:
             continue
+        source_set = set(source_ids)
         neighbor_counts = Counter()
         for index, edge in enumerate(edges_by_entity.get(entity.id, [])):
             if index and index % 4096 == 0:
@@ -48,15 +63,38 @@ async def find_related_text_units(entities, knowledge_graph, edges_by_entity, ne
         for index, (neighbor_id, multiplicity) in enumerate(neighbor_counts.items()):
             if index and index % 128 == 0:
                 await asyncio.sleep(0)
-            for chunk_id in set(neighbor_chunks[neighbor_id]).intersection(source_ids):
+            # both are sets: `&` walks the smaller one (a neighbor has a few chunks, a hub tens of thousands)
+            for chunk_id in chunk_set(neighbor_id) & source_set:
                 counts[chunk_id] += multiplicity
-        for chunk_id in source_ids:
-            lookup[chunk_id] = {'order': order, 'relation_counts': counts[chunk_id]}
+        entity_chunks = [{'id': chunk_id, 'order': order, 'relation_counts': counts[chunk_id]}
+                         for chunk_id in source_ids]
+        if limit is not None:
+            entity_chunks.sort(key=lambda item: -item['relation_counts'])  # stable: ties keep the source order
+            # chunks without a stored payload are dropped below, so the limit counts only chunks that exist
+            for start in range(0, len(entity_chunks), max(limit, 1)):
+                batch = entity_chunks[start:start + max(limit, 1)]
+                payloads = await knowledge_graph.index.chunks_kv_storage.get_by_ids([item['id'] for item in batch])
+                for item, payload in zip(batch, payloads, strict=False):
+                    item['data'] = payload
+                    lookup[item['id']] = item
+                    kept += payload is not None
+                    if kept >= limit:
+                        break
+                if kept >= limit:
+                    break
+            for item in entity_chunks:  # the rest of this entity's chunks stay claimed, as without the limit
+                lookup.setdefault(item['id'], {**item, 'data': None})
+            if kept >= limit:
+                break
+        else:
+            for item in entity_chunks:
+                lookup[item['id']] = item
     if not lookup:
         return []
-    payloads = await knowledge_graph.index.chunks_kv_storage.get_by_ids(list(lookup))
-    for chunk_id, payload in zip(lookup, payloads, strict=False):
-        lookup[chunk_id]['data'] = payload
+    if limit is None:
+        payloads = await knowledge_graph.index.chunks_kv_storage.get_by_ids(list(lookup))
+        for item, payload in zip(lookup.values(), payloads, strict=False):
+            item['data'] = payload
     ordered = sorted(lookup.values(), key=lambda item: (item['order'], -item['relation_counts']))
     chunks = []
     for index, item in enumerate(ordered):
@@ -64,6 +102,8 @@ async def find_related_text_units(entities, knowledge_graph, edges_by_entity, ne
             await asyncio.sleep(0)
         if item['data'] is not None:
             chunks.append(Chunk(**item['data']))
+            if limit is not None and len(chunks) >= limit:
+                break
     return chunks
 
 
@@ -117,7 +157,8 @@ class EfficientLocalSearchEngine(LocalSearchEngine):
         entities = ranked_entities
         relations, chunks, summaries, documents_id = await asyncio.gather(
             _find_most_related_edges_from_entities(entities, edges_by_entity),
-            find_related_text_units(entities, self.knowledge_graph, edges_by_entity, neighbor_chunks),
+            find_related_text_units(entities, self.knowledge_graph, edges_by_entity, neighbor_chunks,
+                                    limit=self.max_related_candidates or None),
             _find_most_related_community_from_entities(entities, self.knowledge_graph),
             _find_documents_id(entities),
         )

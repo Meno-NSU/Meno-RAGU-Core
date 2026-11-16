@@ -203,3 +203,43 @@ def test_search_passes_the_cross_encoder_scores_of_the_anchor_entities(monkeypat
         assert result.metrics['entities'] == [{'id': 'b', 'name': 'Факультет', 'rank': 0, 'relevance_score': 0.5,
                                                'rerank_score': 0.95}]
     asyncio.run(run())
+
+
+@pytest.mark.parametrize('seed', range(8))
+@pytest.mark.parametrize('limit', [1, 3, 7, 50])
+def test_a_limit_gives_exactly_the_first_chunks_of_the_full_selection(seed, limit):
+    # The engine keeps only the first `max_related_candidates` chunks; computing just those must not change them.
+    async def run():
+        rng = random.Random(seed)
+        ids = [f'c{index}' for index in range(40)]
+        entities = [Entity(f'E{index}', 'TYPE', '', rng.choices(ids, k=15), id=f'e{index}') for index in range(6)]
+        neighbors = {entity.id: entity.source_chunk_id for entity in entities}
+        edges = {}
+        for entity in entities:
+            edges[entity.id] = []
+            for index in range(12):
+                other = rng.choice(entities)
+                subject, target = (entity.id, other.id) if index % 2 else (other.id, entity.id)
+                edges[entity.id].append(Relation(subject, target, subject, target, f'K{index}', ''))
+        payloads = {chunk_id: {'content': chunk_id, 'chunk_order_idx': 0, 'doc_id': 'doc'}
+                    for chunk_id in ids if rng.randrange(5)}
+        full = await _find_most_related_text_unit_from_entities(entities, graph(payloads), edges, neighbors)
+        limited = await find_related_text_units(entities, graph(payloads), edges, neighbors, limit=limit)
+        assert [asdict(item) for item in limited] == [asdict(item) for item in full[:limit]]
+    asyncio.run(run())
+
+
+def test_a_hub_entity_reads_only_the_chunks_it_keeps():
+    async def run():
+        ids = [f'c{index}' for index in range(5000)]
+        hub = Entity('НГУ', 'ORGANIZATION', '', ids, id='hub')
+        edges = {'hub': [Relation('hub', f'n{index}', 'hub', f'n{index}', 'R', '') for index in range(3000)]}
+        neighbors = {f'n{index}': [ids[index], ids[index + 1]] for index in range(3000)}
+        payloads = {chunk_id: {'content': chunk_id, 'chunk_order_idx': 0, 'doc_id': 'doc'} for chunk_id in ids}
+        knowledge_graph = graph(payloads)
+        chunks = await find_related_text_units([hub], knowledge_graph, edges, neighbors, limit=200)
+        read = sum(len(call.args[0]) for call in knowledge_graph.index.chunks_kv_storage.get_by_ids.call_args_list)
+        assert len(chunks) == 200 and read == 200
+        full = await _find_most_related_text_unit_from_entities([hub], graph(payloads), edges, neighbors)
+        assert [chunk.content for chunk in chunks] == [chunk.content for chunk in full[:200]]
+    asyncio.run(run())
