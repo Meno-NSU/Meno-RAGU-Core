@@ -1,11 +1,13 @@
 """Post-hoc source attribution, as in Menon 1.1: the sources of an answer are the context pieces its sentences rest on.
 
 Every sentence of the answer is scored against every evidence unit of the context with the cross-encoder
-(bge-reranker-v2-m3, the stand's reranker service). Of the units a sentence scores at least the threshold against, it
-is attributed to the one with the best score times the quality of its document to the power ``prior_weight`` (the
-same authority prior as the context selection): a post that only repeats what an NSU page says is not shown, while a
-post that supports a sentence much better than a page, or alone, is. The shown sources are the links of the units some
-sentence is attributed to, best first, one row per page.
+(bge-reranker-v2-m3, the stand's reranker service); a unit counts when some sentence scores at least the threshold
+against it. The shown sources are the links of those units, one row per page, ordered by the best score a sentence
+gives the unit times the quality of its document to the power ``prior_weight`` (the same authority prior as the
+context selection): under the cut of MAX_SOURCES a post that supports the answer as well as an NSU page goes after
+it, and a post that supports it clearly better stays ahead. (Attributing each sentence to its single best unit cut
+the sources from 4.6 to 3.0 per answer and lost the gold page in 11 of 81 answers; the order alone kept it in 51 of
+52 and cut the posts among the sources from 16% to 9%.)
 
 A unit is a chunk of a context document with the document's link. A document compiled from several pages (the
 handbook summaries list many URLs) is split into lines instead, and each line carries the link written in it: the
@@ -172,24 +174,20 @@ def page_titles(documents: Sequence[dict[str, Any]]) -> dict[str, str]:
 
 async def attribute(answer: str, units: Sequence[EvidenceUnit], scorer: Scorer, threshold: float,
                     prior_weight: float = 0.0) -> list[tuple[EvidenceUnit, float]]:
-    """The units the answer's sentences are attributed to, with the best score a sentence attributed to the unit
-    gave it, ordered by that score times the unit's prior to the power ``prior_weight``."""
+    """The units some sentence of the answer scores at least ``threshold`` against, with their best score, ordered by
+    the best of those scores times the unit's prior to the power ``prior_weight``."""
     sentences = split_sentences(answer)
     if not sentences or not units:
         return []
     texts = [unit.text for unit in units]
     weights = [unit.prior ** prior_weight if prior_weight > 0 else 1.0 for unit in units]
-    chosen: dict[int, tuple[float, float]] = {}  # unit index -> (weighted score, score)
+    best = [0.0] * len(units)
     for scores in await asyncio.gather(*(scorer(sentence, texts) for sentence in sentences)):
-        supporting = [(float(score) * weights[index], float(score), index)
-                      for index, score in enumerate(scores) if float(score) >= threshold]
-        if not supporting:
-            continue
-        weighted, score, index = max(supporting, key=lambda row: (row[0], row[1], -row[2]))
-        if weighted > chosen.get(index, (-1.0, 0.0))[0]:
-            chosen[index] = (weighted, score)
-    order = sorted(chosen, key=lambda index: (-chosen[index][0], index))
-    return [(units[index], chosen[index][1]) for index in order]
+        for index, score in enumerate(scores):
+            best[index] = max(best[index], float(score))
+    used = [index for index in range(len(units)) if best[index] >= threshold]
+    used.sort(key=lambda index: (-best[index] * weights[index], -best[index], index))
+    return [(units[index], best[index]) for index in used]
 
 
 def to_sources(scored: Sequence[tuple[EvidenceUnit, float]], max_sources: int) -> list[dict[str, str]]:

@@ -279,12 +279,13 @@ class Settings(BaseSettings):
     history_budget_tokens: int = Field(default=5000, ge=200, validation_alias="HISTORY_BUDGET_TOKENS")
     summary_budget_tokens: int = Field(default=800, ge=100, validation_alias="SUMMARY_BUDGET_TOKENS")
     # Source authority: relevant candidates are ordered by their relevance times quality_score ** this weight (in logs,
-    # RaguRagPipeline._priority; quality on the KB's scale, meno_rag.stand.quality), each sentence of the answer is
-    # attributed to its best support by the same prior (attribution.attribute), and the answer rules say official
+    # RaguRagPipeline._priority; quality on the KB's scale, meno_rag.stand.quality), the sources of the answer are ordered
+    # by their support times the same prior (attribution.attribute), and the answer rules say official
     # documents come before posts. Weight 0: the score alone. Until 17.11 the order took the log-odds of the score, as
     # prod Menon 1.1 does (V2_SOURCE_PRIOR_WEIGHT=2); with the stand's saturated scores that let .002 of retrieval noise
-    # outweigh the source. (Log-odds, weight 1, 323 gold questions of the 558, stand v3k: gold page kept for 236 against
-    # 233 at 0 and 2; posts 24% -> 20%, NSU news 13% -> 8% of the context chunks.)
+    # outweigh the source. 17.11, the 322 gold questions of the 558 on stand v5k (full chunk collection), one LLM rerank
+    # replayed per variant: log-odds at 1 (live) kept the gold page for 251, with posts 19.8% and NSU news 10.0% of the
+    # context chunks; this order at 1 with the KB's quality scale 253, posts 14.5%, news 4.9% (at 1.5: 253, 13.1%, 4.2%).
     source_prior_weight: float = Field(default=1.0, ge=0, validation_alias="SOURCE_PRIOR_WEIGHT")
     source_authority: bool = Field(default=True, validation_alias="SOURCE_AUTHORITY")
     source_attribution_threshold: float = Field(default=0.5, ge=0, le=1, validation_alias="SOURCE_ATTRIBUTION_THRESHOLD")
