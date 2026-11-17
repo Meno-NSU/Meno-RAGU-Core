@@ -25,7 +25,8 @@ async def prepared(p):
 @pytest.mark.asyncio
 async def test_context_chunks_become_evidence_when_sources_are_attributed():
     outcome = await prepared(pipeline(source_scorer=scorer(0.9)))
-    assert outcome.evidence == [{"text": "Факультет НГУ.", "title": "НГУ", "url": "https://example.org/a"}]
+    # prior: the quality of the unit's document (1 without one), the source authority of the attribution
+    assert outcome.evidence == [{"text": "Факультет НГУ.", "title": "НГУ", "url": "https://example.org/a", "prior": 1.0}]
 
 
 @pytest.mark.asyncio

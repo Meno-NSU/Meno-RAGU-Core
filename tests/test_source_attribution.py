@@ -166,3 +166,39 @@ def test_a_chunk_that_starts_inside_a_section_keeps_that_section_page():
                 "doc_full_text": TEACHER, "sections": SECTIONS}
     units = document_units(document, ["Вторник 10:50 лекция Физика 2, аудитория 220 ГК"])
     assert [(unit.url, unit.title) for unit in units] == [("https://table.nsu.ru/teacher/1", "Расписание: Иванов Иван Иванович")]
+
+
+def test_each_sentence_is_attributed_to_its_most_authoritative_support():
+    """A post (quality .55) and an NSU page (.9) both support the first sentence, the post a little better: the page
+    is shown for it; the second sentence rests on the post alone, so the post is shown too, after the page."""
+    post = EvidenceUnit("post", "Пост", "https://vk.com/wall-1_2", 0.55)
+    page = EvidenceUnit("page", "Страница", "https://www.nsu.ru/n/education/apply/", 0.9)
+    answer = "Первое утверждение ответа здесь. Второе утверждение ответа тоже здесь."
+    s1, s2 = split_sentences(answer)
+    table = {(s1, "post"): 0.95, (s1, "page"): 0.9, (s2, "post"): 0.8}
+    assert asyncio.run(attribute(answer, [post, page], scorer_from(table), 0.5, prior_weight=1.0)) == [
+        (page, 0.9), (post, 0.8)]
+
+
+def test_a_post_that_only_repeats_an_official_page_is_not_a_source():
+    post = EvidenceUnit("post", "Пост", "https://t.me/nsuniversity/10695", 0.55)
+    page = EvidenceUnit("page", "Страница", "https://ciep.nsu.ru/postuplenievngu", 0.75)
+    answer = "Документы подают через личный кабинет абитуриента."
+    (s1,) = split_sentences(answer)
+    table = {(s1, "post"): 0.99, (s1, "page"): 0.97}
+    assert asyncio.run(attribute(answer, [post, page], scorer_from(table), 0.5, prior_weight=1.0)) == [(page, 0.97)]
+
+
+def test_a_much_better_supporting_post_beats_a_weak_official_page():
+    post = EvidenceUnit("post", "Пост", "https://vk.com/wall-1_2", 0.55)
+    page = EvidenceUnit("page", "Страница", "https://www.nsu.ru/n/", 0.9)
+    answer = "Первое утверждение ответа здесь."
+    (s1,) = split_sentences(answer)
+    table = {(s1, "post"): 0.98, (s1, "page"): 0.52}
+    assert asyncio.run(attribute(answer, [post, page], scorer_from(table), 0.5, prior_weight=1.0)) == [(post, 0.98)]
+
+
+def test_units_carry_the_quality_of_their_document():
+    units = document_units({"doc_title": "Пост", "url": "https://vk.com/wall-1_2", "quality_score": 0.55},
+                           ["Текст поста о приёмной кампании."])
+    assert [unit.prior for unit in units] == [0.55]

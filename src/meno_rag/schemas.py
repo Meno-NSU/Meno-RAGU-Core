@@ -215,4 +215,4 @@ class PipelineOutcome(BaseModel):
     fewshots: list[dict[str, Any]] = Field(default_factory=list)
     trace: dict | None = None
     # The context pieces the answer can be attributed to ({text, title, url}); internal, never sent or stored.
-    evidence: list[dict[str, str]] = Field(default_factory=list, exclude=True)
+    evidence: list[dict[str, Any]] = Field(default_factory=list, exclude=True)

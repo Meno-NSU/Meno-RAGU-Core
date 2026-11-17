@@ -205,11 +205,22 @@ class GraphSearchEngines:
         ))
 
     async def asearch(self, search_query: str, local_top_k: int = 20, naive_top_k: int = 60,
-                      local_rerank_top_k: Optional[int] = None, naive_rerank_top_k: Optional[int] = None
-                      ) -> Dict[str, Any]:
+                      local_rerank_top_k: Optional[int] = None, naive_rerank_top_k: Optional[int] = None,
+                      use_graph: bool = True) -> Dict[str, Any]:
+        """The graph channel (entities, relations and the chunks they come from) and the chunk channel (hybrid
+        vector + BM25 search over the chunks) for one query. ``use_graph=False`` searches the chunk channel only
+        (GRAPH_CHANNEL=false of the stand: what the graph adds is measured against it)."""
+        naive_params = NaiveSearchParams(top_k=naive_top_k, rerank_top_k=naive_rerank_top_k)
+        if not use_graph:
+            naive_retrieval = await self.naive_engine.search(search_query, params=naive_params)
+            naive_scores = list(getattr(naive_retrieval.result, 'scores', None) or [])
+            if naive_scores and len(naive_scores) == len(naive_retrieval.result.chunks):
+                chunks = self._map_chunks(naive_retrieval.result.chunks, naive_scores)
+            else:
+                chunks = self._chunks_from_retrieval(naive_retrieval, rank_based=False)
+            return {'chunks': chunks, 'entities': [], 'relations': [], 'num_relations': 0, 'num_summaries': 0}
         local_params = LocalParams(top_k=local_top_k, use_summary=False, use_chunks=True,
                                    rerank_top_k=local_rerank_top_k)
-        naive_params = NaiveSearchParams(top_k=naive_top_k, rerank_top_k=naive_rerank_top_k)
 
         async def search_both() -> Tuple[Any, Any]:
             local_retrieval, naive_retrieval = await asyncio.gather(

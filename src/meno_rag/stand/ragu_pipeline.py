@@ -33,21 +33,29 @@ class GraphSelection(_RerankOutput):
 
 class RaguRagPipeline(StandRagPipeline):
     def _priority(self, candidate: Candidate, merged: float) -> float:
-        """The order of relevant candidates, as Menon 1.1 orders them (v2/prompting.py priority, prod
-        V2_SOURCE_PRIOR_WEIGHT=2): the log-odds of the merged score plus SOURCE_PRIOR_WEIGHT * ln(quality of the
-        source document), so a comparably relevant official page goes before a post (posts of the KB have quality
-        about .55, NSU pages .73-.95) and a clearly better post stays ahead. Graph elements have prior 1; weight 0
-        keeps the merged score itself."""
+        """The order of relevant candidates: the merged relevance times the quality of the source document to the
+        power SOURCE_PRIOR_WEIGHT, in logs (ln merged + weight * ln quality), so a comparably relevant official page
+        goes before a post (posts of the KB have quality about .55, NSU pages .73-.95) and a clearly better post
+        stays ahead.
+
+        Not the log-odds of the merged score (Menon 1.1's priority): the LLM labels of the stand saturate at 1.0 and
+        the cross-encoder near .99, and the log-odds stretch that end, so .999 against .997 of the retrieval score
+        outweighed the source (17.11, "Как поступить в НГУ?": seven posts kept, nsu.ru/n/education/apply/ with LLM
+        score 1.0 left out). Graph elements have prior 1; weight 0 keeps the merged score itself."""
         weight = self.settings.source_prior_weight
         if weight <= 0:
             return merged
-        prior = 1.0
-        if candidate.chunk_id is not None:
-            mapping = self.resources.chunk_mapping.get(str(candidate.chunk_id))
-            if mapping is not None:
-                prior = float(self.resources.documents[mapping["doc_index"]].get("quality_score") or 1.0)
-        p = min(max(merged, 1e-6), 1 - 1e-6)
-        return math.log(p / (1 - p)) + weight * math.log(min(max(prior, 0.05), 1.0))
+        return math.log(min(max(merged, 1e-6), 1.0)) + weight * math.log(self._source_quality(candidate))
+
+    def _source_quality(self, candidate: Candidate) -> float:
+        """The quality of the candidate's source document (KB scale, .05-1); 1 for graph elements."""
+        if candidate.chunk_id is None:
+            return 1.0
+        mapping = self.resources.chunk_mapping.get(str(candidate.chunk_id))
+        if mapping is None:
+            return 1.0
+        prior = float(self.resources.documents[mapping["doc_index"]].get("quality_score") or 1.0)
+        return min(max(prior, 0.05), 1.0)
 
     async def _retrieve(self, search_queries):
         # The queries of one question run at once (still within embed_semaphore): the search mostly waits for the

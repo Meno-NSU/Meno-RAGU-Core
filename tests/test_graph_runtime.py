@@ -77,3 +77,27 @@ async def test_graph_timeout_cancels_search_on_its_owner_loop(monkeypatch):
         await runtime.search("slow")
     await runtime.aclose()
     assert state["cancelled"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("value", "expected"), [("true", True), ("false", False)])
+async def test_the_graph_channel_switch_reaches_the_engine(monkeypatch, value, expected):
+    seen = {}
+
+    async def search(**kwargs):
+        seen.update(kwargs)
+        return {}
+
+    def load(self):
+        self.engines = SimpleNamespace(event_loop=asyncio.new_event_loop(), asearch=search)
+
+    async def close(self):
+        return None
+
+    monkeypatch.setattr(GraphRuntime, "_load", load)
+    monkeypatch.setattr(GraphRuntime, "_close_clients", close)
+    monkeypatch.setenv("GRAPH_CHANNEL", value)
+    runtime = GraphRuntime(Settings(_env_file=None))
+    await runtime.search("a")
+    await runtime.aclose()
+    assert seen["use_graph"] is expected

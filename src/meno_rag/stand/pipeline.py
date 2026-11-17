@@ -387,7 +387,7 @@ class StandRagPipeline:
             evidence=self._evidence_units(reranked_global_chunks) if self.late_sources else [],
         )
 
-    def _evidence_units(self, chunks: Any) -> list[dict[str, str]]:
+    def _evidence_units(self, chunks: Any) -> list[dict[str, Any]]:
         """The chunks of the final context (the documents' and those the graph elements name), as units the answer
         can be attributed to; a document compiled from several pages is split into lines with their own links."""
         by_document: dict[int, list[int]] = {}
@@ -396,7 +396,7 @@ class StandRagPipeline:
                 mapping = self.resources.chunk_mapping.get(str(chunk_id))
                 if mapping is not None and chunk_id not in by_document.setdefault(mapping["doc_index"], []):
                     by_document[mapping["doc_index"]].append(chunk_id)
-        units: list[dict[str, str]] = []
+        units: list[dict[str, Any]] = []
         for document_index, chunk_ids in by_document.items():
             ordered = sorted(chunk_ids, key=lambda cid: self.resources.chunk_mapping[str(cid)]["local_chunk_index"])
             texts = [global_chunk_index_to_text(cid, self.resources.documents, self.resources.chunk_mapping)
@@ -405,7 +405,7 @@ class StandRagPipeline:
             # a page split into several documents is shown under the page's title, not the title of one part; the
             # sections of a document of several pages carry their own titles
             whole_page = len(normalize_urls(document.get("url"))) == 1 and not document.get("sections")
-            units.extend({"text": unit.text, "url": unit.url,
+            units.extend({"text": unit.text, "url": unit.url, "prior": unit.prior,
                           "title": self.page_titles.get(norm_url(unit.url), unit.title) if whole_page else unit.title}
                          for unit in document_units(document, texts))
         return units
@@ -416,11 +416,13 @@ class StandRagPipeline:
             return outcome.sources
         try:
             units = [EvidenceUnit(**unit) for unit in outcome.evidence]
-            scored = await attribute(answer, units, self.source_scorer, self.settings.source_attribution_threshold)
+            scored = await attribute(answer, units, self.source_scorer, self.settings.source_attribution_threshold,
+                                     prior_weight=self.settings.source_prior_weight)
             outcome.sources = to_sources(scored, self.settings.max_sources)
             if outcome.trace is not None:
                 outcome.trace["source_attribution"] = [
-                    {"title": unit.title, "url": unit.url, "score": round(score, 4)} for unit, score in scored]
+                    {"title": unit.title, "url": unit.url, "score": round(score, 4), "prior": unit.prior}
+                    for unit, score in scored]
         except Exception as exc:  # an answer without sources beats a failed turn
             logger.warning("source_attribution_failed", error=repr(exc))
             outcome.sources = []

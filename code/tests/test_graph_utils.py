@@ -650,3 +650,22 @@ def test_collection_manifest_keeps_names_after_graph_directory_moves(tmp_path):
         collection_names={'vdb_chunk': 'original_chunks'}, location=':memory:',
     )
     assert storage.collection_name == 'original_chunks'
+
+
+class TestGraphChannelSwitch:
+    """GRAPH_CHANNEL=false: the stand searches the chunk channel only, to measure what the graph adds on top of it."""
+
+    def test_without_the_graph_channel_only_the_chunk_channel_searches(self):
+        texts = ['фрагмент один', 'фрагмент два']
+        mapping = build_chunk_mapping(texts, [0, 1])
+        chunks = [_make_chunk(compute_mdhash_id(t, prefix=CHUNK_ID_PREFIX), t) for t in texts]
+
+        async def no_graph(query, params=None):
+            raise AssertionError('the graph channel must not be searched')
+
+        engines = GraphSearchEngines(local_engine=SimpleNamespace(search=no_graph),
+                                     naive_engine=SimpleNamespace(search=_returning(_make_retrieval(chunks, scores=[0.4, 0.8]))),
+                                     chunk_to_global=mapping)
+        pool = asyncio.run(engines.asearch('вопрос', use_graph=False))
+        assert pool['chunks'] == [(1, 0.8), (0, 0.4)]
+        assert pool['entities'] == [] and pool['relations'] == []

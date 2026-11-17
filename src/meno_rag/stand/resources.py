@@ -86,6 +86,7 @@ class GraphRuntime:
             naive_top_k=self.settings.top_k,
             local_rerank_top_k=self.settings.engine_rerank_top_k if self.settings.engine_reranker_model else None,
             naive_rerank_top_k=self.settings.engine_rerank_top_k if self.settings.engine_reranker_model else None,
+            use_graph=self.settings.graph_channel,
         )
         started = time.perf_counter()
         logger.info("graph_search_started", local_top_k=self.settings.graph_top_k, naive_top_k=self.settings.top_k)
@@ -126,11 +127,14 @@ class StandResources:
 
 
 DOCUMENT_DATES_NAME = "document_dates.json"
+# document index -> quality on the KB scale (meno_rag.stand.quality; scripts/stand_document_quality.py)
+DOCUMENT_QUALITY_NAME = "document_quality.json"
 
 
 def _load_documents(path: Path) -> tuple[list[dict[str, Any]], int]:
     """The stand corpus; documents get their dates from ``document_dates.json`` next to it (document index ->
-    date, from the KB release's chunk metadata), when the stand has one."""
+    date, from the KB release's chunk metadata) and their quality from ``document_quality.json`` (document index ->
+    quality on the KB's scale), when the stand has them."""
     documents = []
     missing = 0
     with path.open(encoding="utf-8") as fp:
@@ -151,6 +155,11 @@ def _load_documents(path: Path) -> tuple[list[dict[str, Any]], int]:
         for index, date in json.loads(dates_path.read_text(encoding="utf-8")).items():
             if date and 0 <= int(index) < len(documents):
                 documents[int(index)].setdefault("date", date)
+    quality_path = path.parent / DOCUMENT_QUALITY_NAME
+    if quality_path.is_file():
+        for index, quality in json.loads(quality_path.read_text(encoding="utf-8")).items():
+            if quality is not None and 0 <= int(index) < len(documents):
+                documents[int(index)]["quality_score"] = float(quality)
     return documents, missing
 
 

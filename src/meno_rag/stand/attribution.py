@@ -1,8 +1,11 @@
 """Post-hoc source attribution, as in Menon 1.1: the sources of an answer are the context pieces its sentences rest on.
 
 Every sentence of the answer is scored against every evidence unit of the context with the cross-encoder
-(bge-reranker-v2-m3, the stand's reranker service); a unit counts when some sentence scores at least the threshold
-against it. The shown sources are the links of those units, best first, one row per page.
+(bge-reranker-v2-m3, the stand's reranker service). Of the units a sentence scores at least the threshold against, it
+is attributed to the one with the best score times the quality of its document to the power ``prior_weight`` (the
+same authority prior as the context selection): a post that only repeats what an NSU page says is not shown, while a
+post that supports a sentence much better than a page, or alone, is. The shown sources are the links of the units some
+sentence is attributed to, best first, one row per page.
 
 A unit is a chunk of a context document with the document's link. A document compiled from several pages (the
 handbook summaries list many URLs) is split into lines instead, and each line carries the link written in it: the
@@ -22,7 +25,7 @@ from __future__ import annotations
 import asyncio
 import re
 from collections.abc import Awaitable, Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -42,6 +45,7 @@ class EvidenceUnit:
     text: str
     title: str
     url: str
+    prior: float = 1.0  # the quality of the unit's document (KB scale), its authority as a source
 
 
 def _words(text: str) -> int:
@@ -116,6 +120,11 @@ def _section_units(document: dict[str, Any], chunk_texts: Sequence[str], title: 
 
 
 def document_units(document: dict[str, Any], chunk_texts: Sequence[str]) -> list[EvidenceUnit]:
+    prior = min(max(float(document.get("quality_score") or 1.0), 0.05), 1.0)
+    return [replace(unit, prior=prior) for unit in _document_units(document, chunk_texts)]
+
+
+def _document_units(document: dict[str, Any], chunk_texts: Sequence[str]) -> list[EvidenceUnit]:
     title = " ".join(str(document.get("doc_title") or "").split())
     urls = normalize_urls(document.get("url"))
     if document.get("sections"):
@@ -161,19 +170,26 @@ def page_titles(documents: Sequence[dict[str, Any]]) -> dict[str, str]:
     return titles
 
 
-async def attribute(answer: str, units: Sequence[EvidenceUnit], scorer: Scorer,
-                    threshold: float) -> list[tuple[EvidenceUnit, float]]:
+async def attribute(answer: str, units: Sequence[EvidenceUnit], scorer: Scorer, threshold: float,
+                    prior_weight: float = 0.0) -> list[tuple[EvidenceUnit, float]]:
+    """The units the answer's sentences are attributed to, with the best score a sentence attributed to the unit
+    gave it, ordered by that score times the unit's prior to the power ``prior_weight``."""
     sentences = split_sentences(answer)
     if not sentences or not units:
         return []
     texts = [unit.text for unit in units]
-    best = [0.0] * len(units)
+    weights = [unit.prior ** prior_weight if prior_weight > 0 else 1.0 for unit in units]
+    chosen: dict[int, tuple[float, float]] = {}  # unit index -> (weighted score, score)
     for scores in await asyncio.gather(*(scorer(sentence, texts) for sentence in sentences)):
-        for index, score in enumerate(scores):
-            best[index] = max(best[index], float(score))
-    used = [(unit, score) for unit, score in zip(units, best, strict=True) if score >= threshold]
-    used.sort(key=lambda pair: -pair[1])
-    return used
+        supporting = [(float(score) * weights[index], float(score), index)
+                      for index, score in enumerate(scores) if float(score) >= threshold]
+        if not supporting:
+            continue
+        weighted, score, index = max(supporting, key=lambda row: (row[0], row[1], -row[2]))
+        if weighted > chosen.get(index, (-1.0, 0.0))[0]:
+            chosen[index] = (weighted, score)
+    order = sorted(chosen, key=lambda index: (-chosen[index][0], index))
+    return [(units[index], chosen[index][1]) for index in order]
 
 
 def to_sources(scored: Sequence[tuple[EvidenceUnit, float]], max_sources: int) -> list[dict[str, str]]:

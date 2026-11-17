@@ -241,6 +241,9 @@ class Settings(BaseSettings):
     engine_reranker_model: str = Field(default="BAAI/bge-reranker-v2-m3", validation_alias="ENGINE_RERANKER_MODEL")
     engine_reranker_url: str = Field(default="http://127.0.0.1:8002/v1", validation_alias="ENGINE_RERANKER_URL")
     engine_reranker_api_key: str = Field(default="EMPTY", validation_alias="ENGINE_RERANKER_API_KEY")
+    # The graph channel of the search (entities, relations and the chunks they come from). False: the chunk channel
+    # only, everything else unchanged, to measure what the graph adds (RAGU with and without it against Menon 1.1).
+    graph_channel: bool = Field(default=True, validation_alias="GRAPH_CHANNEL")
     graph_top_k: int = Field(default=20, gt=0, validation_alias="GRAPH_TOP_K")
     engine_rerank_top_k: int = Field(default=30, gt=0, validation_alias="ENGINE_RERANK_TOP_K")
     graph_timeout_seconds: float = Field(default=120.0, gt=0, validation_alias="GRAPH_TIMEOUT_SECONDS")
@@ -275,11 +278,13 @@ class Settings(BaseSettings):
     dialogue_memory: bool = Field(default=True, validation_alias="DIALOGUE_MEMORY")
     history_budget_tokens: int = Field(default=5000, ge=200, validation_alias="HISTORY_BUDGET_TOKENS")
     summary_budget_tokens: int = Field(default=800, ge=100, validation_alias="SUMMARY_BUDGET_TOKENS")
-    # Source authority, as prod Menon 1.1 (V2_SOURCE_PRIOR_WEIGHT=2, V2_SOURCE_AUTHORITY=true): relevant candidates are
-    # ordered by the log-odds of their score plus this weight * ln(quality_score of the document), and the answer rules
-    # say official documents come before posts. Weight 0: the score alone. 1 here: on the 323 questions of the 558 with
-    # a gold page (stand v3k, one LLM rerank replayed per weight) it kept the gold page for 236 against 233 at 0 and 2,
-    # with posts 24% -> 20% and NSU news 13% -> 8% of the context chunks.
+    # Source authority: relevant candidates are ordered by their relevance times quality_score ** this weight (in logs,
+    # RaguRagPipeline._priority; quality on the KB's scale, meno_rag.stand.quality), each sentence of the answer is
+    # attributed to its best support by the same prior (attribution.attribute), and the answer rules say official
+    # documents come before posts. Weight 0: the score alone. Until 17.11 the order took the log-odds of the score, as
+    # prod Menon 1.1 does (V2_SOURCE_PRIOR_WEIGHT=2); with the stand's saturated scores that let .002 of retrieval noise
+    # outweigh the source. (Log-odds, weight 1, 323 gold questions of the 558, stand v3k: gold page kept for 236 against
+    # 233 at 0 and 2; posts 24% -> 20%, NSU news 13% -> 8% of the context chunks.)
     source_prior_weight: float = Field(default=1.0, ge=0, validation_alias="SOURCE_PRIOR_WEIGHT")
     source_authority: bool = Field(default=True, validation_alias="SOURCE_AUTHORITY")
     source_attribution_threshold: float = Field(default=0.5, ge=0, le=1, validation_alias="SOURCE_ATTRIBUTION_THRESHOLD")

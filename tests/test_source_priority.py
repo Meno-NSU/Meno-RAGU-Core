@@ -12,7 +12,7 @@ def document(title, url, quality):
             "chunks": [{"start_char": 0, "end_char": len(text)}]}
 
 
-def order(weight, llm_scores):
+def order(weight, llm_scores, retrieval=None):
     """The chunk order the rerank keeps for a post (chunk 0, quality .55) and an NSU page (chunk 1, quality .9)."""
     p = pipeline(source_prior_weight=weight, rerank_candidates_per_page=0)
     documents = [document("Пост ВКонтакте", "https://vk.com/wall-1_2", 0.55),
@@ -25,17 +25,26 @@ def order(weight, llm_scores):
         return llm_scores[chunk_id]
 
     p._score_chunk_with_llm = score
-    pool = [Candidate("chunk:0", 0.9, chunk_id=0), Candidate("chunk:1", 0.9, chunk_id=1)]
+    retrieval = retrieval or {0: 0.9, 1: 0.9}
+    pool = [Candidate("chunk:0", retrieval[0], chunk_id=0), Candidate("chunk:1", retrieval[1], chunk_id=1)]
     kept = asyncio.run(p._rerank([{"query": "q", "pool": pool}], "q", "", None))
     return [chunk_id for chunk_id, _ in kept]
 
 
+# weight 1: the stand's default (SOURCE_PRIOR_WEIGHT); the prior multiplies the relevance itself, not its odds
 def test_a_comparably_relevant_official_page_goes_before_a_post():
-    assert order(2.0, {0: 0.6, 1: 0.6}) == [1, 0]
+    assert order(1.0, {0: 0.6, 1: 0.6}) == [1, 0]
 
 
 def test_a_clearly_better_post_stays_ahead():
-    assert order(2.0, {0: 0.95, 1: 0.3}) == [0, 1]
+    assert order(1.0, {0: 0.95, 1: 0.3}) == [0, 1]
+
+
+def test_saturated_relevance_leaves_the_order_to_the_source():
+    """Both judged fully relevant, the cross-encoder giving the post .999 and the page .997: the log-odds of the
+    merged scores made that .002 outweigh the source (17.11, "Как поступить в НГУ?" kept seven posts and left out
+    nsu.ru/n/education/apply/ with LLM score 1.0)."""
+    assert order(1.0, {0: 1.0, 1: 1.0}, retrieval={0: 0.999, 1: 0.997}) == [1, 0]
 
 
 def test_without_a_prior_weight_the_order_is_the_rerank_score_alone():
