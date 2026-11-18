@@ -833,9 +833,7 @@ class StandRagPipeline:
             min_document_quality=self.settings.min_document_quality,
             numbered=self.settings.context_style == "legacy",
         )
-        # Greedy char-budget truncation: documents are already sorted by
-        # relevance, so we keep them in order until the budget is reached.
-        # `sources` and `context` must stay in sync — drop the tail of both.
+        # Char-budget selection (below): `sources` and `context` stay in sync.
         # `budget_override` lets the caller reserve room for few-shots so the
         # combined QA prompt stays within `max_qa_prompt_chars`.
         budget = self.settings.max_qa_prompt_chars if budget_override is None else budget_override
@@ -850,20 +848,36 @@ class StandRagPipeline:
                 self.resources.chunk_mapping, self.settings.min_document_quality,
             )
             ordered_documents = sorted(relevant_documents, key=lambda index: relevant_documents[index]["relevance"])
-        for idx, (doc_text, source) in enumerate(zip(prepared_context, prepared_sources, strict=False)):
-            header = (f"==========\nDOCUMENT {idx + 1}\n==========" if self.settings.context_style == "legacy"
-                      else "==========\nИСТОЧНИК\n==========")
-            piece = f"{header}\n\n{doc_text.strip()}"
+        # The documents are shown weakest first (the strongest next to the question), but a binding budget keeps the
+        # strongest: they are chosen from the end of the display order, one that does not fit is skipped, and the kept
+        # ones are shown in the display order. The loop used to stop at the first document of the display order that
+        # did not fit, so one long weak document emptied the context (audit of 18.11, tests/test_context_budget.py).
+        legacy = self.settings.context_style == "legacy"
+
+        def header(number: int) -> str:
+            return f"==========\nDOCUMENT {number}\n==========" if legacy else "==========\nИСТОЧНИК\n=========="
+
+        bodies = [doc_text.strip() for doc_text in prepared_context]
+        widest = len(header(len(bodies)))  # the kept documents are numbered 1..n, no header is longer than this
+        keep: set[int] = set()
+        for idx in range(len(bodies) - 1, -1, -1):
+            extra = widest + 2 + len(bodies[idx]) + (sep_chars if keep else 0)
+            if total + extra <= budget:
+                keep.add(idx)
+                total += extra
+        if len(keep) < len(bodies):
+            logger.warning(
+                "qa_context_truncated",
+                budget_chars=budget,
+                docs_kept=len(keep),
+                docs_dropped=len(bodies) - len(keep),
+                dropped_chars=sum(len(bodies[idx]) for idx in range(len(bodies)) if idx not in keep),
+            )
+        total = 0
+        for idx in sorted(keep):
+            source = prepared_sources[idx]
+            piece = f"{header(len(kept_context) + 1)}\n\n{bodies[idx]}"
             extra = len(piece) + (sep_chars if kept_context else 0)
-            if total + extra > budget:
-                logger.warning(
-                    "qa_context_truncated",
-                    budget_chars=budget,
-                    chars_before_truncate=total + extra,
-                    docs_kept=len(kept_context),
-                    docs_dropped=len(prepared_context) - len(kept_context),
-                )
-                break
             kept_context.append(piece)
             kept_sources.append(source)
             total += extra
