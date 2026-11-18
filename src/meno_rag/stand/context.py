@@ -75,7 +75,8 @@ def global_chunk_index_to_text(
     return chunk_text.strip()
 
 
-def document_to_text(document_index: int, chunk_indices: list[int], documents: list[dict[str, Any]]) -> str:
+def document_to_text(document_index: int, chunk_indices: list[int], documents: list[dict[str, Any]],
+                     numbered: bool = True) -> str:
     doc_text = documents[document_index]["doc_full_text"]
     doc_chunks = documents[document_index]["chunks"]
     doc_title = " ".join(documents[document_index]["doc_title"].strip().split()).strip()
@@ -110,7 +111,10 @@ def document_to_text(document_index: int, chunk_indices: list[int], documents: l
         for idx, val in enumerate(local_indices_of_relevant_chunks):
             chunk_boundaries = doc_chunks[val]
             chunk_text = doc_text[chunk_boundaries["start_char"] : chunk_boundaries["end_char"]]
-            new_document_description += f"\n\n<Фрагмент {idx + 1}>\n{chunk_text}\n</Фрагмент {idx + 1}>"
+            if numbered:
+                new_document_description += f"\n\n<Фрагмент {idx + 1}>\n{chunk_text}\n</Фрагмент {idx + 1}>"
+            else:
+                new_document_description += f"\n\n<Фрагмент>\n{chunk_text}\n</Фрагмент>"
     else:
         chunk_boundaries = doc_chunks[local_indices_of_relevant_chunks[0]]
         chunk_text = doc_text[chunk_boundaries["start_char"] : chunk_boundaries["end_char"]]
@@ -144,6 +148,7 @@ def prepare_context(
     documents: list[dict[str, Any]],
     chunk_mapping: dict[str, dict[str, int]],
     min_document_quality: float,
+    numbered: bool = True,
 ) -> tuple[list[str], list[dict[str, Any]]]:
     selected_documents = prepare_relevant_documents(
         indices_of_relevant_chunks,
@@ -166,6 +171,7 @@ def prepare_context(
                 document_index=document_index,
                 chunk_indices=selected_documents[document_index]["chunks"],
                 documents=documents,
+                numbered=numbered,
             )
         )
         sources_of_selected_documents.append(
@@ -195,3 +201,28 @@ def flatten_sources(sources_per_document: list[dict[str, Any]], max_urls: int | 
         else:
             flattened.append({"document_title": title, "source_url": ""})
     return flattened
+
+
+def graph_element_as_note(item: dict[str, Any], documents: list[dict[str, Any]],
+                          chunk_mapping: dict[str, dict[str, int]], max_source_titles: int | None = None) -> str:
+    """A graph element as a note of the sources style (CONTEXT_STYLE=sources): its name (an entity) or its two ends (a
+    relation), its description and the titles of the documents of its retrieved source chunks — no element kind,
+    ontology type or relation type, which are the graph's internals."""
+    titles: list[str] = []
+    for chunk_id in item.get("sources", []):
+        mapping = chunk_mapping.get(str(chunk_id))
+        if mapping is None:
+            continue
+        title = " ".join(str(documents[mapping["doc_index"]].get("doc_title") or "").split()) or "Без названия"
+        if title not in titles:
+            titles.append(title)
+        if max_source_titles is not None and len(titles) >= max_source_titles:
+            break
+    head = f"{item.get('subject')} — {item.get('object')}" if item.get("kind") == "relation" else str(item.get("name"))
+    description = " ".join(str(item.get("description") or "").split())
+    if description and description[-1] not in ".,?!:;":
+        description += "."
+    note = f"**{head}.** {description}".rstrip()
+    if titles:
+        note += "\nПо материалам: " + "; ".join(f"«{title}»" for title in titles) + "."
+    return note

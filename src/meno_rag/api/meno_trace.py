@@ -9,7 +9,7 @@ from fastapi import Request
 
 from meno_rag.api.events import clean_sources
 
-_DOC_BLOCK = re.compile(r"={10}\nDOCUMENT \d+\n={10}\n\n")
+_DOC_BLOCK = re.compile(r"={10}\n(?:DOCUMENT \d+|ИСТОЧНИК)\n={10}\n\n")  # both context styles
 
 
 def wants_meno_trace(request: Request) -> bool:

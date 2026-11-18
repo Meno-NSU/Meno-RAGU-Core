@@ -1,6 +1,7 @@
 import re
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -248,6 +249,11 @@ class Settings(BaseSettings):
     engine_rerank_top_k: int = Field(default=30, gt=0, validation_alias="ENGINE_RERANK_TOP_K")
     graph_timeout_seconds: float = Field(default=120.0, gt=0, validation_alias="GRAPH_TIMEOUT_SECONDS")
     graph_related_candidates: int = Field(default=200, ge=0, validation_alias="GRAPH_RELATED_CANDIDATES")
+    # How the QA prompt shows its context. "legacy": numbered DOCUMENT sections and «ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ» with
+    # ontology types, which the model echoed to users («в документе 12», «согласно графу знаний»); "sources":
+    # each document as a source (title, date, annotation, fragments) and each graph element as a note with the
+    # sources it rests on, with no numbers, element kinds or types to repeat.
+    context_style: Literal["legacy", "sources"] = Field(default="legacy", validation_alias="CONTEXT_STYLE")
     graph_source_documents: int = Field(default=5, gt=0, validation_alias="GRAPH_SOURCE_DOCUMENTS")
     # Graph elements (entities, relations) in the answer context, on top of MAX_CONTEXT_CHUNKS document
     # chunks: before, both kinds shared those slots and elements pushed documents out. 0 = no graph elements.

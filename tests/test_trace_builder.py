@@ -158,3 +158,15 @@ def test_rerank_output_carries_candidate_scores():
     out.candidate_scores = {1: 1.0, 2: 0.0}
     assert out.candidate_scores == {1: 1.0, 2: 0.0}
     assert list(out) == [(1, 0.9)]
+
+
+def test_contexts_are_cut_out_of_a_sources_style_context():
+    from types import SimpleNamespace
+
+    from meno_rag.api.meno_trace import build_contexts
+    text = "**Название документа:** Документ А.\n\nФрагмент про ФИТ."
+    outcome = SimpleNamespace(context="==========\nИСТОЧНИК\n==========\n\n" + text, retrieval_trace=None, evidence=[
+        {"text": "==========\nИСТОЧНИК\n==========\n\n" + text, "document_index": 0,
+         "sources": [{"document_title": "Документ А", "source_url": "https://a.test"}]}])
+    contexts = build_contexts(outcome)
+    assert [c["text"] for c in contexts] == [text]
