@@ -20,21 +20,22 @@ def answer_of(r):
             return r[k]
     return None
 
-for path in sys.argv[1:]:
-    n = 0; hit = Counter(); examples = {}
-    for line in open(path, encoding="utf-8"):
-        r = json.loads(line); a = answer_of(r)
-        if not a:
-            continue
-        n += 1
-        strong = False
-        for name, p in PATTERNS.items():
-            m = p.search(a)
-            if m:
-                hit[name] += 1
-                strong |= name != "meta"
-                examples.setdefault(name, a[max(0, m.start() - 60): m.end() + 40].replace("\n", " "))
-        hit["any_strong"] += strong
-    print(f"{path.rsplit('/', 1)[-1]}: {n} answers | " + ", ".join(f"{k} {v} ({100*v/max(n,1):.1f}%)" for k, v in sorted(hit.items())))
-    for k, v in examples.items():
-        print(f"   e.g. {k}: …{v}…")
+if __name__ == "__main__":
+    for path in sys.argv[1:]:
+        n = 0; hit = Counter(); examples = {}
+        for line in open(path, encoding="utf-8"):
+            r = json.loads(line); a = answer_of(r)
+            if not a:
+                continue
+            n += 1
+            strong = False
+            for name, p in PATTERNS.items():
+                m = p.search(a)
+                if m:
+                    hit[name] += 1
+                    strong |= name != "meta"
+                    examples.setdefault(name, a[max(0, m.start() - 60): m.end() + 40].replace("\n", " "))
+            hit["any_strong"] += strong
+        print(f"{path.rsplit('/', 1)[-1]}: {n} answers | " + ", ".join(f"{k} {v} ({100*v/max(n,1):.1f}%)" for k, v in sorted(hit.items())))
+        for k, v in examples.items():
+            print(f"   e.g. {k}: …{v}…")
