@@ -34,7 +34,8 @@ async def test_graph_elements_reranked_and_grounded_with_the_document_link():
 
 @pytest.mark.asyncio
 async def test_graph_only_context_is_a_valid_qa_prompt():
-    p = pipeline()
+    # the earlier mode, where an element enters the context without a retrieved source (GRAPH_ELEMENT_EVIDENCE=false)
+    p = pipeline(graph_element_evidence=False)
     pool = await p.resources.graph.search("ФИТ")
     pool["chunks"] = []
     p.resources.graph.search = lambda query: asyncio.sleep(0, result=pool)
@@ -46,6 +47,19 @@ async def test_graph_only_context_is_a_valid_qa_prompt():
     # no document was retrieved, so the elements name none and no source is shown
     assert outcome.sources == []
     assert "Встречается во фрагментах документов" not in outcome.qa_messages[1]["content"]
+
+
+@pytest.mark.asyncio
+async def test_without_retrieved_chunks_no_graph_element_has_evidence():
+    p = pipeline()
+    pool = await p.resources.graph.search("ФИТ")
+    pool["chunks"] = []
+    p.resources.graph.search = lambda query: asyncio.sleep(0, result=pool)
+    outcome = await p.prepare(
+        messages=[ChatMessage(role="user", content="ФИТ")],
+        runtime=PipelineRuntime.uniform(ModelRuntime("meno", "http://fake/v1")),
+    )
+    assert "Факт о ФИТ" not in outcome.context
 
 
 @pytest.mark.asyncio

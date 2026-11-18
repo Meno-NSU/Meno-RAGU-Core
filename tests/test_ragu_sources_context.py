@@ -83,9 +83,17 @@ async def test_element_references_come_from_the_retrieved_chunks():
 
 @pytest.mark.asyncio
 async def test_element_without_retrieved_references_names_no_documents():
-    outcome = await _ask(_pipeline(Graph(chunks=((1, 0.5),))))
+    # the earlier mode (GRAPH_ELEMENT_EVIDENCE=false): the element is shown, without documents it cannot name
+    outcome = await _ask(_pipeline(Graph(chunks=((1, 0.5),)), graph_element_evidence=False))
     assert "Факт 0 о ФИТ" in outcome.context
     assert "Встречается во фрагментах документов" not in outcome.context
+    assert [s["document_title"] for s in outcome.sources] == ["Документ Б"]
+
+
+@pytest.mark.asyncio
+async def test_element_without_retrieved_references_stays_out_of_the_context():
+    outcome = await _ask(_pipeline(Graph(chunks=((1, 0.5),))))
+    assert "Факт 0 о ФИТ" not in outcome.context
     assert [s["document_title"] for s in outcome.sources] == ["Документ Б"]
 
 

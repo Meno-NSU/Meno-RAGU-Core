@@ -252,6 +252,10 @@ class Settings(BaseSettings):
     # Graph elements (entities, relations) in the answer context, on top of MAX_CONTEXT_CHUNKS document
     # chunks: before, both kinds shared those slots and elements pushed documents out. 0 = no graph elements.
     graph_max_elements: int = Field(default=3, ge=0, validation_alias="GRAPH_MAX_ELEMENTS")
+    # A graph element enters the context only when one of the chunks it was extracted from was retrieved for the
+    # question (its source is cited next to it; the slot goes to the next element with evidence). False: the
+    # earlier behaviour, where 268 of 989 graph blocks of the core set reached the prompt with no source (v6k audit).
+    graph_element_evidence: bool = Field(default=True, validation_alias="GRAPH_ELEMENT_EVIDENCE")
     # Relevance floors of the context: a chunk / a graph element enters it only when the LLM reranker scores it at
     # least this (its expected label / 2: 0.5 = partly relevant, 1 = relevant). 0 = any score above zero, which let
     # 12 chunks and 3 elements of any relevance in (context precision 0.27-0.35 against Menon 1.1's 0.715).

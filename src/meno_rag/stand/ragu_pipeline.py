@@ -138,9 +138,16 @@ class RaguRagPipeline(StandRagPipeline):
         # Document chunks and graph elements have separate limits: in one shared list the short element
         # blocks pushed documents out of the context (on NSU v1, 5.9 elements and 4.5 documents per answer).
         ranked_all = sorted(selected.values(), key=lambda p: (-order(*p), p[0].key))
+        element_pairs = [p for p in ranked_all if p[0].chunk_id is None]
+        if self.settings.graph_element_evidence:
+            # an element enters the context only with evidence: one of the chunks it was extracted from was
+            # retrieved for the question, so its description can be cited; the slot goes to the next element
+            retrieved = {c.chunk_id for c in unique.values() if c.chunk_id is not None}
+            element_pairs = [p for p in element_pairs
+                             if retrieved.intersection((p[0].element or {}).get("sources") or [])]
         kept = sorted(
             self._capped_chunks([p for p in ranked_all if p[0].chunk_id is not None])
-            + [p for p in ranked_all if p[0].chunk_id is None][: self.settings.graph_max_elements],
+            + element_pairs[: self.settings.graph_max_elements],
             key=lambda p: (-order(*p), p[0].key),
         )
         kept_by_key = {candidate.key: (rank, merged) for rank, (candidate, merged) in enumerate(kept)}
@@ -250,6 +257,8 @@ class RaguRagPipeline(StandRagPipeline):
                 references.append(chunk_id)
                 if len(references) == self.settings.graph_source_documents:
                     break
+            if not references and self.settings.graph_element_evidence:
+                continue  # no retrieved chunk backs it: its description could not be cited or checked
             element = dict(element, sources=references)
             text = graph_element_to_text(element, self.resources.documents, self.resources.chunk_mapping)
             cost = len(text) + 2 + (len(heading) + 2 if not blocks else 0)
