@@ -386,8 +386,10 @@ class PortableQdrantStorage(QdrantVectorDBStorage):
 
 
 HYBRID_FUSIONS = ('rrf', 'rrfw', 'rrf60', 'dbsf')
-# rrfw: the weights of the dense and the BM25 prefetch (ragu queries them in this order). The asymmetry breaks every
-# tie of the top 100 ranks in float32 and changes no other order of the top 20 (test_graph_utils.TestHybridFusion).
+# rrfw: the weights of the dense and the BM25 prefetch (ragu queries them in this order). Qdrant divides a position
+# by its weight, 1 / ((p + 1) / w + k - 1), so the asymmetry breaks every tie of the top 100 ranks in float32 in
+# favour of the dense list and reorders only near-ties: none in the top 20, pairs closer than 1e-5 further down
+# (test_graph_utils.TestHybridFusion).
 RRF_TIE_WEIGHTS = (1.0, 1.0 - 1e-4)
 
 
@@ -397,8 +399,9 @@ def hybrid_query(fusion: str):
     'rrf' is Qdrant's default reciprocal rank fusion, the live behaviour: a list's first place scores 1 and its second
     1/2, so a point first in one list ties with a point second in both, and the order of ties is arbitrary
     (docs/ragu-framework-issues.md): a repeated query got another candidate pool for 35% of 324 gold questions (replay of
-    18.11). 'rrfw' is the same RRF with the BM25 list weighted 1 - 1e-4: every tie goes to the dense list, every other
-    order stays. 'rrf60' is RRF with k = 60 (Cormack, Clarke and Buettcher 2009): agreement of the
+    18.11). 'rrfw' is the same RRF with the BM25 list weighted 1 - 1e-4: every tie goes to the dense list, and only
+    near-equal scores (closer than 1e-5, below the top 20) can change places. 'rrf60' is RRF with k = 60
+    (Cormack, Clarke and Buettcher 2009): agreement of the
     two lists outweighs a single top rank. 'dbsf' is distribution-based score fusion: each list's scores are normalised
     by their mean and spread and summed, so ties practically vanish."""
     if fusion == 'rrfw':
