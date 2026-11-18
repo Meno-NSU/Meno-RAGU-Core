@@ -669,3 +669,52 @@ class TestGraphChannelSwitch:
         pool = asyncio.run(engines.asearch('вопрос', use_graph=False))
         assert pool['chunks'] == [(1, 0.8), (0, 0.4)]
         assert pool['entities'] == [] and pool['relations'] == []
+
+
+class TestHybridFusion:
+    """The fusion of the dense and BM25 lists of a hybrid vector search. Qdrant's default RRF scores a list's first
+    place 1 and its second 1/2, so a point first in one list ties with a point second in both and the tie order is
+    arbitrary (docs/ragu-framework-issues.md); rrf60 and dbsf are the alternatives to measure against it."""
+
+    def _storage(self):
+        calls = []
+
+        async def query(points, **kwargs):
+            calls.append(kwargs)
+            return [[] for _ in points]
+        return SimpleNamespace(query=query), calls
+
+    def test_each_fusion_maps_to_its_qdrant_query(self):
+        from graph_utils.graph_utils import hybrid_query
+        from qdrant_client.http.models import Fusion, FusionQuery, Rrf, RrfQuery
+        assert hybrid_query('rrf') == FusionQuery(fusion=Fusion.RRF)
+        assert hybrid_query('rrf60') == RrfQuery(rrf=Rrf(k=60))
+        assert hybrid_query('dbsf') == FusionQuery(fusion=Fusion.DBSF)
+        with pytest.raises(ValueError):
+            hybrid_query('linear')
+
+    def test_the_storage_queries_with_the_fusion_it_is_set_to_and_a_switch_takes_effect(self):
+        from graph_utils.graph_utils import hybrid_query, set_hybrid_fusion
+        storage, calls = self._storage()
+        set_hybrid_fusion(storage, 'rrf60')
+        asyncio.run(storage.query([object()], top_k=5))
+        storage.meno_hybrid_fusion = 'dbsf'
+        asyncio.run(storage.query([object()], top_k=5))
+        set_hybrid_fusion(storage, 'rrf')  # set again: the query is not wrapped twice
+        asyncio.run(storage.query([object()]))
+        assert [c['hybrid_query_type'] for c in calls] == [hybrid_query('rrf60'), hybrid_query('dbsf'),
+                                                           hybrid_query('rrf')]
+        assert calls[0]['top_k'] == 5
+
+    def test_an_explicit_fusion_of_the_caller_wins(self):
+        from graph_utils.graph_utils import hybrid_query, set_hybrid_fusion
+        storage, calls = self._storage()
+        set_hybrid_fusion(storage, 'rrf60')
+        asyncio.run(storage.query([object()], hybrid_query_type=hybrid_query('dbsf')))
+        assert calls[0]['hybrid_query_type'] == hybrid_query('dbsf')
+
+    def test_an_unknown_fusion_is_refused_before_any_query(self):
+        from graph_utils.graph_utils import set_hybrid_fusion
+        storage, _ = self._storage()
+        with pytest.raises(ValueError):
+            set_hybrid_fusion(storage, 'linear')

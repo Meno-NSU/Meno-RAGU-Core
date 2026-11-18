@@ -32,6 +32,7 @@ except ImportError as err:
 
 from search_utils.search_utils import combine_relevant_chunks
 from graph_utils.local_search import EfficientLocalSearchEngine
+from qdrant_client.http.models import Fusion, FusionQuery, Rrf, RrfQuery
 from graph_utils.graph_cleanup import CleanupInputs, clean_graph
 from graph_utils.relation_review import RelationReviewMixin
 
@@ -384,13 +385,50 @@ class PortableQdrantStorage(QdrantVectorDBStorage):
         super().__init__(filename=filename, **kwargs)
 
 
+HYBRID_FUSIONS = ('rrf', 'rrf60', 'dbsf')
+
+
+def hybrid_query(fusion: str):
+    """The Qdrant query that fuses the dense and the BM25 list of a hybrid search.
+
+    'rrf' is Qdrant's default reciprocal rank fusion, the live behaviour: a list's first place scores 1 and its second
+    1/2, so a point first in one list ties with a point second in both, and the order of ties is arbitrary
+    (docs/ragu-framework-issues.md). 'rrf60' is RRF with k = 60 (Cormack, Clarke and Buettcher 2009): agreement of the
+    two lists outweighs a single top rank. 'dbsf' is distribution-based score fusion: each list's scores are normalised
+    by their mean and spread and summed, so ties practically vanish."""
+    if fusion == 'rrf':
+        return FusionQuery(fusion=Fusion.RRF)
+    if fusion == 'rrf60':
+        return RrfQuery(rrf=Rrf(k=60))
+    if fusion == 'dbsf':
+        return FusionQuery(fusion=Fusion.DBSF)
+    raise ValueError(f'Unknown hybrid fusion {fusion!r}; expected one of {HYBRID_FUSIONS}.')
+
+
+def set_hybrid_fusion(storage: Any, fusion: str) -> None:
+    """Make the hybrid queries of a ragu Qdrant storage use ``storage.meno_hybrid_fusion``, read at every query (a
+    replay may switch it). A caller that passes its own ``hybrid_query_type`` keeps it."""
+    hybrid_query(fusion)
+    storage.meno_hybrid_fusion = fusion
+    if getattr(storage, 'meno_fusion_wrapped', False):
+        return
+    original = storage.query
+
+    async def query(points, **kwargs):
+        kwargs.setdefault('hybrid_query_type', hybrid_query(storage.meno_hybrid_fusion))
+        return await original(points, **kwargs)
+
+    storage.query = query
+    storage.meno_fusion_wrapped = True
+
+
 def load_graph_engines(graph_dir: str, embedder_name: str,
                        embedder_url: str = 'http://localhost:8000/v1', embedder_key: str = 'EMPTY',
                        qdrant_location: Optional[str] = None,
                        engine_reranker_name: Optional[str] = None,
                        engine_reranker_url: Optional[str] = None, engine_reranker_key: Optional[str] = None,
                        embedder: Optional[Embedder] = None, scorer: Optional[Scorer] = None,
-                       max_related_candidates: Optional[int] = None
+                       max_related_candidates: Optional[int] = None, hybrid_fusion: str = 'rrf'
                        ) -> GraphSearchEngines:
     if not os.path.isdir(graph_dir):
         raise IOError(f'The directory "{graph_dir}" does not exist!')
@@ -457,6 +495,9 @@ def load_graph_engines(graph_dir: str, embedder_name: str,
     if getattr(naive_engine, 'retriever', None) is not None:
         if naive_engine.retriever.sparse_embedder is not sparse_embedder:
             raise RuntimeError('The sparse embedder is not wired into the naive search engine!')
+    for storage in (knowledge_graph.index.nodes_vector_db, knowledge_graph.index.edges_vector_db,
+                    knowledge_graph.index.chunks_vector_db):
+        set_hybrid_fusion(storage, hybrid_fusion)
     return GraphSearchEngines(
         local_engine=local_engine,
         naive_engine=naive_engine,

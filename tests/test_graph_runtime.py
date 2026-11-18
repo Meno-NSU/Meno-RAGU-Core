@@ -20,6 +20,7 @@ def test_graph_runtime_passes_candidate_budget_to_search_engine(monkeypatch):
     try:
         runtime._load()
         assert loader.call_args.kwargs['max_related_candidates'] == 200
+        assert loader.call_args.kwargs['hybrid_fusion'] == 'rrf'  # the live fusion unless HYBRID_FUSION says otherwise
     finally:
         loop.close()
 
