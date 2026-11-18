@@ -26,6 +26,32 @@ _CONTENT_SETTINGS = (
     "engine_reranker_model", "source_attribution", "source_attribution_threshold", "max_sources",
     "rerank_candidates_per_page", "turn_routing", "source_prior_weight", "source_authority",
     "context_min_rerank_score", "graph_min_rerank_score", "llm_rerank",
+    # answer-affecting switches added after the list was written (missing until 18.11: two stands that answered
+    # differently had one fingerprint)
+    "hybrid_fusion", "context_style", "graph_element_evidence", "graph_channel",
+)
+# Every other setting, deliberately outside the fingerprint: addresses, keys, timeouts, concurrency, logging,
+# auth, storage and backups. tests/test_benchmark_config.py fails for a field in neither list, so a new setting
+# is classified when it is added. Some are identified otherwise: the service URLs and vLLM endpoints are in
+# runtime_identity() as safe URLs, the few-shot file by its hash, the stand resources by their build manifest.
+_OPERATIONAL_SETTINGS = (
+    "app_env", "app_host", "app_port", "cors_allow_origins", "legal_effective_at", "llm_display_names",
+    "auth_jwt_secret", "auth_token_ttl_hours", "guest_session_ttl_days", "bench_api_token", "bench_max_concurrent",
+    "max_concurrent_chats", "database_url", "db_max_overflow", "db_pool_size", "redis_url", "trace_database_url",
+    "sqlite_busy_timeout_ms", "sqlite_synchronous", "retention_days", "backup_dir", "backup_enabled",
+    "backup_interval_hours", "backup_keep_daily", "backup_keep_interval", "log_level", "log_content_previews",
+    "capture_pipeline_trace", "pipeline_trace_queue_max", "pipeline_trace_sample_rate", "meno_backend_build",
+    "meno_backend_name", "meno_backend_version", "embedder_url", "embedder_api_key", "engine_reranker_url",
+    "engine_reranker_api_key", "qdrant_url", "vllm_endpoints", "vllm_endpoint_api_keys", "openai_api_key",
+    "openrouter_api_key", "openrouter_base_url", "openrouter_discover_all_free",
+    "openrouter_discovery_timeout_seconds", "openrouter_featured_models", "openrouter_generation_concurrency",
+    "openrouter_generation_timeout_seconds", "openrouter_http_referer", "openrouter_unreachable_backoff_max_seconds",
+    "openrouter_unreachable_backoff_seconds", "openrouter_x_title", "model_cache_ttl_seconds",
+    "model_discovery_timeout_seconds", "httpx_max_connections", "httpx_max_keepalive", "embed_concurrency",
+    "bm25_concurrency", "rerank_concurrency", "rewrite_concurrency", "generation_concurrency",
+    "retrieval_executor_max_workers", "rewrite_timeout_seconds", "rerank_timeout_seconds", "graph_timeout_seconds",
+    "generation_timeout_seconds", "fewshots_path_override", "stand_resources_dir", "graph_dir_override",
+    "frida_device", "frida_embedder_name",
 )
 
 

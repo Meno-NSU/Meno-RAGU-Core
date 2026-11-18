@@ -138,3 +138,24 @@ async def test_benchmark_fingerprint_guard_rejects_before_chat_handler(tmp_path)
         response = await client.post("/v1/chat/completions", headers=headers, json={})
     assert response.status_code == 404
     assert len(calls) == 1
+
+
+def test_every_setting_is_classified_for_the_fingerprint():
+    """A setting that changes the answers must change the fingerprint, so every field is either content (in it) or
+    operational (addresses, keys, timeouts, concurrency, logging): a new field fails here until it is classified."""
+    fields = set(Settings.model_fields)
+    content, operational = set(config_mod._CONTENT_SETTINGS), set(config_mod._OPERATIONAL_SETTINGS)
+    assert not content & operational
+    assert fields == content | operational, sorted(fields ^ (content | operational))
+
+
+@pytest.mark.parametrize("name, a, b", [
+    ("hybrid_fusion", "rrf", "rrfw"),
+    ("context_style", "legacy", "sources"),
+    ("graph_element_evidence", True, False),
+    ("graph_channel", True, False),
+])
+def test_answer_affecting_flags_change_the_fingerprint(name, a, b):
+    def runtime(value):
+        return config_mod.runtime_identity(Settings(_env_file=None, **{name: value}))
+    assert runtime(a) != runtime(b)
