@@ -690,8 +690,30 @@ class TestHybridFusion:
         assert hybrid_query('rrf') == FusionQuery(fusion=Fusion.RRF)
         assert hybrid_query('rrf60') == RrfQuery(rrf=Rrf(k=60))
         assert hybrid_query('dbsf') == FusionQuery(fusion=Fusion.DBSF)
+        assert hybrid_query('rrfw') == RrfQuery(rrf=Rrf(weights=[1.0, 1.0 - 1e-4]))
         with pytest.raises(ValueError):
             hybrid_query('linear')
+
+    @pytest.mark.parametrize('k', [1, 2])
+    def test_rrfw_breaks_every_rank_tie_and_keeps_every_other_order(self, k):
+        """RRF scores sum(w / (k + rank)) per list, in float32. Points at ranks (a, b) and (b, a), or at the same rank of
+        one list each, tie under equal weights; with rrfw's weights every such tie of the top 100 is broken (dense
+        first) and no pair of the top 20 ranks that did not tie changes order. Sums can also be equal by accident
+        (1/3 + 1/4 = 1/2 + 1/12 at k = 2): such pairs, within float32 noise of each other, are ties too."""
+        import numpy as np
+        from graph_utils.graph_utils import hybrid_query
+        w_dense, w_sparse = hybrid_query('rrfw').rrf.weights
+        def score(a, b, wa=1.0, wb=1.0):  # rank in the dense list, in the BM25 list (None: absent)
+            return np.float32(sum(np.float32(w) / np.float32(k + r) for r, w in ((a, wa), (b, wb)) if r is not None))
+        for a in range(100):
+            for b in range(a + 1, 100):
+                assert score(a, b, w_dense, w_sparse) > score(b, a, w_dense, w_sparse)
+            assert score(a, None, w_dense, w_sparse) > score(None, a, w_dense, w_sparse)
+        pairs = [(a, b) for a in [*range(20), None] for b in [*range(20), None] if (a, b) != (None, None)]
+        for x in pairs:
+            for y in pairs:
+                if score(*x) - score(*y) > 1e-6:
+                    assert score(*x, w_dense, w_sparse) > score(*y, w_dense, w_sparse), (x, y)
 
     def test_the_storage_queries_with_the_fusion_it_is_set_to_and_a_switch_takes_effect(self):
         from graph_utils.graph_utils import hybrid_query, set_hybrid_fusion
