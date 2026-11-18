@@ -48,6 +48,7 @@ class GraphRuntime:
             engine_reranker_url=self.settings.engine_reranker_url,
             engine_reranker_key=self.settings.engine_reranker_api_key,
             max_related_candidates=self.settings.graph_related_candidates,
+            balanced_pool=self.settings.graph_balanced_pool,
         )
         try:
             self.engines.event_loop.run_until_complete(self._validate_collections())

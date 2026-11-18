@@ -390,7 +390,7 @@ def load_graph_engines(graph_dir: str, embedder_name: str,
                        engine_reranker_name: Optional[str] = None,
                        engine_reranker_url: Optional[str] = None, engine_reranker_key: Optional[str] = None,
                        embedder: Optional[Embedder] = None, scorer: Optional[Scorer] = None,
-                       max_related_candidates: Optional[int] = None
+                       max_related_candidates: Optional[int] = None, balanced_pool: bool = False
                        ) -> GraphSearchEngines:
     if not os.path.isdir(graph_dir):
         raise IOError(f'The directory "{graph_dir}" does not exist!')
@@ -444,6 +444,7 @@ def load_graph_engines(graph_dir: str, embedder_name: str,
         sparse_embedder=sparse_embedder, reranker=scorer
     )
     local_engine.max_related_candidates = max_related_candidates
+    local_engine.balanced_pool = balanced_pool
     naive_engine = NaiveSearchEngine(
         llm=dummy_llm, knowledge_graph=knowledge_graph, embedder=embedder,
         sparse_embedder=sparse_embedder, reranker=scorer

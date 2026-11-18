@@ -243,3 +243,51 @@ def test_a_hub_entity_reads_only_the_chunks_it_keeps():
         full = await _find_most_related_text_unit_from_entities([hub], graph(payloads), edges, neighbors)
         assert [chunk.content for chunk in chunks] == [chunk.content for chunk in full[:200]]
     asyncio.run(run())
+
+
+def _payloads(ids):
+    return {chunk_id: {'content': chunk_id, 'chunk_order_idx': 0, 'doc_id': 'doc'} for chunk_id in ids}
+
+
+def test_a_balanced_pool_takes_the_seed_entities_in_turn_under_the_limit():
+    """In entity order a hub that comes first fills the whole budget of related candidates with its own chunks (the
+    university has ~70K), so the chunks of the other seed entities never reach the cross-encoder (v6 graph audit,
+    18.11.2026). Balanced, every seed entity gives its best chunk in turn."""
+    async def run():
+        hub_ids = [f'h{index}' for index in range(50)]
+        hub = Entity('НГУ', 'ORGANIZATION', '', hub_ids, id='hub')
+        office = Entity('Приёмная комиссия', 'ORGANIZATION', '', ['p1', 'p2'], id='office')
+        olympiad = Entity('Олимпиада', 'EVENT', '', ['o1'], id='olympiad')
+        payloads = _payloads([*hub_ids, 'p1', 'p2', 'o1'])
+        seeds = [hub, office, olympiad]
+        balanced = await find_related_text_units(seeds, graph(payloads), {}, {}, limit=6, balanced=True)
+        assert [chunk.content for chunk in balanced] == ['h0', 'p1', 'o1', 'h1', 'p2', 'h2']
+        in_order = await find_related_text_units(seeds, graph(payloads), {}, {}, limit=6)
+        assert [chunk.content for chunk in in_order] == ['h0', 'h1', 'h2', 'h3', 'h4', 'h5']
+    asyncio.run(run())
+
+
+def test_a_balanced_pool_skips_missing_chunks_and_counts_a_shared_chunk_once():
+    async def run():
+        first = Entity('A', 'ORGANIZATION', '', ['x', 'gone', 'y'], id='a')
+        second = Entity('B', 'ORGANIZATION', '', ['x', 'z'], id='b')
+        chunks = await find_related_text_units([first, second], graph(_payloads(['x', 'y', 'z'])), {}, {}, limit=10,
+                                               balanced=True)
+        assert [chunk.content for chunk in chunks] == ['x', 'z', 'y']
+    asyncio.run(run())
+
+
+def test_balanced_relations_take_the_seed_entities_in_turn_by_strength():
+    from graph_utils.local_search import related_edges_balanced
+
+    def edge(subject, target, strength, kind='R'):
+        return Relation(subject, target, subject, target, kind, f'{subject}-{target}', strength)
+
+    hub = Entity('НГУ', 'ORGANIZATION', '', [], id='hub')
+    office = Entity('Приёмная комиссия', 'ORGANIZATION', '', [], id='office')
+    shared = edge('hub', 'office', 7)
+    edges = {'hub': [edge('hub', f'n{index}', 9 - index) for index in range(5)] + [shared],
+             'office': [edge('office', 'm1', 2), shared, edge('office', 'm2', 1)]}
+    picked = related_edges_balanced([hub, office], edges, limit=4)
+    assert [(item.subject_id, item.object_id) for item in picked] == [
+        ('hub', 'n0'), ('office', 'm1'), ('hub', 'n1'), ('office', 'm2')]

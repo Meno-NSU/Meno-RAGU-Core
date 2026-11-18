@@ -16,10 +16,11 @@ def test_graph_runtime_passes_candidate_budget_to_search_engine(monkeypatch):
     monkeypatch.setattr(graph_utils, 'load_graph_engines', loader)
     monkeypatch.setattr(GraphRuntime, '_validate_collections', AsyncMock())
     runtime = object.__new__(GraphRuntime)
-    runtime.settings = Settings(_env_file=None, graph_related_candidates=200)
+    runtime.settings = Settings(_env_file=None, graph_related_candidates=200, graph_balanced_pool=True)
     try:
         runtime._load()
         assert loader.call_args.kwargs['max_related_candidates'] == 200
+        assert loader.call_args.kwargs['balanced_pool'] is True
     finally:
         loop.close()
 

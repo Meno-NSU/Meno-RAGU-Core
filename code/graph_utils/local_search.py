@@ -1,4 +1,5 @@
 import asyncio
+import itertools
 import time
 from collections import Counter
 
@@ -23,15 +24,21 @@ async def rerank_with_scores(query, items, text_getter, reranker):
     return [items[index] for index, _ in ranked], [score for _, score in ranked]
 
 
-async def find_related_text_units(entities, knowledge_graph, edges_by_entity, neighbor_chunks, limit=None):
+async def find_related_text_units(entities, knowledge_graph, edges_by_entity, neighbor_chunks, limit=None,
+                                  balanced=False):
     """The source chunks of the entities, in entity order and, within an entity, by how many of its relations lead
     to neighbors that share the chunk (ragu's ordering). With ``limit`` only the first ``limit`` chunks are built: the
     caller keeps no more than that, and the order puts every chunk of an earlier entity first, so entities after the
     one that fills the limit cannot change the result. A hub entity (the university, a faculty) has tens of thousands
-    of relations and source chunks; building all of them took 10–15 s of CPU on the one search thread."""
+    of relations and source chunks; building all of them took 10–15 s of CPU on the one search thread.
+
+    ``balanced`` (with ``limit``): the seed entities give their chunks in turn, each in its own order, instead of
+    one after another, so a hub that comes first no longer fills the whole budget with its own chunks and the
+    chunks of the other seed entities reach the cross-encoder too (v6 graph audit, 18.11.2026)."""
     lookup = {}
     neighbor_sets = {}
     kept = 0
+    per_entity = []  # balanced: each seed entity's unclaimed chunks, in its own order
 
     def chunk_set(neighbor_id):
         found = neighbor_sets.get(neighbor_id)
@@ -68,7 +75,12 @@ async def find_related_text_units(entities, knowledge_graph, edges_by_entity, ne
                 counts[chunk_id] += multiplicity
         entity_chunks = [{'id': chunk_id, 'order': order, 'relation_counts': counts[chunk_id]}
                          for chunk_id in source_ids]
-        if limit is not None:
+        if balanced and limit is not None:
+            entity_chunks.sort(key=lambda item: -item['relation_counts'])  # stable: ties keep the source order
+            per_entity.append(entity_chunks)
+            for item in entity_chunks:  # a chunk belongs to the first seed entity that has it
+                lookup[item['id']] = {**item, 'data': None}
+        elif limit is not None:
             entity_chunks.sort(key=lambda item: -item['relation_counts'])  # stable: ties keep the source order
             # chunks without a stored payload are dropped below, so the limit counts only chunks that exist
             for start in range(0, len(entity_chunks), max(limit, 1)):
@@ -89,6 +101,8 @@ async def find_related_text_units(entities, knowledge_graph, edges_by_entity, ne
         else:
             for item in entity_chunks:
                 lookup[item['id']] = item
+    if balanced and limit is not None:
+        return await _take_in_turn(per_entity, knowledge_graph, limit)
     if not lookup:
         return []
     if limit is None:
@@ -107,11 +121,79 @@ async def find_related_text_units(entities, knowledge_graph, edges_by_entity, ne
     return chunks
 
 
+async def _take_in_turn(per_entity, knowledge_graph, limit):
+    """Up to ``limit`` chunks with a stored payload, taking the seed entities' chunks in turn."""
+    def interleaved():
+        positions = [0] * len(per_entity)
+        while True:
+            progressed = False
+            for index, items in enumerate(per_entity):
+                if positions[index] < len(items):
+                    yield items[positions[index]]
+                    positions[index] += 1
+                    progressed = True
+            if not progressed:
+                return
+
+    queue = interleaved()
+    chunks = []
+    while len(chunks) < limit:
+        batch = list(itertools.islice(queue, max(limit - len(chunks), 1)))
+        if not batch:
+            break
+        payloads = await knowledge_graph.index.chunks_kv_storage.get_by_ids([item['id'] for item in batch])
+        for payload in payloads:
+            if payload is not None:
+                chunks.append(Chunk(**payload))
+                if len(chunks) >= limit:
+                    break
+    return chunks
+
+
+def related_edges_balanced(entities, edges_by_entity, limit):
+    """The relations of the seed entities, deduplicated as ragu does, each entity's by descending
+    ``relation_strength``, taken in turn up to ``limit``: sorted by strength across all the seeds, a hub's tens of
+    thousands of relations fill the budget before the relations of any other seed entity."""
+    seen = set()
+    per_entity = []
+    for entity in (entity for entity in entities if entity and entity.id):
+        group = []
+        for edge in edges_by_entity.get(entity.id, []):
+            if not edge:
+                continue
+            key = edge.id or (edge.subject_id, edge.object_id, edge.relation_type, edge.description)
+            if key in seen:
+                continue
+            seen.add(key)
+            group.append(edge)
+        group.sort(key=lambda edge: edge.relation_strength, reverse=True)  # stable: ties keep the stored order
+        per_entity.append(group)
+    picked = []
+    positions = [0] * len(per_entity)
+    while len(picked) < limit:
+        progressed = False
+        for index, group in enumerate(per_entity):
+            if positions[index] < len(group):
+                picked.append(group[positions[index]])
+                positions[index] += 1
+                progressed = True
+                if len(picked) >= limit:
+                    break
+        if not progressed:
+            break
+    return picked
+
+
+async def _related_edges_balanced(entities, edges_by_entity, limit):
+    return related_edges_balanced(entities, edges_by_entity, limit)
+
+
 class EfficientLocalSearchEngine(LocalSearchEngine):
     """ragu's local search with a cheaper chunk lookup, a budget of related candidates before the cross-encoder,
     and the cross-encoder's scores kept in the metrics (``chunk_scores``, ``relation_scores``, the anchor entities'
     ``rerank_score``): the same model scores the chunk channel, so these put both channels on one scale."""
     max_related_candidates: int | None = None
+    balanced_pool: bool = False  # the related candidates of the seed entities taken in turn (GRAPH_BALANCED_POOL)
 
     async def batch_search(self, queries, params=None):
         if not queries:
@@ -156,9 +238,11 @@ class EfficientLocalSearchEngine(LocalSearchEngine):
         }
         entities = ranked_entities
         relations, chunks, summaries, documents_id = await asyncio.gather(
-            _find_most_related_edges_from_entities(entities, edges_by_entity),
+            (_related_edges_balanced(entities, edges_by_entity, self.max_related_candidates)
+             if self.balanced_pool and self.max_related_candidates
+             else _find_most_related_edges_from_entities(entities, edges_by_entity)),
             find_related_text_units(entities, self.knowledge_graph, edges_by_entity, neighbor_chunks,
-                                    limit=self.max_related_candidates or None),
+                                    limit=self.max_related_candidates or None, balanced=self.balanced_pool),
             _find_most_related_community_from_entities(entities, self.knowledge_graph),
             _find_documents_id(entities),
         )

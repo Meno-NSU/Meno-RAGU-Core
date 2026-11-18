@@ -248,6 +248,10 @@ class Settings(BaseSettings):
     engine_rerank_top_k: int = Field(default=30, gt=0, validation_alias="ENGINE_RERANK_TOP_K")
     graph_timeout_seconds: float = Field(default=120.0, gt=0, validation_alias="GRAPH_TIMEOUT_SECONDS")
     graph_related_candidates: int = Field(default=200, ge=0, validation_alias="GRAPH_RELATED_CANDIDATES")
+    # The related candidates of the seed entities (chunks and relations, up to GRAPH_RELATED_CANDIDATES each) taken
+    # in turn, each entity's in its own order, instead of one entity after another: in that order a hub that comes
+    # first (the university: ~70K chunks, ~30K relations) filled the whole budget before the cross-encoder.
+    graph_balanced_pool: bool = Field(default=False, validation_alias="GRAPH_BALANCED_POOL")
     graph_source_documents: int = Field(default=5, gt=0, validation_alias="GRAPH_SOURCE_DOCUMENTS")
     # Graph elements (entities, relations) in the answer context, on top of MAX_CONTEXT_CHUNKS document
     # chunks: before, both kinds shared those slots and elements pushed documents out. 0 = no graph elements.
