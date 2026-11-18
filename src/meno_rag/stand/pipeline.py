@@ -831,6 +831,7 @@ class StandRagPipeline:
             documents=self.resources.documents,
             chunk_mapping=self.resources.chunk_mapping,
             min_document_quality=self.settings.min_document_quality,
+            numbered=self.settings.context_style == "legacy",
         )
         # Greedy char-budget truncation: documents are already sorted by
         # relevance, so we keep them in order until the budget is reached.
@@ -850,7 +851,9 @@ class StandRagPipeline:
             )
             ordered_documents = sorted(relevant_documents, key=lambda index: relevant_documents[index]["relevance"])
         for idx, (doc_text, source) in enumerate(zip(prepared_context, prepared_sources, strict=False)):
-            piece = f"==========\nDOCUMENT {idx + 1}\n==========\n\n{doc_text.strip()}"
+            header = (f"==========\nDOCUMENT {idx + 1}\n==========" if self.settings.context_style == "legacy"
+                      else "==========\nИСТОЧНИК\n==========")
+            piece = f"{header}\n\n{doc_text.strip()}"
             extra = len(piece) + (sep_chars if kept_context else 0)
             if total + extra > budget:
                 logger.warning(

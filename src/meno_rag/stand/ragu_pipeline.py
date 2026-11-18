@@ -9,7 +9,7 @@ from context_utils.context_utils import graph_element_to_text
 
 from meno_rag.api.events import StageName
 from meno_rag.stand.attribution import norm_url
-from meno_rag.stand.context import normalize_urls
+from meno_rag.stand.context import graph_element_as_note, normalize_urls
 from meno_rag.stand.pipeline import ModelRuntime, StandRagPipeline, _RerankOutput
 from meno_rag.stand.rerank import rerank_merge_score
 
@@ -237,7 +237,8 @@ class RaguRagPipeline(StandRagPipeline):
         graph_evidence = []
         capture_evidence = getattr(chunks, "capture_evidence", False)
         used = 0
-        heading = "**ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ**"
+        sources_style = self.settings.context_style == "sources"
+        heading = "**СПРАВКИ ПО МАТЕРИАЛАМ**" if sources_style else "**ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ**"
         # An element names only documents retrieved for this question: the kept chunks first, then the other
         # chunks the reranker scored. Its full source list is in corpus order, so its first documents are
         # arbitrary for the question (a hub entity such as the university occurs in tens of thousands).
@@ -260,7 +261,10 @@ class RaguRagPipeline(StandRagPipeline):
             if not references and self.settings.graph_element_evidence:
                 continue  # no retrieved chunk backs it: its description could not be cited or checked
             element = dict(element, sources=references)
-            text = graph_element_to_text(element, self.resources.documents, self.resources.chunk_mapping)
+            if sources_style:
+                text = graph_element_as_note(element, self.resources.documents, self.resources.chunk_mapping)
+            else:
+                text = graph_element_to_text(element, self.resources.documents, self.resources.chunk_mapping)
             cost = len(text) + 2 + (len(heading) + 2 if not blocks else 0)
             if used + cost > budget:
                 continue

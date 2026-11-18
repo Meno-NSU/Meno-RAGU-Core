@@ -110,3 +110,34 @@ async def test_graph_elements_can_be_switched_off():
     outcome = await _ask(_pipeline(Graph(n_entities=3), graph_max_elements=0))
     assert "Элемент графа знаний" not in outcome.context
     assert [s["document_title"] for s in outcome.sources] == ["Документ А"]
+
+
+class Relations(Graph):
+    async def search(self, query):
+        found = await super().search(query)
+        found["relations"] = [{"key": f"r-{query}", "kind": "relation", "subject": "Сущность 0", "object": "НГУ",
+                               "relation_type": "PART_OF", "description": "Сущность 0 входит в НГУ.", "score": 0.9,
+                               "sources": [0]}]
+        return found
+
+
+@pytest.mark.asyncio
+async def test_sources_style_shows_the_context_as_sources_without_internal_labels():
+    """CONTEXT_STYLE=sources: the prompt holds sources and notes, not numbered DOCUMENT sections, «элементы графа
+    знаний» or ontology types; the model echoed those to users («в документе 12», «согласно графу знаний»)."""
+    outcome = await _ask(_pipeline(Relations(), context_style="sources", graph_max_elements=3))
+    prompt = outcome.qa_messages[-1]["content"]
+    for internal in ("DOCUMENT", "ГРАФ", "граф", "(тип:", "—[", "<Фрагмент 1>", "Элемент"):
+        assert internal not in prompt, internal
+    assert "==========\nИСТОЧНИК\n==========" in prompt and "**Название документа:** Документ А." in prompt
+    assert "**СПРАВКИ ПО МАТЕРИАЛАМ**" in outcome.context
+    assert "**Сущность 0.** Факт 0 о ФИТ.\nПо материалам: «Документ А»." in outcome.context
+    assert "**Сущность 0 — НГУ.** Сущность 0 входит в НГУ.\nПо материалам: «Документ А»." in outcome.context
+    assert "опираясь только на факты из разделов ИСТОЧНИК и СПРАВКИ ПО МАТЕРИАЛАМ." in prompt
+
+
+@pytest.mark.asyncio
+async def test_the_legacy_style_stays_the_default():
+    outcome = await _ask(_pipeline(Graph()))
+    prompt = outcome.qa_messages[-1]["content"]
+    assert "==========\nDOCUMENT 1\n==========" in prompt and "**ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ**" in outcome.context

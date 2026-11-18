@@ -18,9 +18,20 @@ def system_prompt_with_datetime(now: datetime) -> str:
     return QA_SYSTEM_PROMPT.format(current_datetime=now.isoformat())
 
 
+SOURCE_HEADER = "==========\nИСТОЧНИК\n=========="
+NOTES_HEADING = "**СПРАВКИ ПО МАТЕРИАЛАМ**"
+
+
+def is_sources_style(context: str) -> bool:
+    """The context of CONTEXT_STYLE=sources: unnumbered sources and notes instead of DOCUMENT sections."""
+    return SOURCE_HEADER in context or NOTES_HEADING in context
+
+
 def calculate_number_of_documents_in_context(context: str) -> int:
     if len(context.strip()) == 0:
         return 0
+    if is_sources_style(context):
+        return context.count(SOURCE_HEADER)
     document_prefix = "==========\nDOCUMENT "
     start_char_idx = context.rfind(document_prefix)
     if start_char_idx < 0 and "**ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ**" in context:
@@ -47,6 +58,8 @@ def prepare_prompt_for_question_answering(
     use general knowledge, a turn about the dialogue is answered from its history, and small talk, off-topic requests
     and prompt injections follow the rules of the system prompt."""
     num_relevant_documents = calculate_number_of_documents_in_context(context)
+    sources_style = is_sources_style(context)
+    has_notes = NOTES_HEADING in context
     found_abbreviations = find_candidates_to_abbreviations(
         source_text=context + "\n\n" + dialogue_history + "\n\n" + user_question,
         all_abbreviations=abbr_dict,
@@ -76,7 +89,8 @@ def prepare_prompt_for_question_answering(
             "стиля, структуры, тона и уровня детализации ответа. Это НЕ источник фактов.\n"
             "- Не переносите из примеров никакие конкретные сведения (имена, фамилии, "
             "должности, числа, даты, баллы, названия программ и подразделений).\n"
-            "- Все фактические утверждения берите ТОЛЬКО из разделов DOCUMENT и из истории "
+            "- Все фактические утверждения берите ТОЛЬКО из "
+            + ("разделов ИСТОЧНИК" if sources_style else "разделов DOCUMENT") + " и из истории "
             "диалога. Если факт встречается в примере, но отсутствует в документах, — "
             "не используйте его.\n"
             "- Соблюдайте принцип: объём и структура ответа должны соответствовать сложности "
@@ -99,10 +113,14 @@ def prepare_prompt_for_question_answering(
         input_prompt += "Ответьте, пожалуйста, на реплику из раздела CURRENT QUESTION, как сказано в системном промпте."
     elif route == "general":
         input_prompt += ("Ответьте, пожалуйста, на вопрос из раздела CURRENT QUESTION. Общие понятия объясняйте из "
-                         "своих знаний; сведения об НГУ берите только из разделов DOCUMENT.")
+                         "своих знаний; сведения об НГУ берите только из "
+                         + ("разделов ИСТОЧНИК." if sources_style else "разделов DOCUMENT."))
     else:
         input_prompt += "Ответьте, пожалуйста, на вопрос из раздела CURRENT QUESTION"
-        if len(context) > 0:
+        if len(context) > 0 and sources_style:
+            parts = (["ИСТОЧНИК"] if num_relevant_documents else []) + (["СПРАВКИ ПО МАТЕРИАЛАМ"] if has_notes else [])
+            input_prompt += ", опираясь только на факты из разделов " + " и ".join(parts) + "."
+        elif len(context) > 0:
             if num_relevant_documents > 1:
                 input_prompt += f", опираясь только на факты из разделов DOCUMENT 1–{num_relevant_documents}."
             else:
@@ -119,7 +137,9 @@ def prepare_prompt_for_question_answering(
         input_prompt += (
             "1. Применяйте расшифровку из словаря, только если сокращение действительно встречается в CURRENT QUESTION"
         )
-        if (len(context) > 0) or (len(dialogue_history) > 0):
+        if sources_style and len(context) > 0:
+            input_prompt += ", DIALOGUE HISTORY или разделах ИСТОЧНИК" if dialogue_history else " или разделах ИСТОЧНИК"
+        elif (len(context) > 0) or (len(dialogue_history) > 0):
             if (len(context) > 0) and (len(dialogue_history) > 0):
                 if num_relevant_documents > 1:
                     input_prompt += f", DIALOGUE HISTORY или DOCUMENT 1–{num_relevant_documents}"
@@ -151,6 +171,10 @@ def prepare_prompt_for_question_answering(
             "5. Словарь не является источником фактов: сам факт наличия записи «X — Y» не доказывает, "
             "что Y упомянут в документах или релевантен вопросу."
         )
-    if "**ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ**" in context:
+    if has_notes:
+        input_prompt += ("\n\nРаздел СПРАВКИ ПО МАТЕРИАЛАМ — краткие сводки по тем же материалам; используйте его вместе "
+                         "с разделами ИСТОЧНИК. Если разделов ИСТОЧНИК нет, отвечайте по справкам. Не дополняйте "
+                         "отсутствующие факты.\n")
+    elif "**ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ**" in context:
         input_prompt += "\n\nРаздел ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ содержит факты из исходных документов; используйте его вместе с разделами DOCUMENT. Если разделов DOCUMENT нет, отвечайте по элементам графа. Не дополняйте отсутствующие факты.\n"
     return input_prompt
