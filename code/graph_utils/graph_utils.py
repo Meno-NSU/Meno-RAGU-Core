@@ -438,7 +438,9 @@ def load_graph_engines(graph_dir: str, embedder_name: str,
                        engine_reranker_name: Optional[str] = None,
                        engine_reranker_url: Optional[str] = None, engine_reranker_key: Optional[str] = None,
                        embedder: Optional[Embedder] = None, scorer: Optional[Scorer] = None,
-                       max_related_candidates: Optional[int] = None, hybrid_fusion: str = 'rrf'
+                       max_related_candidates: Optional[int] = None, hybrid_fusion: str = 'rrf',
+                       expansion_candidates: int = 0, expansion_hub_chunks: int = 200,
+                       alias_table: Optional[Union[str, Path]] = None
                        ) -> GraphSearchEngines:
     if not os.path.isdir(graph_dir):
         raise IOError(f'The directory "{graph_dir}" does not exist!')
@@ -492,6 +494,12 @@ def load_graph_engines(graph_dir: str, embedder_name: str,
         sparse_embedder=sparse_embedder, reranker=scorer
     )
     local_engine.max_related_candidates = max_related_candidates
+    if expansion_candidates:
+        local_engine.expansion_candidates = expansion_candidates
+        local_engine.expansion_hub_chunks = expansion_hub_chunks
+    if alias_table is not None:
+        from graph_utils.alias_table import AliasTable
+        local_engine.alias_table = AliasTable.load(alias_table)
     naive_engine = NaiveSearchEngine(
         llm=dummy_llm, knowledge_graph=knowledge_graph, embedder=embedder,
         sparse_embedder=sparse_embedder, reranker=scorer

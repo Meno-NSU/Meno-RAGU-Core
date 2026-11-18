@@ -243,3 +243,80 @@ def test_a_hub_entity_reads_only_the_chunks_it_keeps():
         full = await _find_most_related_text_unit_from_entities([hub], graph(payloads), edges, neighbors)
         assert [chunk.content for chunk in chunks] == [chunk.content for chunk in full[:200]]
     asyncio.run(run())
+
+
+def navigation_fixture():
+    hub = Entity('НГУ', 'UNIVERSITY', '', [f'h{i}' for i in range(6)], id='hub')
+    unit = Entity('Кафедра общей физики', 'DEPARTMENT', '', ['u1', 'u2'], id='unit')
+
+    def edge(subject, target, kind, text, strength=4.0, chunks=(), key=None):
+        return Relation(subject, target, subject, target, kind, text, strength, list(chunks), id=key or f'{subject}-{target}-{kind}')
+
+    edges = {
+        'hub': [edge('hub', 'x', 'RELATED_TO', 'общее упоминание', 5.0), edge('unit', 'hub', 'PART_OF', 'кафедра входит в университет')],
+        'unit': [edge('unit', 'hub', 'PART_OF', 'кафедра входит в университет'),
+                 edge('head', 'unit', 'HEAD_OF', 'Иванов заведует кафедрой общей физики', 3.0, ['e1']),
+                 edge('unit', 'topic', 'RELATED_TO', 'заведующий упомянут рядом', 5.0, ['e2']),
+                 edge('unit', 'lab', 'PART_OF', 'лаборатория при кафедре', 5.0)],
+    }
+    neighbors = {'x': ['h0'], 'hub': hub.source_chunk_id, 'unit': unit.source_chunk_id,
+                 'head': ['p1', 'p2', 'p3', 'p4'], 'topic': ['t1'], 'lab': ['l1']}
+    ids = [*hub.source_chunk_id, *unit.source_chunk_id, 'e1', 'e2', 'p1', 'p2', 'p3', 'p4', 't1', 'l1']
+    payloads = {cid: {'content': f'Текст {cid}', 'chunk_order_idx': n, 'doc_id': f'doc-{cid}'} for n, cid in enumerate(ids)}
+    return hub, unit, edges, neighbors, payloads
+
+
+def test_navigation_takes_anchors_in_turns_and_walks_typed_relations_only():
+    from graph_utils.local_search import NavigationPlan
+    hub, unit, edges, neighbors, _ = navigation_fixture()
+    engine = object.__new__(EfficientLocalSearchEngine)
+    plan = NavigationPlan('кто заведует кафедрой общей физики', [hub, unit], edges, neighbors, engine.edge_tokens)
+    # the first anchor no longer fills the budget alone
+    assert plan.own_chunks(4) == ['h0', 'u1', 'h1', 'u2']
+    # the relation that covers the query comes first for its anchor, although its strength is the lowest
+    assert plan.ranked_edges['unit'][0].relation_type == 'HEAD_OF'
+    assert [edge.id for edge in plan.relations(2)] == ['unit-hub-PART_OF', 'head-unit-HEAD_OF']
+    # one step: the relation's own chunk, then the neighbour's first chunks; untyped relations and hubs are skipped
+    assert plan.expansion_chunks(10, 5, exclude={'h0'}) == ['u1', 'e1', 'u2', 'p1', 'p2', 'p3', 'l1']
+    assert plan.expansion_chunks(10, 3, exclude=set())[:3] == ['u1', 'l1', 'u2']
+
+
+@pytest.mark.parametrize('expansion', [0, 4])
+def test_expansion_setting_changes_candidates_only_when_on(expansion):
+    async def run():
+        hub, unit, edges, neighbors, payloads = navigation_fixture()
+        engine = object.__new__(EfficientLocalSearchEngine)
+        engine.knowledge_graph = graph(payloads)
+        engine.reranker = None
+        engine.max_related_candidates = 3
+        engine.expansion_candidates = expansion
+        found = await engine._assemble('кто заведует кафедрой общей физики', [hub, unit],
+                                       [SimpleNamespace(distance=0.9), SimpleNamespace(distance=0.8)], [hub, unit],
+                                       edges, neighbors)
+        contents = [chunk.content for chunk in found.result.chunks]
+        if expansion:
+            assert contents == ['Текст h0', 'Текст u1', 'Текст h1', 'Текст u2', 'Текст e1', 'Текст p1', 'Текст p2']
+        else:
+            assert contents == ['Текст h0', 'Текст h1', 'Текст h2']
+    asyncio.run(run())
+
+
+def test_named_entities_join_the_vector_search_results():
+    from graph_utils.alias_table import AliasTable, build_alias_table
+
+    async def run():
+        hub, unit, *_ = navigation_fixture()
+        table = AliasTable(build_alias_table(
+            [('hub', 'НГУ', 'UNIVERSITY', ''), ('unit', 'Кафедра общей физики', 'DEPARTMENT', 'Кафедра (КОФ) факультета'),
+             ('other', 'Физика', 'RESEARCH_FIELD', '')], [])['names'])
+        engine = object.__new__(EfficientLocalSearchEngine)
+        engine.alias_table = table
+        nodes = {'hub': hub, 'unit': unit}
+        engine.knowledge_graph = SimpleNamespace(index=SimpleNamespace(
+            get_nodes=AsyncMock(side_effect=lambda ids: [nodes.get(item) for item in ids])))
+        hit = SimpleNamespace(distance=0.7)
+        merged = await engine._with_named_entities(['кто заведует кафедрой общей физики?', 'расписание КОФ', 'привет'],
+                                                   [([hub], [hit]), ([unit], [hit]), ([], [])])
+        assert [[entity.id for entity in entities] for entities, _ in merged] == [['unit', 'hub'], ['unit'], []]
+        assert [len(hits) for _, hits in merged] == [2, 1, 0]
+    asyncio.run(run())

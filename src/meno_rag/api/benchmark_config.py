@@ -29,6 +29,7 @@ _CONTENT_SETTINGS = (
     # answer-affecting switches added after the list was written (missing until 18.11: two stands that answered
     # differently had one fingerprint)
     "hybrid_fusion", "context_style", "graph_element_evidence", "graph_channel",
+    "graph_expansion_candidates", "graph_expansion_hub_chunks", "graph_alias_table",
 )
 # Every other setting, deliberately outside the fingerprint: addresses, keys, timeouts, concurrency, logging,
 # auth, storage and backups. tests/test_benchmark_config.py fails for a field in neither list, so a new setting
@@ -121,6 +122,9 @@ def runtime_identity(settings: Settings) -> dict[str, Any]:
         "embedder_url", "engine_reranker_url", "qdrant_url",
     )})
     result["vllm_endpoints"] = sorted(_safe_url(url) for url in settings.vllm_endpoint_list)
+    # the table's content identifies it, not where it lies
+    table = settings.graph_alias_table
+    result["graph_alias_table"] = (_file_digest(table) if table.is_file() else str(table)) if table else None
     if settings.qa_fewshots_enabled:
         result["fewshots_sha256"] = _file_digest(settings.fewshots_path) if settings.fewshots_path.is_file() else None
     return result

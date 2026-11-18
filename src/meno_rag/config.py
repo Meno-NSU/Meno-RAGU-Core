@@ -249,6 +249,17 @@ class Settings(BaseSettings):
     engine_rerank_top_k: int = Field(default=30, gt=0, validation_alias="ENGINE_RERANK_TOP_K")
     graph_timeout_seconds: float = Field(default=120.0, gt=0, validation_alias="GRAPH_TIMEOUT_SECONDS")
     graph_related_candidates: int = Field(default=200, ge=0, validation_alias="GRAPH_RELATED_CANDIDATES")
+    # Navigation over the graph (graph_utils.local_search.NavigationPlan), off by default. > 0: the anchors take
+    # their chunks and relations in turns (today the first anchor fills the 200), an anchor's relations are ordered
+    # by how much of the query they cover, and up to this many chunks per query come from one step along typed
+    # relations (the relation's own chunks and the neighbour's). Audit of 19.11: for 15% of the benchmark tasks
+    # the gold chunk belongs only to a neighbour of the entities the question names, for 7% it is past the budget.
+    graph_expansion_candidates: int = Field(default=0, ge=0, validation_alias="GRAPH_EXPANSION_CANDIDATES")
+    # Neighbours with more source chunks than this are not expanded (hubs: the university, a country, a level).
+    graph_expansion_hub_chunks: int = Field(default=200, gt=0, validation_alias="GRAPH_EXPANSION_HUB_CHUNKS")
+    # A table of entity names and checked abbreviations built from the graph (python -m graph_utils.alias_table):
+    # the entities a query names join those of the vector search. None = the vector search only.
+    graph_alias_table: Path | None = Field(default=None, validation_alias="GRAPH_ALIAS_TABLE")
     # The fusion of the dense and BM25 lists in every hybrid vector search (entities, relations, chunks): "rrfw" is
     # RRF with every rank tie broken in favour of the dense list (BM25 weight 1 - 1e-4); "rrf" is Qdrant's default
     # RRF, whose ties come back in arbitrary order, so a repeated query got another LLM-rerank pool for 35% of 324

@@ -49,6 +49,9 @@ class GraphRuntime:
             engine_reranker_key=self.settings.engine_reranker_api_key,
             max_related_candidates=self.settings.graph_related_candidates,
             hybrid_fusion=self.settings.hybrid_fusion,
+            expansion_candidates=self.settings.graph_expansion_candidates,
+            expansion_hub_chunks=self.settings.graph_expansion_hub_chunks,
+            alias_table=self.settings.graph_alias_table,
         )
         try:
             self.engines.event_loop.run_until_complete(self._validate_collections())
