@@ -249,10 +249,12 @@ class Settings(BaseSettings):
     engine_rerank_top_k: int = Field(default=30, gt=0, validation_alias="ENGINE_RERANK_TOP_K")
     graph_timeout_seconds: float = Field(default=120.0, gt=0, validation_alias="GRAPH_TIMEOUT_SECONDS")
     graph_related_candidates: int = Field(default=200, ge=0, validation_alias="GRAPH_RELATED_CANDIDATES")
-    # The fusion of the dense and BM25 lists in every hybrid vector search (entities, relations, chunks): "rrf" is
-    # Qdrant's default RRF (first place 1, second 1/2: one top rank ties with agreement, ties in arbitrary order),
+    # The fusion of the dense and BM25 lists in every hybrid vector search (entities, relations, chunks): "rrfw" is
+    # RRF with every rank tie broken in favour of the dense list (BM25 weight 1 - 1e-4); "rrf" is Qdrant's default
+    # RRF, whose ties come back in arbitrary order, so a repeated query got another LLM-rerank pool for 35% of 324
+    # gold questions (rrfw: 1.5%) with the same gold pages found (replay of 18.11, docs/root-fixes-2026-11-18);
     # "rrf60" RRF with k = 60, "dbsf" distribution-based score fusion (graph_utils.hybrid_query).
-    hybrid_fusion: Literal["rrf", "rrfw", "rrf60", "dbsf"] = Field(default="rrf", validation_alias="HYBRID_FUSION")
+    hybrid_fusion: Literal["rrf", "rrfw", "rrf60", "dbsf"] = Field(default="rrfw", validation_alias="HYBRID_FUSION")
     graph_source_documents: int = Field(default=5, gt=0, validation_alias="GRAPH_SOURCE_DOCUMENTS")
     # Graph elements (entities, relations) in the answer context, on top of MAX_CONTEXT_CHUNKS document
     # chunks: before, both kinds shared those slots and elements pushed documents out. 0 = no graph elements.
