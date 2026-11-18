@@ -1,0 +1,12 @@
+# Graph v3 for the RAGU stand (deploy_ragu_v3.sh of 20261118-091502): its resources and its Qdrant.
+services:
+  core:
+    environment:
+      QDRANT_URL: http://127.0.0.1:6433
+    volumes:
+      - type: bind
+        source: /home/m.kulakov/meno-v2/ragu-v2/stand-v6k2
+        target: /app/data
+        read_only: true
+        bind:
+          create_host_path: false
