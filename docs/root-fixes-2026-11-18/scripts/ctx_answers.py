@@ -486,6 +486,9 @@ async def main() -> int:
         retrieval_executor=ThreadPoolExecutor(max_workers=workers, thread_name_prefix="retrieval-b"),
         source_scorer=scorer,
     )
+    # one dialogue memory for both: with its own store the second pipeline summarised the older turns of a long
+    # replayed dialogue afresh, so its prompts differed and 2 of 1271 pairs of 18.11 were not paired (audit)
+    pipeline_sources.summary_store = pipeline.summary_store
     cache_retrieval(pipeline)
     cache_retrieval(pipeline_sources)
     max_tokens = max(settings.max_output_tokens, settings.min_output_tokens)  # the API with no max_tokens in the request
