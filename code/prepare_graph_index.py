@@ -241,6 +241,12 @@ def main():
                         help='With --graph_cleanup: JSONL of retyped relations ({"subject": [name, type], "object": '
                              '[name, type], "original": type, "type": new type, "reverse": bool}, names and types of '
                              'the graph after --graph_merges and --graph_relation_marks); the text stays.')
+    parser.add_argument('--graph_fold_relations', dest='graph_fold_relations', action='store_true',
+                        help='With --graph_cleanup: one relation per statement. A relation of a type the ontology '
+                             '(graph_utils/ontology/nsu.yaml with the NEREL types it extends) declares symmetric, such '
+                             'as KNOWS, takes one order of its ends, so both directions aggregate into one relation; a '
+                             'RELATED_TO with the text of a typed relation between the same two nodes in the same '
+                             'chunk goes.')
     parser.add_argument('--relation_review_sources', dest='relation_review_sources', type=str, required=False,
                         default='',
                         help='The comma-separated list of content sources whose chunks get the relation review '
@@ -465,7 +471,7 @@ def main():
             graph_cleanup=args.graph_cleanup,
             cleanup_inputs=load_cleanup_inputs(args.graph_exclude_chunks, args.graph_entity_labels, args.graph_merges,
                                              args.graph_relation_marks, args.graph_entity_subtypes,
-                                             args.graph_relation_retypes),
+                                             args.graph_relation_retypes, fold_relations=args.graph_fold_relations),
             review_chunk_ids=review_chunk_ids,
             abbreviations=abbreviations,
             rewrite_concurrency=args.rate_max_simultaneous if args.rate_max_simultaneous > 0 else 8,

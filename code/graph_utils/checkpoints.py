@@ -223,6 +223,12 @@ def checkpoint_configuration(args):
         value = getattr(args, name, None)
         if value is not None:
             files[name] = file_hash(value)
+    if getattr(args, 'graph_fold_relations', False):  # the symmetric relation types come from these files
+        import ragu.triplet.ontology as ontology_package
+
+        from graph_utils.graph_cleanup import NSU_ONTOLOGY
+        nerel = Path(ontology_package.__file__).parent / 'builtin' / 'nerel.yaml'
+        files['graph_ontology'] = {path.name: file_hash(path) for path in (NSU_ONTOLOGY, nerel)}
     for name in ('llm_tokenizer', 'embedder_tokenizer'):
         value = getattr(args, name, None)
         if value and Path(value).is_dir():

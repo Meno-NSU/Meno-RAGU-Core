@@ -318,3 +318,65 @@ def test_v5_inputs_load_from_their_files(tmp_path):
     assert inputs.subtypes == ((university, 'UNIVERSITY'), (('Рутил', 'PRODUCT'), 'MATERIAL'))
     assert inputs.not_objects == frozenset({('Ректор', 'PROFESSION')})
     assert inputs.retypes == (((('Статья', 'WORK_OF_ART'), university, 'UNFIT:AGENT'), ('RELATED_TO', False)),)
+
+
+def test_symmetric_relations_keep_one_direction_so_both_sides_aggregate_together():
+    """KNOWS holds both ways: "A knows B" from one page and "B knows A" from another are one fact, stored as two
+    relations until the ends take one order (graph v6: 8,543 KNOWS pairs in both directions)."""
+    first = entity('Зыкин Владимир Сергеевич', 'PERSON', 'Геолог.')
+    second = entity('Кузьмина Ольга Борисовна', 'PERSON', 'Палинолог.')
+    institute = entity('ИГМ СО РАН', 'RESEARCH_INSTITUTE', 'Институт.')
+    relations = [relation(first, second, 'KNOWS', 'Зыкин и Кузьмина — соавторы статьи.', 'c1'),
+                 relation(second, first, 'KNOWS', 'Кузьмина и Зыкин — соавторы.', 'c2'),
+                 relation(second, institute, 'WORKPLACE', 'Кузьмина работает в ИГМ СО РАН.', 'c2')]
+    inputs = CleanupInputs(symmetric_relation_types=frozenset({'KNOWS'}))
+    _, kept, stats = clean_graph([first, second, institute], relations, inputs)
+    knows = [r for r in kept if r.relation_type == 'KNOWS']
+    low, high = sorted([first, second], key=lambda e: e.id)
+    assert [(r.subject_id, r.object_id, r.subject_name, r.object_name) for r in knows] == [
+        (low.id, high.id, low.entity_name, high.entity_name)] * 2
+    assert [r.description for r in knows] == ['Зыкин и Кузьмина — соавторы статьи.', 'Кузьмина и Зыкин — соавторы.']
+    assert knows[0].id == knows[1].id == relation(low, high, 'KNOWS', '').id  # the id names the direction as well
+    workplace = next(r for r in kept if r.relation_type == 'WORKPLACE')
+    assert (workplace.subject_id, workplace.object_id) == (second.id, institute.id)
+    assert stats['symmetric_relations_reordered'] == 1
+
+
+def test_a_related_to_that_repeats_a_typed_relation_of_the_same_chunk_goes():
+    """A RELATED_TO with the text of a typed relation between the same two nodes in the same chunk says nothing the
+    typed one does not (graph v6: 393 such pairs). Its own text, or the same text from another chunk, stays: beside
+    "works at" a RELATED_TO often states another fact ("received a letter of thanks from the rector")."""
+    teacher = entity('Долгушин Дмитрий Владимирович', 'PERSON', 'Преподаватель.')
+    course = entity('Культурология', 'DISCIPLINE', 'Дисциплина.')
+    relations = [relation(teacher, course, 'TEACHES', 'Долгушин читает лекции по культурологии.', 'c1'),
+                 relation(teacher, course, 'RELATED_TO', 'Долгушин читает лекции по культурологии', 'c1'),
+                 relation(course, teacher, 'RELATED_TO', 'долгушин  читает лекции по культурологии.', 'c1'),
+                 relation(teacher, course, 'RELATED_TO', 'Долгушин получил благодарность за курс.', 'c1'),
+                 relation(teacher, course, 'RELATED_TO', 'Долгушин читает лекции по культурологии.', 'c2')]
+    inputs = CleanupInputs(symmetric_relation_types=frozenset({'KNOWS'}))
+    _, kept, stats = clean_graph([teacher, course], relations, inputs)
+    assert [(r.relation_type, r.description, r.source_chunk_id) for r in kept] == [
+        ('TEACHES', 'Долгушин читает лекции по культурологии.', ['c1']),
+        ('RELATED_TO', 'Долгушин получил благодарность за курс.', ['c1']),
+        ('RELATED_TO', 'Долгушин читает лекции по культурологии.', ['c2'])]
+    assert stats['related_to_repeating_a_typed_relation'] == 2
+
+
+def test_folding_relations_is_off_without_the_symmetric_types():
+    """Builds made without the step keep their relations as they were."""
+    first, second = entity('Иванов Иван Иванович', 'PERSON'), entity('Петров Пётр Петрович', 'PERSON')
+    course = entity('Физика', 'DISCIPLINE')
+    relations = [relation(second, first, 'KNOWS', 'Знакомы.'), relation(first, course, 'TEACHES', 'Ведёт физику.'),
+                 relation(first, course, 'RELATED_TO', 'Ведёт физику.')]
+    _, kept, stats = clean_graph([first, second, course], relations, CleanupInputs())
+    assert kept == relations
+    assert 'symmetric_relations_reordered' not in stats
+
+
+def test_symmetric_relation_types_come_from_the_ontology(tmp_path):
+    from graph_utils.graph_cleanup import load_cleanup_inputs, symmetric_relation_types
+    symmetric = symmetric_relation_types()
+    assert {'KNOWS', 'ALTERNATIVE_NAME', 'SPOUSE', 'SIBLING', 'RELATIVE'} <= symmetric
+    assert not symmetric & {'PART_OF', 'LOCATED_IN', 'WORKPLACE', 'RELATED_TO', 'AUTHOR_OF'}
+    assert load_cleanup_inputs(fold_relations=True).symmetric_relation_types == symmetric
+    assert load_cleanup_inputs().symmetric_relation_types == frozenset()

@@ -62,12 +62,14 @@ def test_indexing_keys_come_from_environment_and_cli_has_priority(monkeypatch, e
     assert parsed[0].checkpoint_dir == '/data/graph-checkpoints'
     assert parsed[0].relation_review is False
     assert parsed[0].graph_cleanup is False
+    assert parsed[0].graph_fold_relations is False
     assert parsed[0].relation_review_sources == ''
 
 
 def test_relation_review_is_requested_explicitly(monkeypatch):
     arguments = ['prepare_graph_index.py', '-i', 'corpus.jsonl', '-r', 'mapping.json', '-e', 'bge-m3',
-                 '--relation_review', '--relation_review_sources', 'menon,teaching', '--graph_cleanup']
+                 '--relation_review', '--relation_review_sources', 'menon,teaching', '--graph_cleanup',
+                 '--graph_fold_relations']
     monkeypatch.setattr(sys, 'argv', arguments)
     original = ArgumentParser.parse_args
     parsed = []
@@ -86,6 +88,7 @@ def test_relation_review_is_requested_explicitly(monkeypatch):
     assert parsed[0].relation_review is True
     assert parsed[0].relation_review_sources == 'menon,teaching'
     assert parsed[0].graph_cleanup is True
+    assert parsed[0].graph_fold_relations is True
 
 
 @pytest.mark.parametrize('prompt_tokens, allowed', [(7, True), (8, False)])
@@ -152,3 +155,16 @@ def test_cleanup_inputs_are_hashed_into_the_configuration_and_extra_embedders_ar
     assert not set(CLEANUP_INPUTS) & (set(previous['files']) | set(previous['settings']))
     files['graph_merges'].write_text('["other"]', encoding='utf-8')
     assert checkpoint_configuration(args)['files']['graph_merges'] != configuration['files']['graph_merges']
+
+
+def test_folding_relations_hashes_the_ontology_it_takes_the_symmetric_types_from(tmp_path):
+    from argparse import Namespace
+
+    from graph_utils.checkpoints import checkpoint_configuration
+    corpus = tmp_path / 'corpus.jsonl'
+    corpus.write_text('{}', encoding='utf-8')
+    off = checkpoint_configuration(Namespace(input_name=str(corpus), graph_cleanup=True, graph_fold_relations=False))
+    on = checkpoint_configuration(Namespace(input_name=str(corpus), graph_cleanup=True, graph_fold_relations=True))
+    assert 'graph_ontology' not in off['files']
+    assert set(on['files']['graph_ontology']) == {'nsu.yaml', 'nerel.yaml'}
+    assert on['settings']['graph_fold_relations'] is True

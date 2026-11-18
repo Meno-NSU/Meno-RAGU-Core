@@ -28,6 +28,12 @@ model found not to be objects (a role or status, an identifier, a vague phrase, 
 the type each other node takes (the most specific type of the ontology that fits it). They name nodes and relations as
 the graph they were made on did, so they apply after the merges, in this order.
 
+One statement, one relation (--graph_fold_relations, graph v6.1), last, once the retypes and subtypes have named the
+relations and nodes: a relation of a type the ontology declares symmetric (KNOWS, SPOUSE, ALTERNATIVE_NAME, ...) takes
+one order of its ends, so "A knows B" and "B knows A" aggregate into one relation with the sources of both; a
+RELATED_TO with the text of a typed relation between the same two nodes in the same chunk goes. A RELATED_TO with a
+text of its own stays, even beside a typed relation of the same chunk: there it often states another fact.
+
 An input finds its node by name and type up to punctuation and case, the key the name canonicalization unifies names
 by: inputs made on graph v4, whose name trimming cut closing brackets ('Дексаметазон (DEX'), name the same nodes of a
 build whose names are whole ('Дексаметазон (DEX)'), and a merge target keeps the spelling of this build.
@@ -57,6 +63,9 @@ class CleanupInputs:
     retypes: tuple = ()
     not_objects: frozenset = frozenset()  # (name, type) of nodes that are no objects, folded like values
     subtypes: tuple = ()  # ((name, type), type): the type of the ontology a node takes
+    # relation types the ontology calls symmetric (--graph_fold_relations): one direction per pair, and a RELATED_TO
+    # that repeats a typed relation of the same chunk goes (fold_relations); empty: relations stay as extracted
+    symmetric_relation_types: frozenset = frozenset()
 
 
 def _rows(path):
@@ -66,8 +75,18 @@ def _rows(path):
                 yield json.loads(line)
 
 
+NSU_ONTOLOGY = Path(__file__).resolve().parent / 'ontology' / 'nsu.yaml'
+
+
+def symmetric_relation_types(path=NSU_ONTOLOGY) -> frozenset:
+    """The relation types the ontology (with the NEREL types it extends) declares symmetric: KNOWS, SPOUSE, ..."""
+    from ragu.triplet.ontology.ontology import Ontology
+    ontology = Ontology.from_yaml(path)
+    return frozenset(name for name, spec in ontology.relation_types.items() if spec.symmetric)
+
+
 def load_cleanup_inputs(excluded_path=None, labels_path=None, merges_path=None, marks_path=None, subtypes_path=None,
-                        retypes_path=None, not_object_kinds=NOT_OBJECT_KINDS) -> CleanupInputs:
+                        retypes_path=None, not_object_kinds=NOT_OBJECT_KINDS, fold_relations=False) -> CleanupInputs:
     excluded = frozenset(json.loads(Path(excluded_path).read_text(encoding='utf-8'))) if excluded_path else frozenset()
     folded = set()
     if labels_path:
@@ -97,7 +116,7 @@ def load_cleanup_inputs(excluded_path=None, labels_path=None, merges_path=None, 
     retypes = tuple(((node(row['subject']), node(row['object']), row['original']), (row['type'], bool(row['reverse'])))
                     for row in _rows(retypes_path))
     return CleanupInputs(excluded, frozenset(folded), tuple(merges), frozenset(marks), retypes, frozenset(not_objects),
-                         tuple(subtypes))
+                         tuple(subtypes), symmetric_relation_types() if fold_relations else frozenset())
 
 
 def exclude_chunks(entities: list[Entity], relations: list[Relation], excluded: frozenset
@@ -362,7 +381,47 @@ def clean_graph(entities: list[Entity], relations: list[Relation], inputs: Clean
     if inputs.subtypes:
         entities, relations, subtyped = apply_subtypes(entities, relations, inputs.subtypes)
         stats.update(subtyped)
+    if inputs.symmetric_relation_types:
+        relations, folded = fold_relations(relations, inputs.symmetric_relation_types)
+        stats.update(folded)
     return entities, relations, stats
+
+
+def _statement(description: str) -> str:
+    return ' '.join(str(description).casefold().split()).rstrip(' .;')
+
+
+def fold_relations(relations: list[Relation], symmetric: frozenset) -> tuple[list[Relation], dict[str, int]]:
+    """One statement, one relation. A relation of a type the ontology calls symmetric holds both ways, so its ends
+    take one order (by node id): "A knows B" from one page and "B knows A" from another aggregate into one relation
+    with the sources of both (graph v6: 8,543 KNOWS pairs in both directions). A RELATED_TO whose text a typed relation
+    between the same two nodes states in the same chunk goes, from that chunk: the typed one says the same more
+    precisely (393 such pairs in graph v6). A RELATED_TO with a text of its own stays: beside "works at" the
+    RELATED_TO of the same chunk often states another fact ("received a letter of thanks from the rector")."""
+    stats = {'symmetric_relations_reordered': 0, 'related_to_repeating_a_typed_relation': 0}
+    ordered = []
+    for relation in relations:
+        if relation.relation_type in symmetric and relation.subject_id > relation.object_id:
+            relation = dataclasses.replace(relation, subject_id=relation.object_id, object_id=relation.subject_id,
+                                           subject_name=relation.object_name, object_name=relation.subject_name,
+                                           id='auto')  # the id hashes the direction: the one of this order
+            stats['symmetric_relations_reordered'] += 1
+        ordered.append(relation)
+    typed = {(frozenset((r.subject_id, r.object_id)), chunk, _statement(r.description))
+             for r in ordered if r.relation_type != 'RELATED_TO' and not r.relation_type.startswith('UNFIT:')
+             for chunk in r.source_chunk_id}
+    result = []
+    for relation in ordered:
+        if relation.relation_type == 'RELATED_TO':
+            pair, statement = frozenset((relation.subject_id, relation.object_id)), _statement(relation.description)
+            chunks = [chunk for chunk in relation.source_chunk_id if (pair, chunk, statement) not in typed]
+            if not chunks:
+                stats['related_to_repeating_a_typed_relation'] += 1
+                continue
+            if len(chunks) < len(relation.source_chunk_id):
+                relation = dataclasses.replace(relation, source_chunk_id=chunks)
+        result.append(relation)
+    return result, stats
 
 
 def mark_relations(entities: list[Entity], relations: list[Relation], marks: frozenset
