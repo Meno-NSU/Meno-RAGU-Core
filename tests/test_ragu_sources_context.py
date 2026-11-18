@@ -76,9 +76,16 @@ async def test_shown_sources_are_the_documents_of_the_context():
 
 @pytest.mark.asyncio
 async def test_element_references_come_from_the_retrieved_chunks():
-    outcome = await _ask(_pipeline(Graph()))
+    outcome = await _ask(_pipeline(Graph(), context_style="legacy"))
     assert "Посторонний" not in outcome.context
     assert "**Встречается во фрагментах документов:** Документ А." in outcome.context
+
+
+@pytest.mark.asyncio
+async def test_note_references_come_from_the_retrieved_chunks():
+    outcome = await _ask(_pipeline(Graph()))
+    assert "Посторонний" not in outcome.context
+    assert "По материалам: «Документ А»." in outcome.context
 
 
 @pytest.mark.asyncio
@@ -99,10 +106,19 @@ async def test_element_without_retrieved_references_stays_out_of_the_context():
 
 @pytest.mark.asyncio
 async def test_graph_elements_do_not_take_document_slots():
-    p = _pipeline(Graph(n_entities=5, chunks=((0, 0.5), (1, 0.4))), max_context_chunks=2, graph_max_elements=1)
+    p = _pipeline(Graph(n_entities=5, chunks=((0, 0.5), (1, 0.4))), max_context_chunks=2, graph_max_elements=1,
+                  context_style="legacy")
     outcome = await _ask(p)
     assert {s["document_title"] for s in outcome.sources} == {"Документ А", "Документ Б"}
     assert outcome.context.count("**Элемент графа знаний") == 1
+
+
+@pytest.mark.asyncio
+async def test_notes_do_not_take_document_slots():
+    p = _pipeline(Graph(n_entities=5, chunks=((0, 0.5), (1, 0.4))), max_context_chunks=2, graph_max_elements=1)
+    outcome = await _ask(p)
+    assert {s["document_title"] for s in outcome.sources} == {"Документ А", "Документ Б"}
+    assert outcome.context.count("\nПо материалам: ") == 1
 
 
 @pytest.mark.asyncio
@@ -137,7 +153,16 @@ async def test_sources_style_shows_the_context_as_sources_without_internal_label
 
 
 @pytest.mark.asyncio
-async def test_the_legacy_style_stays_the_default():
+async def test_the_sources_style_is_the_default():
+    """Adopted on 18.11 (docs/root-fixes-2026-11-18): label leaks of the answers fell from 10.5% to 0.9% on 1271
+    paired questions, with the judge's vital recall and contradictions unchanged on the same retrieval."""
     outcome = await _ask(_pipeline(Graph()))
+    prompt = outcome.qa_messages[-1]["content"]
+    assert "==========\nИСТОЧНИК\n==========" in prompt and "DOCUMENT" not in prompt
+
+
+@pytest.mark.asyncio
+async def test_the_legacy_style_can_still_be_chosen():
+    outcome = await _ask(_pipeline(Graph(), context_style="legacy"))
     prompt = outcome.qa_messages[-1]["content"]
     assert "==========\nDOCUMENT 1\n==========" in prompt and "**ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ**" in outcome.context

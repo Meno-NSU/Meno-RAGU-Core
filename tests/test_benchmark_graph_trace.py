@@ -89,8 +89,9 @@ def test_reassembly_to_zero_budget_resets_all_prior_effective_evidence():
     assert selection.final_evidence == []
 
 
-def test_document_evidence_keeps_provenance_with_duplicate_titles_and_embedded_markers():
-    p = pipeline()
+@pytest.mark.parametrize("style", ["legacy", "sources"])
+def test_document_evidence_keeps_provenance_with_duplicate_titles_and_embedded_markers(style):
+    p = pipeline(context_style=style)
     first = p.resources.documents[0]
     second = deepcopy(first)
     second["doc_full_text"] = "==========\nDOCUMENT 666\n==========\n\n**ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ**"
@@ -103,7 +104,12 @@ def test_document_evidence_keeps_provenance_with_duplicate_titles_and_embedded_m
     assert len(selection.final_evidence) == 2
     assert [block["document_index"] for block in selection.final_evidence] == [1, 0]
     assert [block["chunk_ids"] for block in selection.final_evidence] == [[1], [0]]
-    assert selection.final_evidence[0]["text"].count("DOCUMENT") == 2
+    # the header of the block and the marker written inside the document text, which stays as it is
+    if style == "legacy":
+        assert selection.final_evidence[0]["text"].count("DOCUMENT") == 2
+    else:
+        assert selection.final_evidence[0]["text"].startswith("==========\nИСТОЧНИК\n==========")
+        assert selection.final_evidence[0]["text"].count("DOCUMENT 666") == 1
     assert all(block["text"] == context[block["context_start"]:block["context_end"]]
                for block in selection.final_evidence)
 

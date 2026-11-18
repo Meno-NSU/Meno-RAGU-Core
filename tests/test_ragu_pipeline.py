@@ -10,7 +10,7 @@ from tests.ragu_fakes import pipeline
 
 @pytest.mark.asyncio
 async def test_graph_elements_reranked_and_grounded_with_the_document_link():
-    p = pipeline()
+    p = pipeline(context_style="legacy")
     events = []
 
     async def sink(event):
@@ -30,6 +30,21 @@ async def test_graph_elements_reranked_and_grounded_with_the_document_link():
     assert outcome.trace["graph"]["selected_elements"]
     assert any("Элемент графа знаний" in str(messages) for messages in p.llm_router.prompts)
     assert events
+
+
+@pytest.mark.asyncio
+async def test_graph_elements_are_notes_with_their_documents_in_the_sources_style():
+    p = pipeline()
+    outcome = await p.prepare(
+        messages=[ChatMessage(role="user", content="ФИТ")],
+        runtime=PipelineRuntime.uniform(ModelRuntime("meno", "http://fake/v1")),
+        capture_trace=True,
+    )
+    assert "**СПРАВКИ ПО МАТЕРИАЛАМ**" in outcome.context and "ЭЛЕМЕНТЫ ГРАФА ЗНАНИЙ" not in outcome.context
+    assert "**ФИТ.** Факт о ФИТ.\nПо материалам: «НГУ»." in outcome.context
+    assert outcome.sources == [{"document_title": "НГУ", "source_url": "https://example.org/a"}]
+    # the LLM rerank still sees the elements as they are: the style is the answer prompt's only
+    assert any("Элемент графа знаний" in str(messages) for messages in p.llm_router.prompts)
 
 
 @pytest.mark.asyncio

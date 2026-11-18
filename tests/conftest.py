@@ -7,7 +7,8 @@ from tests.ragu_fakes import pipeline
 
 @pytest.fixture
 def snapshot_pipeline():
-    return pipeline(), PipelineRuntime.uniform(ModelRuntime("fake-model", "http://fake/v1"))
+    # the golden file was recorded with the legacy context style (DOCUMENT sections); it guards that path
+    return pipeline(context_style="legacy"), PipelineRuntime.uniform(ModelRuntime("fake-model", "http://fake/v1"))
 
 
 @pytest.fixture
