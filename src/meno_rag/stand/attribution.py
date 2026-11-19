@@ -173,10 +173,14 @@ def page_titles(documents: Sequence[dict[str, Any]]) -> dict[str, str]:
 
 
 async def attribute(answer: str, units: Sequence[EvidenceUnit], scorer: Scorer, threshold: float,
-                    prior_weight: float = 0.0) -> list[tuple[EvidenceUnit, float]]:
+                    prior_weight: float = 0.0, stats: dict[str, Any] | None = None) -> list[tuple[EvidenceUnit, float]]:
     """The units some sentence of the answer scores at least ``threshold`` against, with their best score, ordered by
-    the best of those scores times the unit's prior to the power ``prior_weight``."""
+    the best of those scores times the unit's prior to the power ``prior_weight``. ``stats`` (optional) receives the
+    numbers of sentences, units, scorer calls and sentence x unit pairs."""
     sentences = split_sentences(answer)
+    if stats is not None:
+        calls = len(sentences) if units else 0
+        stats.update(sentences=len(sentences), units=len(units), scorer_calls=calls, pairs=calls * len(units))
     if not sentences or not units:
         return []
     texts = [unit.text for unit in units]

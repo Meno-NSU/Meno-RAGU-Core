@@ -6,6 +6,7 @@ import functools
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
@@ -145,10 +146,14 @@ class StandRagPipeline:
     ) -> PipelineOutcome:
         question, history = extract_question_and_history(messages)
         memory = None
+        # sub-stage timings of the turn (recorded only): the memory, the analysis, the rewrite
+        turn_timings: dict[str, float] = {}
         if self.settings.dialogue_memory:
             # Menon 1.1's memory: the recent turns whole, older ones summarized; every user turn counts
+            memory_started = time.perf_counter()
             memory = await build_memory(history, question, self.llm_router, runtime.core, self.summary_store,
                                         self.settings)
+            turn_timings["memory_ms"] = _elapsed_ms(memory_started)
             prepared_dialogue_history = render_history(memory.recent, memory.summary, memory.recalled)
         else:
             prepared_dialogue_history = prepare_dialogue_history(
@@ -186,13 +191,17 @@ class StandRagPipeline:
             # then works from that question, and the sub-queries of comparisons and lists join the search. Both run
             # in the rewrite stage, so the site shows it in progress from the start of the analysis (Menon 1.1 too).
             async def analyze_and_rewrite() -> tuple[TurnAnalysis, list[str] | None]:
+                analysis_started = time.perf_counter()
                 analysis = await analyze(self.llm_router, runtime.core, question=question, recent=memory.recent,
                                          summary=memory.summary, today=date.today(),
                                          timeout_s=self.settings.rewrite_timeout_seconds)
+                turn_timings["analysis_ms"] = _elapsed_ms(analysis_started)
                 if analysis.route in NO_SEARCH_ROUTES:
                     return analysis, None
+                rewrite_started = time.perf_counter()
                 rewritten = await self._rewrite_question(analysis.standalone_question, prepared_dialogue_history,
                                                          runtime.core)
+                turn_timings["rewrite_ms"] = _elapsed_ms(rewrite_started)
                 return analysis, rewritten
 
             def analysis_detail(result: tuple[TurnAnalysis, list[str] | None]) -> dict[str, Any]:
@@ -200,7 +209,7 @@ class StandRagPipeline:
                 detail = {} if rewritten is None else self._stage_detail(StageName.QUERY_REWRITE, rewritten)
                 return {**detail, "route": analysis.route, "standalone_question": analysis.standalone_question,
                         "subqueries": analysis.subqueries, "analysis_fallback": analysis.fallback,
-                        "focus": analysis.focus}
+                        "focus": analysis.focus, "timings": dict(turn_timings)}
 
             analysis, rewritten = await self._timed_stage(
                 StageName.QUERY_REWRITE,
@@ -216,13 +225,26 @@ class StandRagPipeline:
             search_queries = list(dict.fromkeys([*rewritten, *analysis.subqueries])) if rewritten is not None else []
         else:
             # The kind of the turn (routing.py) is asked next to the rewrite, so it costs no extra latency.
-            route_task = (asyncio.create_task(self._route_turn(question, prepared_dialogue_history, runtime.core))
-                          if self.settings.turn_routing else None)
+            async def timed_route() -> str:
+                route_started = time.perf_counter()
+                try:
+                    return await self._route_turn(question, prepared_dialogue_history, runtime.core)
+                finally:
+                    turn_timings["route_ms"] = _elapsed_ms(route_started)
+
+            async def timed_rewrite() -> list[str]:
+                rewrite_started = time.perf_counter()
+                try:
+                    return await self._rewrite_question(question, prepared_dialogue_history, runtime.core)
+                finally:
+                    turn_timings["rewrite_ms"] = _elapsed_ms(rewrite_started)
+
+            route_task = asyncio.create_task(timed_route()) if self.settings.turn_routing else None
             try:
                 search_queries = await self._timed_stage(
                     StageName.QUERY_REWRITE,
                     emit,
-                    lambda: self._rewrite_question(question, prepared_dialogue_history, runtime.core),
+                    timed_rewrite,
                     stage_durations,
                     stage_details,
                     model_id=runtime.core.model_id,
@@ -234,6 +256,7 @@ class StandRagPipeline:
             route = await route_task if route_task is not None else None
             if route is not None:
                 stage_details.setdefault(StageName.QUERY_REWRITE, {})["route"] = route
+            stage_details.setdefault(StageName.QUERY_REWRITE, {})["timings"] = dict(turn_timings)
             searching = route not in NO_SEARCH_ROUTES
 
         # Few-shot selection is fail-safe and surfaced as its own stage so the
@@ -432,10 +455,12 @@ class StandRagPipeline:
         """Replace the context documents by the pages the answer rests on (no-op without a scorer)."""
         if self.source_scorer is None:
             return outcome.sources
+        started = time.perf_counter()
+        counts: dict[str, Any] = {}
         try:
             units = [EvidenceUnit(**unit) for unit in outcome.evidence]
             scored = await attribute(answer, units, self.source_scorer, self.settings.source_attribution_threshold,
-                                     prior_weight=self.settings.source_prior_weight)
+                                     prior_weight=self.settings.source_prior_weight, stats=counts)
             outcome.sources = to_sources(scored, self.settings.max_sources)
             if outcome.trace is not None:
                 outcome.trace["source_attribution"] = [
@@ -444,6 +469,8 @@ class StandRagPipeline:
         except Exception as exc:  # an answer without sources beats a failed turn
             logger.warning("source_attribution_failed", error=repr(exc))
             outcome.sources = []
+            counts["failed"] = True
+        _record_attribution_timings(outcome, {"attribution_ms": _elapsed_ms(started), **counts})
         return outcome.sources
 
     async def generate_text(
@@ -679,14 +706,18 @@ class StandRagPipeline:
                 if chunk_id not in seen:
                     seen.add(chunk_id)
                     unique_ids.append(chunk_id)
+        calls = new_rerank_calls()
         if not unique_ids:
             output = _RerankOutput([])
             output.scored_candidates = 0
             output.candidate_scores = {}
+            output.llm_calls = calls
             return output
-        scores = await asyncio.gather(
-            *[self._score_chunk_with_llm(user_question, dialogue_history, chunk_id, runtime) for chunk_id in unique_ids]
-        )
+        with counting_rerank_calls(calls):
+            scores = await asyncio.gather(
+                *[self._score_chunk_with_llm(user_question, dialogue_history, chunk_id, runtime)
+                  for chunk_id in unique_ids]
+            )
         score_by_id = dict(zip(unique_ids, scores, strict=False))
         global_chunks: list[tuple[int, float]] = []
         for cands in capped_batches:
@@ -709,6 +740,7 @@ class StandRagPipeline:
         output = _RerankOutput(global_chunks)
         output.scored_candidates = len(unique_ids)
         output.candidate_scores = score_by_id
+        output.llm_calls = calls
         return output
 
     async def _score_chunk_with_llm(
@@ -771,6 +803,7 @@ class StandRagPipeline:
         }
         async with self.rerank_semaphore:
             try:
+                _count_rerank_request()
                 response = await self.llm_router.chat_completion(
                     runtime=runtime,
                     messages=prompt,
@@ -782,6 +815,7 @@ class StandRagPipeline:
                     extra_body=rerank_extra_body,
                     timeout=self.settings.rerank_timeout_seconds,
                 )
+                _count_rerank_usage(response)
                 _log_rerank_choice(response, chunk_id=chunk_id, model_id=runtime.model_id)
                 return score_from_logprobs(response["choices"][0])
             except Exception as exc:
@@ -792,6 +826,7 @@ class StandRagPipeline:
                 logger.warning("rerank_guided_choice_failed", chunk_id=chunk_id, error=str(exc))
                 # JSON fallback needs a multi-token budget for the {"label": "X"} envelope.
                 # Matches meno_stand rerank_utils.py:106-129.
+                _count_rerank_request(fallback=True)
                 response = await self.llm_router.chat_completion(
                     runtime=runtime,
                     messages=build_prompt(
@@ -809,6 +844,7 @@ class StandRagPipeline:
                     extra_body={"chat_template_kwargs": {"enable_thinking": False}},
                     timeout=self.settings.rerank_timeout_seconds,
                 )
+                _count_rerank_usage(response)
                 return score_from_json_response(str(response["choices"][0]["message"]["content"]))
 
     async def _prompt_fits(self, messages, runtime, completion_tokens, *, chat_template_kwargs=None):
@@ -951,7 +987,11 @@ class StandRagPipeline:
             # count rides on the result object (see _RerankOutput); a plain list
             # (e.g. rerank never ran) falls back to its own length.
             scored = getattr(result, "scored_candidates", len(result))
-            return {"kept": len(result), "from": scored}
+            detail: dict[str, Any] = {"kept": len(result), "from": scored}
+            calls = getattr(result, "llm_calls", None)
+            if calls is not None:
+                detail["timings"] = rerank_timings(calls)
+            return detail
         if stage_name == StageName.CONTEXT_ASSEMBLY:
             context, sources = result
             return {"sources": len(sources), "context_tokens": max(1, len(context.split())) if context else 0}
@@ -994,6 +1034,77 @@ class StandRagPipeline:
         return sum(len(ex.question) + len(ex.answer) + _FEWSHOT_RENDER_OVERHEAD for ex, _score in fewshots)
 
 
+def _elapsed_ms(started: float) -> float:
+    return round((time.perf_counter() - started) * 1000, 2)
+
+
+# The LLM-rerank calls of one turn, counted for its stage timings (recorded only). The scoring tasks of a turn start
+# inside counting_rerank_calls and inherit its context, so concurrent turns count apart.
+_RERANK_CALLS: ContextVar[dict[str, int] | None] = ContextVar("rerank_llm_calls", default=None)
+
+
+def new_rerank_calls() -> dict[str, int]:
+    return {"llm_calls": 0, "json_fallback_calls": 0, "usage_reported": 0, "prompt_tokens": 0,
+            "cached_reported": 0, "cached_tokens": 0}
+
+
+@contextlib.contextmanager
+def counting_rerank_calls(calls: dict[str, int]):
+    token = _RERANK_CALLS.set(calls)
+    try:
+        yield calls
+    finally:
+        _RERANK_CALLS.reset(token)
+
+
+def _count_rerank_request(*, fallback: bool = False) -> None:
+    calls = _RERANK_CALLS.get()
+    if calls is None:
+        return
+    calls["llm_calls"] += 1
+    if fallback:
+        calls["json_fallback_calls"] += 1
+
+
+def _count_rerank_usage(response: Any) -> None:
+    """Prompt tokens and, when the server reports them (vLLM --enable-prompt-tokens-details), cached tokens."""
+    calls = _RERANK_CALLS.get()
+    if calls is None or not isinstance(response, dict):
+        return
+    usage = response.get("usage")
+    if not isinstance(usage, dict):
+        return
+    prompt_tokens = usage.get("prompt_tokens")
+    if isinstance(prompt_tokens, int) and not isinstance(prompt_tokens, bool):
+        calls["usage_reported"] += 1
+        calls["prompt_tokens"] += prompt_tokens
+    details = usage.get("prompt_tokens_details")
+    cached = details.get("cached_tokens") if isinstance(details, dict) else None
+    if isinstance(cached, int) and not isinstance(cached, bool):
+        calls["cached_reported"] += 1
+        calls["cached_tokens"] += cached
+
+
+def rerank_timings(calls: dict[str, int]) -> dict[str, Any]:
+    """The rerank stage's timings: LLM calls; prompt and cached tokens only when some response reported them."""
+    return {
+        "llm_calls": calls["llm_calls"],
+        "json_fallback_calls": calls["json_fallback_calls"],
+        "prompt_tokens": calls["prompt_tokens"] if calls["usage_reported"] else None,
+        "cached_tokens": calls["cached_tokens"] if calls["cached_reported"] else None,
+        "usage_reported": calls["usage_reported"],
+        "cached_reported": calls["cached_reported"],
+    }
+
+
+def _record_attribution_timings(outcome: PipelineOutcome, timings: dict[str, Any]) -> None:
+    """The source attribution after the answer, next to the stage details (not a stage: it has no duration of its
+    own in stage_durations_ms, so nothing changes in the stage list or its sum)."""
+    outcome.stage_details["source_attribution"] = {"timings": timings}
+    if outcome.trace is not None:
+        outcome.trace.setdefault("stage_details", {})["source_attribution"] = {"timings": dict(timings)}
+
+
 _LARGE_QA_PROMPT_CHARS_WARN = 30000
 # Approximate per-example chars added by the few-shot prompt template
 # ("--- ПРИМЕР n ---", "Вопрос: ", "Ответ: ", blank lines) on top of the raw
@@ -1015,6 +1126,8 @@ class _RerankOutput(list):
     candidate_scores: dict[int, float] | None = None
     capture_evidence: bool = False
     final_evidence: list[dict[str, Any]] | None = None
+    # LLM calls and prompt tokens of the scoring (new_rerank_calls), for the stage's timings; recorded only
+    llm_calls: dict[str, int] | None = None
 
 
 @contextlib.asynccontextmanager

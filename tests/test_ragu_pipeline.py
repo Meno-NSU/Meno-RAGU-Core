@@ -26,7 +26,9 @@ async def test_graph_elements_reranked_and_grounded_with_the_document_link():
     assert "Факт о ФИТ" in outcome.context
     # one link per document (SOURCE_URLS_PER_DOCUMENT=1): the document has two
     assert outcome.sources == [{"document_title": "НГУ", "source_url": "https://example.org/a"}]
-    assert outcome.stage_details["rerank"] == {"kept": 3, "from": 3}
+    rerank = dict(outcome.stage_details["rerank"])
+    assert rerank.pop("timings")["llm_calls"] == 3  # sub-stage timings (tests/test_substage_timings.py)
+    assert rerank == {"kept": 3, "from": 3}
     assert outcome.trace["graph"]["selected_elements"]
     assert any("Элемент графа знаний" in str(messages) for messages in p.llm_router.prompts)
     assert events

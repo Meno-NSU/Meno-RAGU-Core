@@ -31,6 +31,7 @@ except ImportError as err:
                       'the graph-based search. Please install it first.') from err
 
 from search_utils.search_utils import combine_relevant_chunks
+from graph_utils import search_timings
 from graph_utils.local_search import EfficientLocalSearchEngine
 from qdrant_client.http.models import Fusion, FusionQuery, Rrf, RrfQuery
 from graph_utils.graph_cleanup import CleanupInputs, clean_graph
@@ -210,7 +211,20 @@ class GraphSearchEngines:
                       use_graph: bool = True) -> Dict[str, Any]:
         """The graph channel (entities, relations and the chunks they come from) and the chunk channel (hybrid
         vector + BM25 search over the chunks) for one query. ``use_graph=False`` searches the chunk channel only
-        (GRAPH_CHANNEL=false of the stand: what the graph adds is measured against it)."""
+        (GRAPH_CHANNEL=false of the stand: what the graph adds is measured against it).
+
+        ``timings`` in the result: where this search spent its time (search_timings), recorded only."""
+        timings = search_timings.new_timings()
+        started = time.perf_counter()
+        with search_timings.collecting(timings):
+            result = await self._asearch(search_query, local_top_k, naive_top_k, local_rerank_top_k,
+                                         naive_rerank_top_k, use_graph)
+        result['timings'] = search_timings.finished(timings, started)
+        return result
+
+    async def _asearch(self, search_query: str, local_top_k: int, naive_top_k: int,
+                       local_rerank_top_k: Optional[int], naive_rerank_top_k: Optional[int],
+                       use_graph: bool) -> Dict[str, Any]:
         naive_params = NaiveSearchParams(top_k=naive_top_k, rerank_top_k=naive_rerank_top_k)
         if not use_graph:
             naive_retrieval = await self.naive_engine.search(search_query, params=naive_params)
@@ -508,6 +522,11 @@ def load_graph_engines(graph_dir: str, embedder_name: str,
     for storage in (knowledge_graph.index.nodes_vector_db, knowledge_graph.index.edges_vector_db,
                     knowledge_graph.index.chunks_vector_db):
         set_hybrid_fusion(storage, hybrid_fusion)
+        search_timings.instrument_storage(storage)
+    # recording only (search_timings): the wrappers call the same methods with the same arguments
+    search_timings.instrument_embedder(embedder)
+    if scorer is not None:
+        search_timings.instrument_scorer(scorer)
     return GraphSearchEngines(
         local_engine=local_engine,
         naive_engine=naive_engine,

@@ -10,7 +10,14 @@ from context_utils.context_utils import graph_element_to_text
 from meno_rag.api.events import StageName
 from meno_rag.stand.attribution import norm_url
 from meno_rag.stand.context import graph_element_as_note, normalize_urls
-from meno_rag.stand.pipeline import ModelRuntime, StandRagPipeline, _RerankOutput
+from meno_rag.stand.pipeline import (
+    ModelRuntime,
+    StandRagPipeline,
+    _RerankOutput,
+    counting_rerank_calls,
+    new_rerank_calls,
+    rerank_timings,
+)
 from meno_rag.stand.rerank import rerank_merge_score
 
 
@@ -101,8 +108,10 @@ class RaguRagPipeline(StandRagPipeline):
                                          self.resources.chunk_mapping, max_source_titles=0)
             return await self._score_document_with_llm(user_question, dialogue_history, text, runtime, candidate.key)
 
+        calls = new_rerank_calls()
         if self.settings.llm_rerank:
-            tasks = [asyncio.create_task(score(candidate)) for candidate in unique.values()]
+            with counting_rerank_calls(calls):
+                tasks = [asyncio.create_task(score(candidate)) for candidate in unique.values()]
             try:
                 values = await asyncio.gather(*tasks)
             finally:
@@ -167,13 +176,15 @@ class RaguRagPipeline(StandRagPipeline):
             "selected": [{**self._trace_candidate(c), "merged_score": merged} for c, merged in kept],
             "selected_elements": elements,
         }
-        return GraphSelection(
+        selection = GraphSelection(
             chunks,
             elements,
             scored=len(unique),
             candidate_scores={c.chunk_id: scores[c.key] for c in unique.values() if c.chunk_id is not None},
             graph_trace=graph_trace,
         )
+        selection.llm_calls = calls
+        return selection
 
     def _capped_chunks(self, ranked):
         """The best chunks for the context, at most ``max_context_chunks``, and at most ``rerank_candidates_per_page``
@@ -325,13 +336,21 @@ class RaguRagPipeline(StandRagPipeline):
 
     def _stage_detail(self, stage_name, result):
         if stage_name == StageName.RETRIEVAL:
-            return {
+            detail: dict[str, Any] = {
                 "chunks_found": sum(len(b["graph"]["chunks"]) for b in result),
                 "entities": sum(len(b["graph"]["entities"]) for b in result),
                 "relations": sum(len(b["graph"]["relations"]) for b in result),
             }
+            # where each query's search spent its time (graph_utils.search_timings), in the order of the queries
+            per_query = [b["graph"].get("timings") for b in result]
+            if any(timings is not None for timings in per_query):
+                detail["timings"] = {"per_query": per_query}
+            return detail
         if stage_name == StageName.FUSION:
             return {"candidates": sum(len(b["pool"]) for b in result)}
         if stage_name == StageName.RERANK:
-            return {"kept": len(result) + len(result.elements), "from": result.scored_candidates}
+            detail = {"kept": len(result) + len(result.elements), "from": result.scored_candidates}
+            if getattr(result, "llm_calls", None) is not None:
+                detail["timings"] = rerank_timings(result.llm_calls)
+            return detail
         return super()._stage_detail(stage_name, result)
