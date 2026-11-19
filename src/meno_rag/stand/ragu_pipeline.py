@@ -87,13 +87,13 @@ class RaguRagPipeline(StandRagPipeline):
         return min(max(prior, 0.05), 1.0)
 
     async def _retrieve(self, search_queries, early=None):
-        if early is not None and early.retrieval is not None and search_queries and search_queries[0] == early.query:
-            # the first query's search started after the turn analysis (EARLY_FIRST_QUERY); the others run now
-            first = await early.retrieval
-            return [*first, *(await self._retrieve(search_queries[1:]) if len(search_queries) > 1 else [])]
+        use_early = (early is not None and early.retrieval is not None
+                     and bool(search_queries) and search_queries[0] == early.query)
         # The queries of one question run at once (still within embed_semaphore): the search mostly waits for the
         # embedder, Qdrant and the cross-encoder, and three rewrites used to wait for three searches in a row.
         async def one(query):
+            if use_early and query == early.query:
+                return (await early.retrieval)[0]
             async with self.embed_semaphore:
                 return {"query": query, "graph": await self.resources.graph.search(query)}
 
@@ -172,15 +172,15 @@ class RaguRagPipeline(StandRagPipeline):
             try:
                 if use_early:
                     await early.started  # the first query's scoring tasks exist from here on
+                cached_scores = early.scores if use_early else {}
+                if self._rerank_warm_up(len(candidates)):  # question-first prompts: the first one fills the cache
                     with counting_rerank_calls(calls):
-                        tasks.extend(early.scores.get(c.key) or asyncio.create_task(score(c)) for c in candidates)
-                else:
-                    if self._rerank_warm_up(len(candidates)):  # question-first prompts: the first one fills the cache
-                        with counting_rerank_calls(calls):
-                            tasks.append(asyncio.create_task(score(candidates[0])))
-                        await tasks[0]
-                    with counting_rerank_calls(calls):
-                        tasks.extend(asyncio.create_task(score(candidate)) for candidate in candidates[len(tasks):])
+                        tasks.append(cached_scores.get(candidates[0].key)
+                                     or asyncio.create_task(score(candidates[0])))
+                    await tasks[0]
+                with counting_rerank_calls(calls):
+                    tasks.extend(cached_scores.get(candidate.key) or asyncio.create_task(score(candidate))
+                                 for candidate in candidates[len(tasks):])
                 values = await asyncio.gather(*tasks)
             finally:
                 for task in tasks:

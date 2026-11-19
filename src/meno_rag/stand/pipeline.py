@@ -206,13 +206,8 @@ class StandRagPipeline:
                     if early is not None:
                         early_turn.append(early)
                 rewrite_started = time.perf_counter()
-                try:
-                    rewritten = await self._rewrite_question(analysis.standalone_question, prepared_dialogue_history,
-                                                             runtime.core)
-                except BaseException:
-                    for early in early_turn:
-                        await early.close()
-                    raise
+                rewritten = await self._rewrite_question(analysis.standalone_question, prepared_dialogue_history,
+                                                         runtime.core)
                 turn_timings["rewrite_ms"] = _elapsed_ms(rewrite_started)
                 return analysis, rewritten
 
@@ -223,15 +218,20 @@ class StandRagPipeline:
                         "subqueries": analysis.subqueries, "analysis_fallback": analysis.fallback,
                         "focus": analysis.focus, "timings": dict(turn_timings)}
 
-            analysis, rewritten = await self._timed_stage(
-                StageName.QUERY_REWRITE,
-                emit,
-                analyze_and_rewrite,
-                stage_durations,
-                stage_details,
-                model_id=runtime.core.model_id,
-                detail_of=analysis_detail,
-            )
+            try:
+                analysis, rewritten = await self._timed_stage(
+                    StageName.QUERY_REWRITE,
+                    emit,
+                    analyze_and_rewrite,
+                    stage_durations,
+                    stage_details,
+                    model_id=runtime.core.model_id,
+                    detail_of=analysis_detail,
+                )
+            except BaseException:
+                for early in early_turn:
+                    await early.close()
+                raise
             route, search_question = analysis.route, analysis.standalone_question
             searching = rewritten is not None
             search_queries = list(dict.fromkeys([*rewritten, *analysis.subqueries])) if rewritten is not None else []
