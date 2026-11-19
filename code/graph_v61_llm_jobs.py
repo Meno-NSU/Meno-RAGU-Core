@@ -167,9 +167,10 @@ def main():
     options = {}
     for abbreviation, expansions in in_dictionary.items():
         forms = list(expansions)
-        keys = {' '.join(w[:max(4, len(w) - 2)].casefold() for w in form.split()) for form in forms}
-        for key, record in sorted(stated.get(abbreviation, {}).items(), key=lambda item: -item[1]['documents']):
-            if key not in keys and not any(key[:12] == other[:12] for other in keys):
+        keys = {jobs.form_key(form) for form in forms}
+        for _, record in sorted(stated.get(abbreviation, {}).items(), key=lambda item: -item[1]['documents']):
+            key = jobs.form_key(record['example'])
+            if key not in keys:  # a case form of a known long form is not another meaning
                 forms.append(record['example'])
                 keys.add(key)
         if len(forms) > 1:

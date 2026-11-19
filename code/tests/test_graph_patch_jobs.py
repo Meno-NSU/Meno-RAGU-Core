@@ -68,3 +68,9 @@ def test_merge_candidates():
     people = {1: 'Михаил Федорук', 2: 'Михаил Петрович Федорук', 3: 'В. Кузнецов', 4: 'Кузнецов Виктор Владимирович',
               5: 'Кузнецов Владимир Васильевич', 6: 'Иван Петров', 7: 'Петров И. С.'}
     assert jobs.person_pairs(people, gp.readings, gp.fits, gp.detail) == {(1, 2), (6, 7)}  # В. Кузнецов fits two people
+
+
+def test_case_forms_of_a_long_form_are_one_meaning():
+    assert jobs.form_key('Новосибирский государственный университет') == jobs.form_key('Новосибирского государственного университета')
+    assert jobs.form_key('Высшая школа компьютерных наук (ВКИ НГУ)') != jobs.form_key('Высшего колледжа информатики')
+    assert jobs.form_key('Институт философии и права') != jobs.form_key('Института физики полупроводников')

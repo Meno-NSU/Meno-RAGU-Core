@@ -90,6 +90,12 @@ def abbreviation_prompt(abbreviation: str, options: list, node_name: str, source
             'Ответь только JSON: {"choice": номер варианта, "why": "до 12 слов"}')
 
 
+def form_key(long_form: str) -> str:
+    """A long form of an abbreviation up to case forms, brackets and short words: the first letters of its words."""
+    words = re.findall(r'[^\W\d_]+', re.sub(r'\([^)]*\)', ' ', long_form).casefold().replace('ё', 'е'))
+    return ' '.join(word[:4] for word in words if len(word) > 2)
+
+
 def batches(rows: list, size: int) -> list:
     return [rows[start:start + size] for start in range(0, len(rows), size)]
 
