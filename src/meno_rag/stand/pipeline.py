@@ -16,6 +16,7 @@ import structlog
 
 from meno_rag.api.events import StageEvent, StageName, StageStatus
 from meno_rag.config import Settings
+from meno_rag.llm.client import completion_text
 from meno_rag.llm.think_detector import has_thinking
 from meno_rag.logging_config import preview_field
 from meno_rag.schemas import ChatMessage, PipelineOutcome
@@ -550,7 +551,7 @@ class StandRagPipeline:
             else:
                 response = await self.llm_router.chat_completion(**call)
                 choice = response["choices"][0]
-                answer = str(choice["message"]["content"]).strip()
+                answer = completion_text(response)
                 outcome.trace["generation"] = {
                     "finish_reason": choice.get("finish_reason"),
                     "usage": deepcopy(response.get("usage")),

@@ -14,6 +14,13 @@ from meno_rag.logging_config import preview_field
 logger = structlog.get_logger(__name__)
 
 
+def completion_text(data: dict[str, Any]) -> str:
+    content = data["choices"][0]["message"].get("content")
+    if not isinstance(content, str) or not content.strip():
+        raise ValueError("LLM completion contains no non-empty text content.")
+    return content.strip()
+
+
 def endpoint_api_key(base_url: str, default: str, overrides: dict[str, str]) -> str:
     normalized = base_url.rstrip("/").removesuffix("/v1")
     for endpoint, key in overrides.items():
@@ -127,7 +134,7 @@ class VLLMClient:
 
     async def chat_completion_text(self, **kwargs: Any) -> str:
         data = await self.chat_completion(stream=False, **kwargs)
-        return str(data["choices"][0]["message"]["content"]).strip()
+        return completion_text(data)
 
     async def stream_chat_completion(
         self,
