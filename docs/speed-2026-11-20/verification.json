@@ -1,0 +1,23 @@
+{
+  "base": "777379497e99717a63444f8907e6298ca8a3b274",
+  "code_tested": "8f5e35ee8376d69c0dd889f954c9715012a95b09",
+  "service": {
+    "passed": 938,
+    "skipped": 4,
+    "seconds": 264.97
+  },
+  "research": {
+    "passed": 384,
+    "seconds": 36.19
+  },
+  "ruff": "passed",
+  "mypy": {
+    "status": "passed",
+    "source_files": 66
+  },
+  "incremental_hub_cleanup": {
+    "original_commit": "4a9732fe9b087febe6494eeed20fbaf302961629",
+    "targeted_graph_tests_passed": 78,
+    "actual_graph_cases_exact": 30
+  }
+}
