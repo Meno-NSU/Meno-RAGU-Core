@@ -58,7 +58,7 @@ from meno_rag.llm.router import LLMRouter
 from meno_rag.llm.status import InMemoryModelStatusStore, ModelStatusStore, RedisModelStatusStore
 from meno_rag.logging_config import configure_logging
 from meno_rag.schemas import ChatCompletionRequest
-from meno_rag.stand.attribution import RerankerScorer
+from meno_rag.stand.attribution import RerankerScorer, StreamingAttribution
 from meno_rag.stand.pipeline import PipelineRuntime
 from meno_rag.stand.ragu_pipeline import RaguRagPipeline as StandRagPipeline
 from meno_rag.stand.resources import load_stand_resources
@@ -1089,6 +1089,7 @@ async def _stream_response(
                          generation_max_tokens=max_tokens)
     )
     outcome = None
+    attribution = None
     try:
         while not prepare_task.done() or not stage_queue.empty():
             try:
@@ -1101,6 +1102,12 @@ async def _stream_response(
 
         outcome = await prepare_task
         late_sources = getattr(pipeline, "late_sources", False)
+        # the sources are attributed sentence by sentence while the answer streams (the same sources, earlier)
+        start_attribution = getattr(pipeline, "start_source_attribution", None) if late_sources else None
+        started_attribution = start_attribution(outcome) if callable(start_attribution) else None
+        if isinstance(started_attribution, StreamingAttribution):
+            attribution = started_attribution
+        streamed = ""
         if not late_sources:
             valid_sources = clean_sources(outcome.sources)
             yield sse_event("sources", {"sources": valid_sources})  # contract 1.3: at least once, even empty
@@ -1133,6 +1140,9 @@ async def _stream_response(
                         seconds=time.perf_counter() - started,
                     )
             answer_parts.append(token)
+            if attribution is not None:
+                streamed += token
+                attribution.feed(streamed)
             yield sse_data(
                 openai_chunk(
                     completion_id=completion_id,
@@ -1151,7 +1161,10 @@ async def _stream_response(
         ).to_sse()
         if late_sources:
             # As Menon 1.1: the sources are the pages the finished answer rests on, sent once before the stop chunk.
-            await pipeline.finalize_sources(outcome, "".join(answer_parts))
+            if attribution is not None:
+                await pipeline.finalize_sources(outcome, "".join(answer_parts), streaming=attribution)
+            else:
+                await pipeline.finalize_sources(outcome, "".join(answer_parts))
             yield sse_event("sources", {"sources": clean_sources(outcome.sources)})
 
         done_chunk = openai_chunk(
@@ -1288,6 +1301,8 @@ async def _stream_response(
         # admission slot is about to be released below.
         if not prepare_task.done():
             prepare_task.cancel()
+        if attribution is not None:  # the client left mid-answer: stop scoring its sentences
+            attribution.cancel()
         if not bench:
             metrics_mod.dec_chat_in_flight()
         if on_finish is not None:

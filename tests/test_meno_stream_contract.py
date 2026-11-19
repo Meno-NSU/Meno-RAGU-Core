@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from meno_rag.api.events import StageEvent, StageName, StageStatus
+from meno_rag.stand.attribution import StreamingAttribution
 
 
 def _sources():
@@ -396,3 +397,47 @@ def test_non_stream_answer_carries_the_attributed_sources(monkeypatch):
         )
     assert late.answers == ["ok"]
     assert r.json()["sources"] == [{"document_title": "Doc A", "source_url": "https://nsu.ru/a"}]
+
+
+class _Feed(StreamingAttribution):
+    """A streaming attribution stand-in: records what the answer looked like at each token."""
+
+    def __init__(self):
+        super().__init__([], None, 0.5)
+        self.seen, self.cancelled = [], False
+
+    def feed(self, text):
+        self.seen.append(text)
+
+    def cancel(self):
+        self.cancelled = True
+
+
+class _StreamingLatePipeline(_LatePipeline):
+    def __init__(self):
+        super().__init__()
+        self.feed = _Feed()
+        self.streaming = []
+
+    def start_source_attribution(self, outcome):
+        return self.feed
+
+    async def finalize_sources(self, outcome, answer, streaming=None):
+        self.streaming.append(streaming)
+        return await super().finalize_sources(outcome, answer)
+
+
+def test_the_sources_are_attributed_from_the_text_streamed_so_far(monkeypatch):
+    # speed audit of 19.11, П5: the stream feeds the attribution token by token and hands it to finalize_sources
+    main_mod = _client(monkeypatch)
+    with TestClient(main_mod.app) as c:
+        c.app.state.pipeline = late = _StreamingLatePipeline()
+        r = c.post(
+            "/v1/chat/completions",
+            json={"model": "m", "messages": [{"role": "user", "content": "q"}], "stream": True},
+        )
+    assert late.answers == ["ok"] and late.streaming == [late.feed]
+    assert late.feed.seen and late.feed.seen[-1] == "ok"
+    assert late.feed.cancelled  # finished or not, nothing is left running after the stream
+    assert [p for n, p in _events(r.text) if n == "sources"] == [
+        {"sources": [{"document_title": "Doc A", "source_url": "https://nsu.ru/a"}]}]

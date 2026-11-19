@@ -23,6 +23,7 @@ from meno_rag.schemas import ChatMessage, PipelineOutcome
 from meno_rag.stand.attribution import (
     EvidenceUnit,
     Scorer,
+    StreamingAttribution,
     attribute,
     document_units,
     norm_url,
@@ -468,16 +469,35 @@ class StandRagPipeline:
                              for unit in document_units(document, texts))
         return units
 
-    async def finalize_sources(self, outcome: PipelineOutcome, answer: str) -> list[dict[str, str]]:
-        """Replace the context documents by the pages the answer rests on (no-op without a scorer)."""
+    def start_source_attribution(self, outcome: PipelineOutcome) -> StreamingAttribution | None:
+        """Source attribution that scores the answer's sentences while it streams (feed it the text so far, pass it
+        to finalize_sources): the same sources as attributing the whole answer at the end. None without a scorer."""
+        if self.source_scorer is None:
+            return None
+        try:
+            units = [EvidenceUnit(**unit) for unit in outcome.evidence]
+        except Exception as exc:  # finalize_sources reports it as before
+            logger.warning("source_attribution_units_failed", error=repr(exc))
+            return None
+        return StreamingAttribution(units, self.source_scorer, self.settings.source_attribution_threshold,
+                                    prior_weight=self.settings.source_prior_weight)
+
+    async def finalize_sources(self, outcome: PipelineOutcome, answer: str,
+                               streaming: StreamingAttribution | None = None) -> list[dict[str, str]]:
+        """Replace the context documents by the pages the answer rests on (no-op without a scorer). ``streaming``:
+        the attribution fed while the answer streamed (start_source_attribution); the result is the same."""
         if self.source_scorer is None:
             return outcome.sources
         started = time.perf_counter()
         counts: dict[str, Any] = {}
         try:
-            units = [EvidenceUnit(**unit) for unit in outcome.evidence]
-            scored = await attribute(answer, units, self.source_scorer, self.settings.source_attribution_threshold,
-                                     prior_weight=self.settings.source_prior_weight, stats=counts)
+            if streaming is not None:
+                scored = await streaming.finish(answer, stats=counts)
+            else:
+                units = [EvidenceUnit(**unit) for unit in outcome.evidence]
+                scored = await attribute(answer, units, self.source_scorer,
+                                         self.settings.source_attribution_threshold,
+                                         prior_weight=self.settings.source_prior_weight, stats=counts)
             outcome.sources = to_sources(scored, self.settings.max_sources)
             if outcome.trace is not None:
                 outcome.trace["source_attribution"] = [
@@ -487,6 +507,9 @@ class StandRagPipeline:
             logger.warning("source_attribution_failed", error=repr(exc))
             outcome.sources = []
             counts["failed"] = True
+        finally:
+            if streaming is not None:
+                streaming.cancel()
         _record_attribution_timings(outcome, {"attribution_ms": _elapsed_ms(started), **counts})
         return outcome.sources
 

@@ -55,16 +55,20 @@ def _words(text: str) -> int:
     return len(re.findall(r"\w+", _LINK.sub(lambda match: f" {match.group(1) or ''} ", text)))
 
 
-def split_sentences(answer: str) -> list[str]:
+def line_sentences(line: str) -> list[str]:
+    """The claims of one line of the answer (split_sentences of a text is these, line by line)."""
     out: list[str] = []
-    for line in answer.splitlines():
-        for sentence in sentenize(line.strip()):
-            text = sentence.text.strip()
-            if text.startswith("_") or text.lower().startswith("источник"):
-                continue  # markers appended to the answer, not claims
-            if _words(text) >= MIN_WORDS:
-                out.append(text)
+    for sentence in sentenize(line.strip()):
+        text = sentence.text.strip()
+        if text.startswith("_") or text.lower().startswith("источник"):
+            continue  # markers appended to the answer, not claims
+        if _words(text) >= MIN_WORDS:
+            out.append(text)
     return out
+
+
+def split_sentences(answer: str) -> list[str]:
+    return [sentence for line in answer.splitlines() for sentence in line_sentences(line)]
 
 
 def norm_url(url: str) -> str:
@@ -184,14 +188,89 @@ async def attribute(answer: str, units: Sequence[EvidenceUnit], scorer: Scorer, 
     if not sentences or not units:
         return []
     texts = [unit.text for unit in units]
+    return _combine(units, await asyncio.gather(*(scorer(sentence, texts) for sentence in sentences)), threshold,
+                    prior_weight)
+
+
+def _combine(units: Sequence[EvidenceUnit], sentence_scores: Sequence[Sequence[float]], threshold: float,
+             prior_weight: float) -> list[tuple[EvidenceUnit, float]]:
+    """attribute()'s result from the scores of each sentence (in sentence order) against the units."""
     weights = [unit.prior ** prior_weight if prior_weight > 0 else 1.0 for unit in units]
     best = [0.0] * len(units)
-    for scores in await asyncio.gather(*(scorer(sentence, texts) for sentence in sentences)):
+    for scores in sentence_scores:
         for index, score in enumerate(scores):
             best[index] = max(best[index], float(score))
     used = [index for index in range(len(units)) if best[index] >= threshold]
     used.sort(key=lambda index: (-best[index] * weights[index], -best[index], index))
     return [(units[index], best[index]) for index in used]
+
+
+def _retrieve(task: asyncio.Task) -> None:
+    # a scoring error is raised by finish(); after cancel() nobody waits, so asyncio must not report it as lost
+    if not task.cancelled():
+        task.exception()
+
+
+# the line boundaries of str.splitlines(): a line of a streamed answer is final once one of them follows it
+_LINE_BREAKS = frozenset("\n\r\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029")
+
+
+class StreamingAttribution:
+    """attribute() while the answer streams (speed audit of 19.11, П5): the sources come with the end of the answer
+    instead of a scoring round after it (1.1 s median, 4-7 s p95 under load).
+
+    The same result as attribute() on the whole answer. A line's text is final once a line break follows it, and
+    split_sentences splits the answer line by line, so the sentences of a finished line are the answer's sentences;
+    they are scored against the same unit texts as soon as the line ends. finish() splits the whole answer, scores
+    the sentences not scored yet (the last line), and combines the scores of the answer's sentences, in their order,
+    exactly as attribute() does. Each distinct sentence is scored once (attribute() scored a repeated sentence again
+    with the same arguments). Speculative work is never wasted: only sentences of the final text are scored."""
+
+    def __init__(self, units: Sequence[EvidenceUnit], scorer: Scorer, threshold: float, prior_weight: float = 0.0):
+        self.units = list(units)
+        self.scorer = scorer
+        self.threshold = threshold
+        self.prior_weight = prior_weight
+        self.texts = [unit.text for unit in self.units]
+        self._scores: dict[str, asyncio.Task] = {}
+        self._finished_lines = 0
+
+    def feed(self, answer_so_far: str) -> None:
+        """Start scoring the sentences of the lines finished so far (call it with the whole text streamed so far)."""
+        if not self.units or not answer_so_far:
+            return
+        lines = answer_so_far.splitlines()
+        if answer_so_far[-1] not in _LINE_BREAKS:
+            lines = lines[:-1]  # the last line may still grow
+        for line in lines[self._finished_lines:]:
+            for sentence in line_sentences(line):
+                self._score(sentence)
+        self._finished_lines = max(self._finished_lines, len(lines))
+
+    def _score(self, sentence: str) -> asyncio.Task:
+        task = self._scores.get(sentence)
+        if task is None:
+            task = self._scores[sentence] = asyncio.ensure_future(self.scorer(sentence, self.texts))
+            task.add_done_callback(_retrieve)
+        return task
+
+    async def finish(self, answer: str, stats: dict[str, Any] | None = None) -> list[tuple[EvidenceUnit, float]]:
+        sentences = split_sentences(answer)
+        if stats is not None:
+            calls = len(set(sentences)) if self.units else 0
+            stats.update(sentences=len(sentences), units=len(self.units), scorer_calls=calls,
+                         pairs=calls * len(self.units), streamed=sum(s in self._scores for s in set(sentences)))
+        if not sentences or not self.units:
+            self.cancel()
+            return []
+        tasks = [self._score(sentence) for sentence in sentences]
+        return _combine(self.units, await asyncio.gather(*tasks), self.threshold, self.prior_weight)
+
+    def cancel(self) -> None:
+        """Stop the scoring still running (the client left, or the answer failed)."""
+        for task in self._scores.values():
+            if not task.done():
+                task.cancel()
 
 
 def to_sources(scored: Sequence[tuple[EvidenceUnit, float]], max_sources: int) -> list[dict[str, str]]:
