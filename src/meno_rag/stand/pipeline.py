@@ -289,7 +289,7 @@ class StandRagPipeline:
                 retrieval_batches = await self._timed_stage(
                     StageName.RETRIEVAL,
                     emit,
-                    lambda: self._retrieve(search_queries, early=early_turn[0] if early_turn else None),
+                    lambda: self._retrieve(search_queries, **({"early": early_turn[0]} if early_turn else {})),
                     stage_durations,
                     stage_details,
                 )
@@ -307,7 +307,7 @@ class StandRagPipeline:
                     emit,
                     lambda: self._rerank(fused_batches, search_question,
                                          "" if memory is not None else prepared_dialogue_history, runtime.core,
-                                         early=early_turn[0] if early_turn else None),
+                                         **({"early": early_turn[0]} if early_turn else {})),
                     stage_durations,
                     stage_details,
                     model_id=runtime.core.model_id,
