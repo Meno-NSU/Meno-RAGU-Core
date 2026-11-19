@@ -714,10 +714,13 @@ class StandRagPipeline:
             output.llm_calls = calls
             return output
         with counting_rerank_calls(calls):
-            scores = await asyncio.gather(
+            warm_up = self._rerank_warm_up(len(unique_ids))
+            first = ([await self._score_chunk_with_llm(user_question, dialogue_history, unique_ids[0], runtime)]
+                     if warm_up else [])
+            scores = first + list(await asyncio.gather(
                 *[self._score_chunk_with_llm(user_question, dialogue_history, chunk_id, runtime)
-                  for chunk_id in unique_ids]
-            )
+                  for chunk_id in unique_ids[len(first):]]
+            ))
         score_by_id = dict(zip(unique_ids, scores, strict=False))
         global_chunks: list[tuple[int, float]] = []
         for cands in capped_batches:
@@ -758,12 +761,15 @@ class StandRagPipeline:
     async def _score_document_with_llm(
         self, user_question: str, dialogue_history: str, cur_doc: str, runtime: ModelRuntime, chunk_id: Any
     ) -> float:
+        order = self.settings.rerank_prompt_order
         prompt = build_prompt(
-            user_question, dialogue_history, cur_doc, self.resources.abbreviations, self.resources.stemmer
+            user_question, dialogue_history, cur_doc, self.resources.abbreviations, self.resources.stemmer,
+            order=order,
         )
         if not await self._prompt_fits(prompt, runtime, 20, chat_template_kwargs={"enable_thinking": False}):
             overhead = build_prompt(
                 user_question, dialogue_history, " ", self.resources.abbreviations, self.resources.stemmer,
+                order=order,
             )
             if not await self._prompt_fits(overhead, runtime, 20, chat_template_kwargs={"enable_thinking": False}):
                 raise ValueError("Вопрос, история и инструкции реранкера не помещаются в контекст модели.")
@@ -837,6 +843,7 @@ class StandRagPipeline:
                         self.resources.abbreviations,
                         self.resources.stemmer,
                         is_json=True,
+                        order=order,
                     ),
                     stage=StageName.RERANK,
                     max_tokens=20,
@@ -847,6 +854,11 @@ class StandRagPipeline:
                 )
                 _count_rerank_usage(response)
                 return score_from_json_response(str(response["choices"][0]["message"]["content"]))
+
+    def _rerank_warm_up(self, candidates: int) -> bool:
+        """With the question-first prompt order the turn's first candidate is scored alone: vLLM caches a prefix only
+        once it is computed, so the calls admitted with the first would each compute the shared part again."""
+        return self.settings.llm_rerank and self.settings.rerank_prompt_order == "question_first" and candidates > 1
 
     def _rerank_priority(self, runtime: ModelRuntime) -> dict[str, int]:
         """vLLM's ``priority`` of a rerank call, only when RERANK_PRIORITY is set: vLLM rejects a non-zero priority

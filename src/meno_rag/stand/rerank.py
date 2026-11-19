@@ -10,6 +10,7 @@ from meno_rag.stand.rewriting import find_candidates_to_abbreviations
 __all__ = [
     "MAX_RERANKER_TOKENS",
     "POSSIBLE_LABELS",
+    "RERANK_PROMPT_ORDERS",
     "SYSTEM_PROMPT_FOR_RELEVANCE",
     "aggregate_logprobs_to_score",
     "build_prompt",
@@ -23,6 +24,9 @@ MAX_RERANKER_TOKENS: int = 8192
 POSSIBLE_LABELS = ["0", "1", "2"]
 
 
+RERANK_PROMPT_ORDERS = ("legacy", "question_first")
+
+
 def build_prompt(
     user_question: str,
     dialogue_history: str,
@@ -30,66 +34,81 @@ def build_prompt(
     abbr_dict: dict[str, dict[str, str | list[str]]],
     stemmer: SnowballStemmer | None = None,
     is_json: bool = False,
+    order: str = "legacy",
 ) -> list[dict[str, str]]:
     """Build the reranker prompt that scores a candidate document by its USEFULNESS
     as a factual basis for answering the user's question (with dialogue history and
     the abbreviation dictionary), mirroring the QA prompt structure — rather than
-    abstract topical relevance to a search query."""
+    abstract topical relevance to a search query.
+
+    ``order`` (RERANK_PROMPT_ORDER): "legacy" — the abbreviation dictionary, the document, the history, the question,
+    the instruction, as the prompts always were; "question_first" — the history, the question and the instruction
+    before the dictionary and the document. The sections and their texts are the same; in the second order the part a
+    turn's ~85 candidates share comes first, so vLLM's prefix cache computes it once (speed audit of 19.11, П1: 701
+    -> 410 new tokens per call on 2,040 real prompts)."""
     if not estimated_document:
         raise ValueError("The estimated document is empty.")
+    if order not in RERANK_PROMPT_ORDERS:
+        raise ValueError(f"Unknown rerank prompt order {order!r}; expected one of {RERANK_PROMPT_ORDERS}.")
     found_abbreviations = find_candidates_to_abbreviations(
         source_text=estimated_document + "\n\n" + dialogue_history + "\n\n" + user_question,
         all_abbreviations=abbr_dict,
         stemmer=stemmer,
     )
-    user_prompt = ""
+    # Each section without the blank line after it; the prompt joins them with one, which is the text the sections
+    # used to be added with one by one (tests/test_rerank_prompt_order.py compares it with the old function).
+    abbreviation_section = ""
     if found_abbreviations:
-        user_prompt += "==========\nABBREVIATION DICTIONARY\n==========\n\n"
-        user_prompt += (
+        abbreviation_section += "==========\nABBREVIATION DICTIONARY\n==========\n\n"
+        abbreviation_section += (
             "**Природа данных:** предположительные расшифровки, подобранные автоматически"
             " по совпадению буквенной формы. Записи могут быть лишними, ошибочными или "
             "неоднозначными (омонимия). Используйте словарь как подсказку, а не как "
             "достоверный источник.\n\n"
         )
-        user_prompt += "**Записи:**\n" + found_abbreviations + "\n\n"
-    user_prompt += "==========\nDOCUMENT 1\n==========\n\n" + estimated_document.strip() + "\n\n"
-    if dialogue_history:
-        user_prompt += "==========\nDIALOGUE HISTORY\n==========\n\n" + dialogue_history + "\n\n"
-    user_prompt += "==========\nCURRENT QUESTION\n==========\n\n" + user_question + "\n\n"
-    user_prompt += "==========\nINSTRUCTION\n==========\n\n"
-    user_prompt += (
+        abbreviation_section += "**Записи:**\n" + found_abbreviations
+    document_section = "==========\nDOCUMENT 1\n==========\n\n" + estimated_document.strip()
+    history_section = ("==========\nDIALOGUE HISTORY\n==========\n\n" + dialogue_history) if dialogue_history else ""
+    question_section = "==========\nCURRENT QUESTION\n==========\n\n" + user_question
+    instruction_section = "==========\nINSTRUCTION\n==========\n\n"
+    instruction_section += (
         "Оцените, пожалуйста, возможность ответа на вопрос из раздела CURRENT QUESTION, "
         "опираясь только на факты из раздела DOCUMENT 1."
     )
     if dialogue_history:
-        user_prompt += (
+        instruction_section += (
             "\n\nРаздел DIALOGUE HISTORY используйте исключительно для разрешения местоимений, "
             "уточнений и восстановления темы — не извлекайте из него фактические сведения."
         )
     if found_abbreviations:
-        user_prompt += "\n\nРаздел ABBREVIATION DICTIONARY используйте по следующим правилам:\n"
-        user_prompt += (
+        instruction_section += "\n\nРаздел ABBREVIATION DICTIONARY используйте по следующим правилам:\n"
+        instruction_section += (
             "1. Применяйте расшифровку из словаря, только если сокращение действительно встречается в CURRENT QUESTION"
         )
-        user_prompt += ", DIALOGUE HISTORY или DOCUMENT 1" if dialogue_history else " или DOCUMENT 1"
-        user_prompt += " и по контексту является аббревиатурой.\n"
-        user_prompt += (
+        instruction_section += ", DIALOGUE HISTORY или DOCUMENT 1" if dialogue_history else " или DOCUMENT 1"
+        instruction_section += " и по контексту является аббревиатурой.\n"
+        instruction_section += (
             "2. Если одной аббревиатуре соответствует несколько расшифровок (омонимия), "
             "выберите ту, которая согласуется с темой диалога и содержанием документов.\n"
         )
-        user_prompt += (
+        instruction_section += (
             "3. Если в тексте встречается буквосочетание, совпадающее с ключом словаря, "
             "но по контексту аббревиатурой не является (например, это команда, междометие, "
             "имя собственное, часть слова), — игнорируйте запись словаря.\n"
         )
-        user_prompt += (
+        instruction_section += (
             "4. Если подходящая расшифровка в словаре отсутствует, а в документах её тоже нет, — "
             "не придумывайте расшифровку; используйте сокращение как есть.\n"
         )
-        user_prompt += (
+        instruction_section += (
             "5. Словарь не является источником фактов: сам факт наличия записи «X — Y» не доказывает, "
             "что Y упомянут в документах или релевантен вопросу."
         )
+    if order == "legacy":
+        sections = [abbreviation_section, document_section, history_section, question_section, instruction_section]
+    else:
+        sections = [history_section, question_section, instruction_section, abbreviation_section, document_section]
+    user_prompt = "\n\n".join(section for section in sections if section)
     if is_json:
         modified_chapter_name = "## Формат ответа"
         found_idx = SYSTEM_PROMPT_FOR_RELEVANCE.find(modified_chapter_name)

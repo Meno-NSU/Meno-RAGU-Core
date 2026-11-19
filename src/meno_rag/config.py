@@ -281,6 +281,15 @@ class Settings(BaseSettings):
     # The LLM reranker (Menon 1.0's stand: the model labels every candidate 0/1/2). Off: the engine's cross-encoder
     # score is the relevance, as in Menon 1.1, and the floors above apply to it.
     llm_rerank: bool = Field(default=True, validation_alias="LLM_RERANK")
+    # The order of the LLM reranker's prompt sections (stand/rerank.py build_prompt). "legacy": the abbreviation
+    # dictionary, the document, the history, the question, the instruction, as always. "question_first": the same
+    # sections, the history, question and instruction first, so the part all candidates of a turn share is computed
+    # once by vLLM's prefix cache (the first candidate is scored alone to fill it): 701 -> 410 new prompt tokens per
+    # call on 2,040 real prompts (speed audit of 19.11, П1). It changes the model's input: compare the labels against
+    # the "legacy" order twice (replays R1/R2) before turning it on.
+    rerank_prompt_order: Literal["legacy", "question_first"] = Field(
+        default="legacy", validation_alias="RERANK_PROMPT_ORDER"
+    )
     graph_min_rerank_score: float = Field(default=0.0, ge=0, le=1, validation_alias="GRAPH_MIN_RERANK_SCORE")
     # Links shown per document: a summary of several pages carries up to dozens of URLs under one title.
     source_urls_per_document: int = Field(default=1, ge=1, validation_alias="SOURCE_URLS_PER_DOCUMENT")

@@ -28,7 +28,7 @@ _CONTENT_SETTINGS = (
     "context_min_rerank_score", "graph_min_rerank_score", "llm_rerank",
     # answer-affecting switches added after the list was written (missing until 18.11: two stands that answered
     # differently had one fingerprint)
-    "hybrid_fusion", "context_style", "graph_element_evidence", "graph_channel",
+    "hybrid_fusion", "context_style", "graph_element_evidence", "graph_channel", "rerank_prompt_order",
 )
 # Every other setting, deliberately outside the fingerprint: addresses, keys, timeouts, concurrency, logging,
 # auth, storage and backups. tests/test_benchmark_config.py fails for a field in neither list, so a new setting

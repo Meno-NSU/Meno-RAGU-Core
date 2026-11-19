@@ -110,9 +110,15 @@ class RaguRagPipeline(StandRagPipeline):
 
         calls = new_rerank_calls()
         if self.settings.llm_rerank:
-            with counting_rerank_calls(calls):
-                tasks = [asyncio.create_task(score(candidate)) for candidate in unique.values()]
+            candidates = list(unique.values())
+            tasks: list[asyncio.Task] = []
             try:
+                if self._rerank_warm_up(len(candidates)):  # question-first prompts: the first one fills the cache
+                    with counting_rerank_calls(calls):
+                        tasks.append(asyncio.create_task(score(candidates[0])))
+                    await tasks[0]
+                with counting_rerank_calls(calls):
+                    tasks.extend(asyncio.create_task(score(candidate)) for candidate in candidates[len(tasks):])
                 values = await asyncio.gather(*tasks)
             finally:
                 for task in tasks:
