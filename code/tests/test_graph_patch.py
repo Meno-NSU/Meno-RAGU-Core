@@ -297,3 +297,14 @@ def test_cycles_and_embedded_text_changes():
     out = io.StringIO()
     gp.write_changes([{'op': 'rename', 'to_name': 'Г'}], out)
     assert out.getvalue() == '{"op": "rename", "to_name": "Г"}\n'
+
+
+def test_hubs_of_statement_types_keep_their_relations():
+    relations = {'WORKPLACE': (('PERSON',), ('ORGANIZATION', 'FACILITY')), 'STUDIES_AT': (('PERSON',), ('ORGANIZATION', 'EDUCATION_LEVEL')),
+                 'REGULATES': (('LAW',), None), 'RESEARCHES': (('PERSON', 'ORGANIZATION'), None), 'RELATED_TO': (None, None),
+                 'SUBFIELD_OF': (('RESEARCH_FIELD',), ('RESEARCH_FIELD',)), 'USES': (('PERSON', 'PROJECT'), ('SOFTWARE', 'METHOD'))}
+    parents = {'UNIVERSITY': 'ORGANIZATION', 'FACULTY': 'ORGANIZATION', 'REGULATION': 'LAW', 'DORMITORY': 'FACILITY',
+               'LANGUAGE': None, 'SOFTWARE': 'PRODUCT', 'RESEARCH_FIELD': None, 'EDUCATION_LEVEL': None, 'PERSON': None}
+    kept = gp.statement_types(relations, parents)
+    assert {'PERSON', 'UNIVERSITY', 'FACULTY', 'ORGANIZATION', 'EDUCATION_LEVEL', 'REGULATION', 'LAW', 'DORMITORY'} <= kept
+    assert not kept & {'LANGUAGE', 'SOFTWARE', 'RESEARCH_FIELD'}

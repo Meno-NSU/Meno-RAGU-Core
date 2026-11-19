@@ -808,6 +808,31 @@ def template_relations(graph: Graph, hubs: set, chunk_text, forms: dict, other_f
     return sorted(found)
 
 
+def statement_types(relations: dict, parents: dict) -> frozenset:
+    """The entity types whose relations state something about the other end even from a header or a list: a person,
+    what the ontology lets only a person relate to (the place of work or study, a position, a degree, a publication, a
+    discipline taught: the ranges of the relation types whose only domain is PERSON), a law (the only domain of a
+    relation type with an open range), and their subtypes. A hub of another type (a language, a software platform, a
+    field of science a classifier assigns) is where a page template can be the whole support of a relation.
+    relations: type -> (domain or None, range or None); parents: entity type -> parent or None."""
+    base = set()
+    for domain, range_ in relations.values():
+        if domain and len(domain) == 1 and (tuple(domain) == ('PERSON',) or not range_):
+            base.add(domain[0])
+            if tuple(domain) == ('PERSON',):
+                base.update(range_ or ())
+    result = set()
+    for kind in set(parents) | base:
+        seen, current = set(), kind
+        while current and current not in seen:
+            if current in base:
+                result.add(kind)
+                break
+            seen.add(current)
+            current = parents.get(current)
+    return frozenset(result)
+
+
 def name_forms(name: str, pairs: list) -> list:
     """A name and its spellings with an abbreviation expanded or an expansion abbreviated (the build's dictionary)."""
     forms = [name]

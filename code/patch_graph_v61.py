@@ -190,6 +190,13 @@ def main():
                 degree[edge.source] += 1
                 degree[edge.target] += 1
             hubs = {node_id for node_id, n in degree.items() if n >= args.hub_degree}
+            from ragu.triplet.ontology.ontology import Ontology
+            ontology = Ontology.from_yaml(args.ontology)
+            kept_types = gp.statement_types({name: (spec.domain, spec.range) for name, spec in ontology.relation_types.items()},
+                                            {name: spec.parent for name, spec in ontology.entity_types.items()})
+            record['hubs of statement types (their relations stay)'] = sum(1 for hub in hubs if graph.nodes[hub].type in kept_types)
+            hubs = {hub for hub in hubs if graph.nodes[hub].type not in kept_types}
+            record['hub types where a template can be the whole support'] = dict(collections.Counter(graph.nodes[hub].type for hub in hubs))
             log('hubs', len(hubs))
             forms = {hub: gp.name_forms(graph.nodes[hub].name, pairs) for hub in hubs}
 
