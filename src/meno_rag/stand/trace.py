@@ -161,3 +161,15 @@ def build_pipeline_trace(
     if graph_trace is not None:
         trace["graph"] = deepcopy(graph_trace)
     return trace
+
+
+def substage_timings(outcome: Any) -> dict[str, Any]:
+    """The sub-stage measurements of a turn, by stage (``stage_details[stage]["timings"]``), for the records of
+    in-process runs: the memory, analysis and rewrite times; per query the embedder, Qdrant, graph and cross-encoder
+    times and pairs; the LLM-rerank calls and tokens; the source attribution after the answer."""
+    details = getattr(outcome, "stage_details", None) or {}
+    return {
+        stage: detail["timings"]
+        for stage, detail in details.items()
+        if isinstance(detail, dict) and "timings" in detail
+    }

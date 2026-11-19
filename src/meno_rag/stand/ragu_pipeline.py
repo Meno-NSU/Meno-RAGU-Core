@@ -10,7 +10,14 @@ from context_utils.context_utils import graph_element_to_text
 from meno_rag.api.events import StageName
 from meno_rag.stand.attribution import norm_url
 from meno_rag.stand.context import graph_element_as_note, normalize_urls
-from meno_rag.stand.pipeline import ModelRuntime, StandRagPipeline, _RerankOutput
+from meno_rag.stand.pipeline import (
+    ModelRuntime,
+    StandRagPipeline,
+    _RerankOutput,
+    counting_rerank_calls,
+    new_rerank_calls,
+    rerank_timings,
+)
 from meno_rag.stand.rerank import rerank_merge_score
 
 
@@ -101,9 +108,17 @@ class RaguRagPipeline(StandRagPipeline):
                                          self.resources.chunk_mapping, max_source_titles=0)
             return await self._score_document_with_llm(user_question, dialogue_history, text, runtime, candidate.key)
 
+        calls = new_rerank_calls()
         if self.settings.llm_rerank:
-            tasks = [asyncio.create_task(score(candidate)) for candidate in unique.values()]
+            candidates = list(unique.values())
+            tasks: list[asyncio.Task] = []
             try:
+                if self._rerank_warm_up(len(candidates)):  # question-first prompts: the first one fills the cache
+                    with counting_rerank_calls(calls):
+                        tasks.append(asyncio.create_task(score(candidates[0])))
+                    await tasks[0]
+                with counting_rerank_calls(calls):
+                    tasks.extend(asyncio.create_task(score(candidate)) for candidate in candidates[len(tasks):])
                 values = await asyncio.gather(*tasks)
             finally:
                 for task in tasks:
@@ -167,13 +182,15 @@ class RaguRagPipeline(StandRagPipeline):
             "selected": [{**self._trace_candidate(c), "merged_score": merged} for c, merged in kept],
             "selected_elements": elements,
         }
-        return GraphSelection(
+        selection = GraphSelection(
             chunks,
             elements,
             scored=len(unique),
             candidate_scores={c.chunk_id: scores[c.key] for c in unique.values() if c.chunk_id is not None},
             graph_trace=graph_trace,
         )
+        selection.llm_calls = calls
+        return selection
 
     def _capped_chunks(self, ranked):
         """The best chunks for the context, at most ``max_context_chunks``, and at most ``rerank_candidates_per_page``
@@ -262,7 +279,8 @@ class RaguRagPipeline(StandRagPipeline):
                 continue  # no retrieved chunk backs it: its description could not be cited or checked
             element = dict(element, sources=references)
             if sources_style:
-                text = graph_element_as_note(element, self.resources.documents, self.resources.chunk_mapping)
+                text = graph_element_as_note(element, self.resources.documents, self.resources.chunk_mapping,
+                                             chunk_addresses=self.resources.chunk_addresses or None)
             else:
                 text = graph_element_to_text(element, self.resources.documents, self.resources.chunk_mapping)
             cost = len(text) + 2 + (len(heading) + 2 if not blocks else 0)
@@ -284,6 +302,18 @@ class RaguRagPipeline(StandRagPipeline):
                     })
                     source_rows.extend({"document_title": document.get("doc_title", ""), "source_url": url}
                                        for url in urls or [""])
+                    for address in self.resources.chunk_addresses.get(str(chunk_id), ()):
+                        other = self.resources.documents[address["doc_index"]]
+                        other_urls = [url for url in normalize_urls(other.get("url")) if url not in urls]
+                        if not other_urls:
+                            continue
+                        source_references.append({
+                            "chunk_id": chunk_id, "document_index": address["doc_index"],
+                            "local_chunk_index": address["local_chunk_index"],
+                            "title": other.get("doc_title", ""), "urls": other_urls,
+                        })
+                        source_rows.extend({"document_title": other.get("doc_title", ""), "source_url": url}
+                                           for url in other_urls)
                 graph_evidence.append({
                     "kind": element.get("kind", "entity"), "element_key": element.get("key"),
                     "text": text, "chunk_ids": list(references), "sources": source_rows,
@@ -312,13 +342,21 @@ class RaguRagPipeline(StandRagPipeline):
 
     def _stage_detail(self, stage_name, result):
         if stage_name == StageName.RETRIEVAL:
-            return {
+            detail: dict[str, Any] = {
                 "chunks_found": sum(len(b["graph"]["chunks"]) for b in result),
                 "entities": sum(len(b["graph"]["entities"]) for b in result),
                 "relations": sum(len(b["graph"]["relations"]) for b in result),
             }
+            # where each query's search spent its time (graph_utils.search_timings), in the order of the queries
+            per_query = [b["graph"].get("timings") for b in result]
+            if any(timings is not None for timings in per_query):
+                detail["timings"] = {"per_query": per_query}
+            return detail
         if stage_name == StageName.FUSION:
             return {"candidates": sum(len(b["pool"]) for b in result)}
         if stage_name == StageName.RERANK:
-            return {"kept": len(result) + len(result.elements), "from": result.scored_candidates}
+            detail = {"kept": len(result) + len(result.elements), "from": result.scored_candidates}
+            if getattr(result, "llm_calls", None) is not None:
+                detail["timings"] = rerank_timings(result.llm_calls)
+            return detail
         return super()._stage_detail(stage_name, result)

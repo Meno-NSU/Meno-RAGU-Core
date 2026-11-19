@@ -149,7 +149,8 @@ def test_the_rewrite_stage_opens_before_the_turn_analysis_and_closes_after_the_r
     detail = outcome.stage_details["query_rewrite"]
     assert events[1].detail == detail and detail["route"] == "nsu" and detail["search_queries"]
     assert set(detail) == {"resolved_coreferences", "search_queries", "route", "standalone_question", "subqueries",
-                           "analysis_fallback", "focus"}
+                           "analysis_fallback", "focus", "timings"}
+    assert set(detail["timings"]) == {"memory_ms", "analysis_ms", "rewrite_ms"}
     assert outcome.stage_durations_ms["query_rewrite"] == events[1].duration_ms
 
 
@@ -159,7 +160,10 @@ def test_a_turn_without_search_still_shows_the_rewrite_stage_with_its_route():
     assert log.index(("query_rewrite", "started")) < log.index(("llm", "turn_routing")) < log.index(
         ("query_rewrite", "completed"))
     assert ("llm", "query_rewrite") not in log
-    assert events[1].detail == outcome.stage_details["query_rewrite"] == {
+    detail = dict(outcome.stage_details["query_rewrite"])
+    assert events[1].detail == outcome.stage_details["query_rewrite"]
+    assert set(detail.pop("timings")) == {"memory_ms", "analysis_ms"}  # no rewrite call without a search
+    assert detail == {
         "route": "chitchat", "standalone_question": "Спасибо!", "subqueries": [], "analysis_fallback": False,
         "focus": ""}
     assert outcome.stage_durations_ms["query_rewrite"] == events[1].duration_ms

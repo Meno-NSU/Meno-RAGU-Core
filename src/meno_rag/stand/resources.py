@@ -4,7 +4,7 @@ import asyncio
 import json
 import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -125,11 +125,17 @@ class StandResources:
     missing_quality_count: int = 0
     fewshots_enabled: bool = False
     fewshot_retriever: Any = None
+    # chunk id -> the other places of the same text in the corpus (chunk_addresses.json); empty without the file
+    chunk_addresses: dict[str, list[dict[str, int]]] = field(default_factory=dict)
 
 
 DOCUMENT_DATES_NAME = "document_dates.json"
 # document index -> quality on the KB scale (meno_rag.stand.quality; scripts/stand_document_quality.py)
 DOCUMENT_QUALITY_NAME = "document_quality.json"
+# chunk id -> [{"doc_index", "local_chunk_index"}, ...]: the other documents that hold the same chunk text. A chunk id
+# is the hash of its text, so one id (one point of the chunk collection) stands for every document with that text,
+# and the chunk mapping names only one of them. Optional: without the file a chunk has the one address of the mapping.
+CHUNK_ADDRESSES_NAME = "chunk_addresses.json"
 
 
 def _load_documents(path: Path) -> tuple[list[dict[str, Any]], int]:
@@ -168,6 +174,28 @@ def _load_chunk_mapping(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _load_chunk_addresses(path: Path, mapping: dict, documents: list[dict]) -> dict[str, list[dict[str, int]]]:
+    if not path.is_file():
+        return {}
+    addresses: dict[str, list[dict[str, int]]] = {}
+    for chunk_id, others in json.loads(path.read_text(encoding="utf-8")).items():
+        if str(chunk_id) not in mapping:
+            raise ValueError(f"Chunk addresses name the chunk {chunk_id} that is not in the chunk mapping.")
+        kept = []
+        for item in others:
+            document_index, local_index = int(item["doc_index"]), int(item["local_chunk_index"])
+            if not 0 <= document_index < len(documents) or not 0 <= local_index < len(
+                documents[document_index]["chunks"]
+            ):
+                raise ValueError(f"Invalid address of the chunk {chunk_id} in the chunk addresses.")
+            address = {"doc_index": document_index, "local_chunk_index": local_index}
+            if document_index != mapping[str(chunk_id)]["doc_index"] and address not in kept:
+                kept.append(address)
+        if kept:
+            addresses[str(chunk_id)] = kept
+    return addresses
+
+
 def _validate_mapping(mapping: dict, documents: list[dict] | None = None) -> None:
     if not mapping or set(mapping) != {str(i) for i in range(len(mapping))}:
         raise ValueError("Chunk mapping must be nonempty and contiguous from 0.")
@@ -203,4 +231,5 @@ def load_stand_resources(settings: Settings) -> StandResources:
         stemmer=SnowballStemmer("russian"),
         abbreviations=abbreviations,
         missing_quality_count=missing,
+        chunk_addresses=_load_chunk_addresses(settings.corpus_path.parent / CHUNK_ADDRESSES_NAME, mapping, documents),
     )

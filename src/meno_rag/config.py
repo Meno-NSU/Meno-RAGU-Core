@@ -97,7 +97,11 @@ class Settings(BaseSettings):
     # cumulative rerank merge across queries. Previously the per-query cap
     # `rerank_top_k` was the only limit, so a 30-query rewrite could push
     # 30*12=360 chunks into the prompt.
-    max_context_chunks: int = Field(default=12, validation_alias="MAX_CONTEXT_CHUNKS")
+    # 16 since 19.11.2026: the LLM labels of the stand saturate at 1.0, so the cut at 12 dropped fragments the rerank
+    # had rated relevant (35 of 92 missed evidence fragments were rerank candidates, 1 was kept). Unified-v1, 1454
+    # tasks, stand-v6k3b, two judges: vital recall +0.014 [0.002; 0.026] (qwen) and +0.010 [-0.000; 0.020] (gpt-oss)
+    # over 12, fewer contradictions (4.9% vs 5.4%, 3.4% vs 3.6%); context text +27% (median 24.2k vs 19.0k chars).
+    max_context_chunks: int = Field(default=16, validation_alias="MAX_CONTEXT_CHUNKS")
     # Last-resort character budget for the QA prompt. ~60k chars ≈ 15k tokens
     # — fits the context window of most free-tier OpenRouter models.
     max_qa_prompt_chars: int = Field(default=60000, validation_alias="MAX_QA_PROMPT_CHARS")
@@ -136,6 +140,11 @@ class Settings(BaseSettings):
 
     rewrite_concurrency: int = Field(default=32, validation_alias="REWRITE_CONCURRENCY")
     rerank_concurrency: int = Field(default=64, validation_alias="RERANK_CONCURRENCY")
+    # vLLM's request priority of the LLM-rerank calls (a lower value is scheduled earlier). vLLM rejects a non-zero
+    # priority unless it runs with --scheduling-policy priority, so 0 sends no field at all, as before. A positive
+    # value (with that policy) lets the turn analysis, the rewrite and the answers of RAGU and Menon go before the
+    # ~85 rerank prompts of a turn (speed audit of 19.11, П3); it changes the order of work, not its results.
+    rerank_priority: int = Field(default=0, validation_alias="RERANK_PRIORITY")
     generation_concurrency: int = Field(default=32, validation_alias="GENERATION_CONCURRENCY")
     embed_concurrency: int = Field(default=8, validation_alias="EMBED_CONCURRENCY")
     # BM25 (lexical) retrieval runs in threads. Bound it so a burst of concurrent
@@ -276,6 +285,15 @@ class Settings(BaseSettings):
     # The LLM reranker (Menon 1.0's stand: the model labels every candidate 0/1/2). Off: the engine's cross-encoder
     # score is the relevance, as in Menon 1.1, and the floors above apply to it.
     llm_rerank: bool = Field(default=True, validation_alias="LLM_RERANK")
+    # The order of the LLM reranker's prompt sections (stand/rerank.py build_prompt). "legacy": the abbreviation
+    # dictionary, the document, the history, the question, the instruction, as always. "question_first": the same
+    # sections, the history, question and instruction first, so the part all candidates of a turn share is computed
+    # once by vLLM's prefix cache (the first candidate is scored alone to fill it): 701 -> 410 new prompt tokens per
+    # call on 2,040 real prompts (speed audit of 19.11, П1). It changes the model's input: compare the labels against
+    # the "legacy" order twice (replays R1/R2) before turning it on.
+    rerank_prompt_order: Literal["legacy", "question_first"] = Field(
+        default="legacy", validation_alias="RERANK_PROMPT_ORDER"
+    )
     graph_min_rerank_score: float = Field(default=0.0, ge=0, le=1, validation_alias="GRAPH_MIN_RERANK_SCORE")
     # Links shown per document: a summary of several pages carries up to dozens of URLs under one title.
     source_urls_per_document: int = Field(default=1, ge=1, validation_alias="SOURCE_URLS_PER_DOCUMENT")

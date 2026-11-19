@@ -20,7 +20,7 @@ def test_pipeline_budget_defaults():
     # rerank (vs ~100 uncapped), well above the 12 that survive into context.
     assert s.rerank_candidates_per_query == 40
     assert s.rerank_top_k == 12
-    assert s.max_context_chunks == 12
+    assert s.max_context_chunks == 16
 
 
 def test_frida_device_default():

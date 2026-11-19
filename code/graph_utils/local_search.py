@@ -12,12 +12,17 @@ from ragu.search_engine.search_functional import (
     _prefetch_entity_edges,
 )
 
+from graph_utils import search_timings
 
-async def rerank_with_scores(query, items, text_getter, reranker):
+
+async def rerank_with_scores(query, items, text_getter, reranker, kind=None):
     """ragu's ``_rerank_items`` (the items in the cross-encoder's order, the same scorer call) that also returns
-    the cross-encoder's scores, aligned with the items; ``None`` without a reranker."""
+    the cross-encoder's scores, aligned with the items; ``None`` without a reranker. ``kind`` names the candidates
+    in the search timings (search_timings)."""
     if reranker is None or not items:
         return items, None
+    if kind is not None:
+        search_timings.record_pairs(kind, len(items))
     ranked = [(index, float(score)) for index, score in await reranker.score(query, [text_getter(item) for item in items])
               if 0 <= index < len(items)]
     return [items[index] for index, _ in ranked], [score for _, score in ranked]
@@ -122,10 +127,12 @@ class EfficientLocalSearchEngine(LocalSearchEngine):
             self._rank_entities_scored(query, entities, params.rerank_top_k)
             for query, (entities, _) in zip(queries, entity_results, strict=True)
         ])
+        prefetch_started = time.perf_counter()
         edges_by_entity, neighbor_chunks = await _prefetch_entity_edges(
             [entity.id for entities, _ in ranked for entity in entities if entity and entity.id],
             self.knowledge_graph,
         )
+        search_timings.record('graph_cpu_ms', prefetch_started)
         return list(await asyncio.gather(*[
             self._assemble(query, entities, entity_hits, anchors, edges_by_entity, neighbor_chunks,
                            entity_scores=scores)
@@ -136,7 +143,7 @@ class EfficientLocalSearchEngine(LocalSearchEngine):
         """ragu's ``_rank_entities`` that also returns the anchors' cross-encoder scores by entity id."""
         entities, scores = await rerank_with_scores(
             query, entities, lambda entity: f'{entity.entity_name}\n{entity.entity_type}\n{entity.description}',
-            self.reranker)
+            self.reranker, kind='entity')
         if self.reranker is not None and rerank_top_k is not None:
             entities = entities[:rerank_top_k]
         by_id = {entity.id: score for entity, score in zip(entities, scores or [], strict=False)
@@ -149,6 +156,7 @@ class EfficientLocalSearchEngine(LocalSearchEngine):
     async def _assemble(self, query, entities, entity_hits, ranked_entities, edges_by_entity, neighbor_chunks,
                         entity_scores=None):
         started = time.monotonic()
+        prep_started = time.perf_counter()
         entity_scores_by_id = {
             entity.id: hit.distance
             for entity, hit in zip(entities, entity_hits, strict=False)
@@ -162,6 +170,7 @@ class EfficientLocalSearchEngine(LocalSearchEngine):
             _find_most_related_community_from_entities(entities, self.knowledge_graph),
             _find_documents_id(entities),
         )
+        search_timings.record('graph_cpu_ms', prep_started)
         relations = [relation for relation in relations if relation is not None]
         chunks = [chunk for chunk in chunks if chunk is not None]
         summaries = [summary for summary in summaries if summary is not None]
@@ -178,9 +187,9 @@ class EfficientLocalSearchEngine(LocalSearchEngine):
             rerank_with_scores(query, relations, lambda relation: (
                 f'{relation.subject_name}\n{relation.relation_type}\n'
                 f'{relation.object_name}\n{relation.description}'
-            ), self.reranker),
-            rerank_with_scores(query, summaries, lambda summary: summary.summary, self.reranker),
-            rerank_with_scores(query, chunks, lambda chunk: chunk.content, self.reranker),
+            ), self.reranker, kind='relation'),
+            rerank_with_scores(query, summaries, lambda summary: summary.summary, self.reranker, kind='summary'),
+            rerank_with_scores(query, chunks, lambda chunk: chunk.content, self.reranker, kind='chunk'),
         )
         logger.info('Локальный поиск RAGU: переранжирование завершено; всего {:.2f} с.',
                     time.monotonic() - started)

@@ -28,7 +28,7 @@ _CONTENT_SETTINGS = (
     "context_min_rerank_score", "graph_min_rerank_score", "llm_rerank",
     # answer-affecting switches added after the list was written (missing until 18.11: two stands that answered
     # differently had one fingerprint)
-    "hybrid_fusion", "context_style", "graph_element_evidence", "graph_channel",
+    "hybrid_fusion", "context_style", "graph_element_evidence", "graph_channel", "rerank_prompt_order",
 )
 # Every other setting, deliberately outside the fingerprint: addresses, keys, timeouts, concurrency, logging,
 # auth, storage and backups. tests/test_benchmark_config.py fails for a field in neither list, so a new setting
@@ -48,7 +48,7 @@ _OPERATIONAL_SETTINGS = (
     "openrouter_generation_timeout_seconds", "openrouter_http_referer", "openrouter_unreachable_backoff_max_seconds",
     "openrouter_unreachable_backoff_seconds", "openrouter_x_title", "model_cache_ttl_seconds",
     "model_discovery_timeout_seconds", "httpx_max_connections", "httpx_max_keepalive", "embed_concurrency",
-    "bm25_concurrency", "rerank_concurrency", "rewrite_concurrency", "generation_concurrency",
+    "bm25_concurrency", "rerank_concurrency", "rewrite_concurrency", "generation_concurrency", "rerank_priority",
     "retrieval_executor_max_workers", "rewrite_timeout_seconds", "rerank_timeout_seconds", "graph_timeout_seconds",
     "generation_timeout_seconds", "fewshots_path_override", "stand_resources_dir", "graph_dir_override",
     "frida_device", "frida_embedder_name",

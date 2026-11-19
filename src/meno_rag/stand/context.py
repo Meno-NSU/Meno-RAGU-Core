@@ -61,6 +61,17 @@ def global_chunk_index_to_local(
     return document_index, local_chunk_index
 
 
+def other_documents(chunk_ids: Any, chunk_addresses: dict[str, list[dict[str, int]]] | None) -> list[int]:
+    """The other documents that hold the text of these chunks (chunk_addresses.json), in the order of the chunks."""
+    indices: list[int] = []
+    if chunk_addresses:
+        for chunk_id in chunk_ids:
+            for address in chunk_addresses.get(str(chunk_id), ()):
+                if address["doc_index"] not in indices:
+                    indices.append(address["doc_index"])
+    return indices
+
+
 def global_chunk_index_to_text(
     global_chunk_index: int, documents: list[dict[str, Any]], chunk_mapping: dict[str, dict[str, int]]
 ) -> str:
@@ -149,6 +160,7 @@ def prepare_context(
     chunk_mapping: dict[str, dict[str, int]],
     min_document_quality: float,
     numbered: bool = True,
+    chunk_addresses: dict[str, list[dict[str, int]]] | None = None,
 ) -> tuple[list[str], list[dict[str, Any]]]:
     selected_documents = prepare_relevant_documents(
         indices_of_relevant_chunks,
@@ -174,12 +186,25 @@ def prepare_context(
                 numbered=numbered,
             )
         )
-        sources_of_selected_documents.append(
-            {
-                "document_title": documents[document_index]["doc_title"],
-                "source_urls": normalize_urls(documents[document_index].get("url")),
-            }
-        )
+        source = {
+            "document_title": documents[document_index]["doc_title"],
+            "source_urls": normalize_urls(documents[document_index].get("url")),
+        }
+        if chunk_addresses:
+            # the same text under other addresses: those documents follow the document itself, each a source of its
+            # own (its title, its links), so the per-document cap of links applies to each
+            chunks_of_document = [index for index in indices_of_relevant_chunks
+                                  if chunk_mapping[str(index)]["doc_index"] == document_index]
+            known = list(source["source_urls"])
+            others = []
+            for other in other_documents(chunks_of_document, chunk_addresses):
+                urls = [url for url in normalize_urls(documents[other].get("url")) if url not in known]
+                if urls:
+                    known.extend(urls)
+                    others.append({"document_title": documents[other]["doc_title"], "source_urls": urls})
+            if others:
+                source["other_addresses"] = others
+        sources_of_selected_documents.append(source)
     return descriptions_of_selected_documents, sources_of_selected_documents
 
 
@@ -200,11 +225,14 @@ def flatten_sources(sources_per_document: list[dict[str, Any]], max_urls: int | 
                 flattened.append({"document_title": title, "source_url": url})
         else:
             flattened.append({"document_title": title, "source_url": ""})
+        if source.get("other_addresses"):
+            flattened.extend(flatten_sources(source["other_addresses"], max_urls))
     return flattened
 
 
 def graph_element_as_note(item: dict[str, Any], documents: list[dict[str, Any]],
-                          chunk_mapping: dict[str, dict[str, int]], max_source_titles: int | None = None) -> str:
+                          chunk_mapping: dict[str, dict[str, int]], max_source_titles: int | None = None,
+                          chunk_addresses: dict[str, list[dict[str, int]]] | None = None) -> str:
     """A graph element as a note of the sources style (CONTEXT_STYLE=sources): its name (an entity) or its two ends (a
     relation), its description and the titles of the documents of its retrieved source chunks — no element kind,
     ontology type or relation type, which are the graph's internals."""
@@ -213,9 +241,12 @@ def graph_element_as_note(item: dict[str, Any], documents: list[dict[str, Any]],
         mapping = chunk_mapping.get(str(chunk_id))
         if mapping is None:
             continue
-        title = " ".join(str(documents[mapping["doc_index"]].get("doc_title") or "").split()) or "Без названия"
-        if title not in titles:
-            titles.append(title)
+        for document_index in [mapping["doc_index"], *other_documents([chunk_id], chunk_addresses)]:
+            title = " ".join(str(documents[document_index].get("doc_title") or "").split()) or "Без названия"
+            if title not in titles:
+                titles.append(title)
+            if max_source_titles is not None and len(titles) >= max_source_titles:
+                break
         if max_source_titles is not None and len(titles) >= max_source_titles:
             break
     head = f"{item.get('subject')} — {item.get('object')}" if item.get("kind") == "relation" else str(item.get("name"))
