@@ -60,6 +60,11 @@ def find_candidates_to_abbreviations(
         for cur_token in tokens:
             if cur_token in all_abbreviations:
                 selected_abbreviations.add(cur_token)
+    return _format_abbreviations(selected_abbreviations, all_abbreviations)
+
+
+def _format_abbreviations(selected_abbreviations: set[str] | frozenset[str],
+                          all_abbreviations: dict[str, dict[str, str | list[str]]]) -> str:
     if len(selected_abbreviations) == 0:
         return ""
     explanation = ""

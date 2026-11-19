@@ -13,6 +13,7 @@ import structlog
 from nltk.stem.snowball import SnowballStemmer
 
 from meno_rag.config import Settings
+from meno_rag.stand.abbreviation_cache import AbbreviationTokenCache
 from meno_rag.stand.rewriting import load_abbreviations
 
 logger = structlog.get_logger(__name__)
@@ -128,6 +129,11 @@ class StandResources:
     fewshot_retriever: Any = None
     # chunk id -> the other places of the same text in the corpus (chunk_addresses.json); empty without the file
     chunk_addresses: dict[str, list[dict[str, int]]] = field(default_factory=dict)
+    abbreviation_tokens: AbbreviationTokenCache = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        # Cache lifetime and stemming rules belong to this immutable resource bundle, never a global dictionary.
+        object.__setattr__(self, "abbreviation_tokens", AbbreviationTokenCache(self.stemmer))
 
 
 DOCUMENT_DATES_NAME = "document_dates.json"

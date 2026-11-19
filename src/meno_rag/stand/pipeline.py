@@ -836,12 +836,12 @@ class StandRagPipeline:
         order = self.settings.rerank_prompt_order
         prompt = build_prompt(
             user_question, dialogue_history, cur_doc, self.resources.abbreviations, self.resources.stemmer,
-            order=order,
+            order=order, abbreviation_cache=getattr(self.resources, "abbreviation_tokens", None),
         )
         if not await self._prompt_fits(prompt, runtime, 20, chat_template_kwargs={"enable_thinking": False}):
             overhead = build_prompt(
                 user_question, dialogue_history, " ", self.resources.abbreviations, self.resources.stemmer,
-                order=order,
+                order=order, abbreviation_cache=getattr(self.resources, "abbreviation_tokens", None),
             )
             if not await self._prompt_fits(overhead, runtime, 20, chat_template_kwargs={"enable_thinking": False}):
                 raise ValueError("Вопрос, история и инструкции реранкера не помещаются в контекст модели.")
@@ -918,6 +918,7 @@ class StandRagPipeline:
                         self.resources.stemmer,
                         is_json=True,
                         order=order,
+                        abbreviation_cache=getattr(self.resources, "abbreviation_tokens", None),
                     ),
                     stage=StageName.RERANK,
                     max_tokens=20,

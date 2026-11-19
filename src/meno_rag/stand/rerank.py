@@ -4,6 +4,7 @@ from typing import Any
 
 from nltk.stem.snowball import SnowballStemmer
 
+from meno_rag.stand.abbreviation_cache import AbbreviationTokenCache
 from meno_rag.stand.prompts import SYSTEM_PROMPT_FOR_RELEVANCE
 from meno_rag.stand.rewriting import find_candidates_to_abbreviations
 
@@ -35,6 +36,7 @@ def build_prompt(
     stemmer: SnowballStemmer | None = None,
     is_json: bool = False,
     order: str = "legacy",
+    *, abbreviation_cache: AbbreviationTokenCache | None = None,
 ) -> list[dict[str, str]]:
     """Build the reranker prompt that scores a candidate document by its USEFULNESS
     as a factual basis for answering the user's question (with dialogue history and
@@ -50,11 +52,14 @@ def build_prompt(
         raise ValueError("The estimated document is empty.")
     if order not in RERANK_PROMPT_ORDERS:
         raise ValueError(f"Unknown rerank prompt order {order!r}; expected one of {RERANK_PROMPT_ORDERS}.")
-    found_abbreviations = find_candidates_to_abbreviations(
-        source_text=estimated_document + "\n\n" + dialogue_history + "\n\n" + user_question,
-        all_abbreviations=abbr_dict,
-        stemmer=stemmer,
-    )
+    if abbreviation_cache is not None and abbreviation_cache.stemmer is stemmer:
+        found_abbreviations = abbreviation_cache.find(estimated_document, dialogue_history, user_question, abbr_dict)
+    else:
+        found_abbreviations = find_candidates_to_abbreviations(
+            source_text=estimated_document + "\n\n" + dialogue_history + "\n\n" + user_question,
+            all_abbreviations=abbr_dict,
+            stemmer=stemmer,
+        )
     # Each section without the blank line after it; the prompt joins them with one, which is the text the sections
     # used to be added with one by one (tests/test_rerank_prompt_order.py compares it with the old function).
     abbreviation_section = ""
