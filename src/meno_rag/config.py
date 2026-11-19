@@ -291,6 +291,10 @@ class Settings(BaseSettings):
     # The LLM reranker (Menon 1.0's stand: the model labels every candidate 0/1/2). Off: the engine's cross-encoder
     # score is the relevance, as in Menon 1.1, and the floors above apply to it.
     llm_rerank: bool = Field(default=True, validation_alias="LLM_RERANK")
+    # Explicit vLLM choice protocol: legacy keeps guided_choice; structured uses structured_outputs.choice.
+    # Verify support on every possible endpoint before enabling structured; never infer a server version.
+    # Other providers retain their existing request format. This setting changes the benchmark fingerprint.
+    rerank_guidance: Literal["legacy", "structured"] = Field(default="legacy", validation_alias="RERANK_GUIDANCE")
     # The order of the LLM reranker's prompt sections (stand/rerank.py build_prompt). "legacy": the abbreviation
     # dictionary, the document, the history, the question, the instruction, as always. "question_first": the same
     # sections, the history, question and instruction first, so the part all candidates of a turn share is computed

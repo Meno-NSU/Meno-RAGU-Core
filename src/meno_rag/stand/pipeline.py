@@ -848,8 +848,11 @@ class StandRagPipeline:
         # are ignored by their templates. For non-Qwen3 thinking models that
         # don't recognise the flag (e.g. DeepSeek-R1), this won't help and the
         # JSON fallback below catches the failure to keep rerank working.
+        guidance: dict[str, Any] = {"guided_choice": ["0", "1", "2"]}
+        if runtime.provider == "vllm" and self.settings.rerank_guidance == "structured":
+            guidance = {"structured_outputs": {"choice": ["0", "1", "2"]}}
         rerank_extra_body: dict[str, Any] = {
-            "guided_choice": ["0", "1", "2"],
+            **guidance,
             "chat_template_kwargs": {"enable_thinking": False},
             **self._rerank_priority(runtime),
         }
