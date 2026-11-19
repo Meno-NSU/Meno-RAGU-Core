@@ -800,6 +800,7 @@ class StandRagPipeline:
         rerank_extra_body: dict[str, Any] = {
             "guided_choice": ["0", "1", "2"],
             "chat_template_kwargs": {"enable_thinking": False},
+            **self._rerank_priority(runtime),
         }
         async with self.rerank_semaphore:
             try:
@@ -841,11 +842,17 @@ class StandRagPipeline:
                     max_tokens=20,
                     temperature=0.0,
                     response_format=response_format_schema(),
-                    extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+                    extra_body={"chat_template_kwargs": {"enable_thinking": False}, **self._rerank_priority(runtime)},
                     timeout=self.settings.rerank_timeout_seconds,
                 )
                 _count_rerank_usage(response)
                 return score_from_json_response(str(response["choices"][0]["message"]["content"]))
+
+    def _rerank_priority(self, runtime: ModelRuntime) -> dict[str, int]:
+        """vLLM's ``priority`` of a rerank call, only when RERANK_PRIORITY is set: vLLM rejects a non-zero priority
+        without --scheduling-policy priority, and 0 (the default) must leave the request as it was."""
+        priority = self.settings.rerank_priority
+        return {"priority": priority} if priority and runtime.provider == "vllm" else {}
 
     async def _prompt_fits(self, messages, runtime, completion_tokens, *, chat_template_kwargs=None):
         tokenizer = getattr(self.llm_router, "tokenize_messages", None)

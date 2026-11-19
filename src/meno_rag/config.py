@@ -136,6 +136,11 @@ class Settings(BaseSettings):
 
     rewrite_concurrency: int = Field(default=32, validation_alias="REWRITE_CONCURRENCY")
     rerank_concurrency: int = Field(default=64, validation_alias="RERANK_CONCURRENCY")
+    # vLLM's request priority of the LLM-rerank calls (a lower value is scheduled earlier). vLLM rejects a non-zero
+    # priority unless it runs with --scheduling-policy priority, so 0 sends no field at all, as before. A positive
+    # value (with that policy) lets the turn analysis, the rewrite and the answers of RAGU and Menon go before the
+    # ~85 rerank prompts of a turn (speed audit of 19.11, П3); it changes the order of work, not its results.
+    rerank_priority: int = Field(default=0, validation_alias="RERANK_PRIORITY")
     generation_concurrency: int = Field(default=32, validation_alias="GENERATION_CONCURRENCY")
     embed_concurrency: int = Field(default=8, validation_alias="EMBED_CONCURRENCY")
     # BM25 (lexical) retrieval runs in threads. Bound it so a burst of concurrent
