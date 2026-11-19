@@ -223,8 +223,8 @@ class StreamingAttribution:
     split_sentences splits the answer line by line, so the sentences of a finished line are the answer's sentences;
     they are scored against the same unit texts as soon as the line ends. finish() splits the whole answer, scores
     the sentences not scored yet (the last line), and combines the scores of the answer's sentences, in their order,
-    exactly as attribute() does. Each distinct sentence is scored once (attribute() scored a repeated sentence again
-    with the same arguments). Speculative work is never wasted: only sentences of the final text are scored."""
+    exactly as attribute() does. Repeated sentences retain their separate scorer calls, matching attribute().
+    Only sentences of the final text are scored."""
 
     def __init__(self, units: Sequence[EvidenceUnit], scorer: Scorer, threshold: float, prior_weight: float = 0.0):
         self.units = list(units)
@@ -232,7 +232,7 @@ class StreamingAttribution:
         self.threshold = threshold
         self.prior_weight = prior_weight
         self.texts = [unit.text for unit in self.units]
-        self._scores: dict[str, asyncio.Task] = {}
+        self._scores: dict[int, asyncio.Task] = {}
         self._finished_lines = 0
 
     def feed(self, answer_so_far: str) -> None:
@@ -244,26 +244,26 @@ class StreamingAttribution:
             lines = lines[:-1]  # the last line may still grow
         for line in lines[self._finished_lines:]:
             for sentence in line_sentences(line):
-                self._score(sentence)
+                self._score(len(self._scores), sentence)
         self._finished_lines = max(self._finished_lines, len(lines))
 
-    def _score(self, sentence: str) -> asyncio.Task:
-        task = self._scores.get(sentence)
+    def _score(self, index: int, sentence: str) -> asyncio.Task:
+        task = self._scores.get(index)
         if task is None:
-            task = self._scores[sentence] = asyncio.ensure_future(self.scorer(sentence, self.texts))
+            task = self._scores[index] = asyncio.ensure_future(self.scorer(sentence, self.texts))
             task.add_done_callback(_retrieve)
         return task
 
     async def finish(self, answer: str, stats: dict[str, Any] | None = None) -> list[tuple[EvidenceUnit, float]]:
         sentences = split_sentences(answer)
         if stats is not None:
-            calls = len(set(sentences)) if self.units else 0
+            calls = len(sentences) if self.units else 0
             stats.update(sentences=len(sentences), units=len(self.units), scorer_calls=calls,
-                         pairs=calls * len(self.units), streamed=sum(s in self._scores for s in set(sentences)))
+                         pairs=calls * len(self.units), streamed=sum(i in self._scores for i in range(len(sentences))))
         if not sentences or not self.units:
             self.cancel()
             return []
-        tasks = [self._score(sentence) for sentence in sentences]
+        tasks = [self._score(index, sentence) for index, sentence in enumerate(sentences)]
         return _combine(self.units, await asyncio.gather(*tasks), self.threshold, self.prior_weight)
 
     def cancel(self) -> None:

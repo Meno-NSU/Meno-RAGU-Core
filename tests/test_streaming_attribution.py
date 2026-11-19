@@ -80,8 +80,7 @@ def test_streamed_attribution_equals_the_whole_answer_s_for_any_stream():
             got = await streaming.finish(text)
             assert got == expected
             assert to_sources(got, 5) == to_sources(expected, 5)
-            # only the answer's own sentences are scored, each once
-            assert sorted(streamed_calls) == sorted(set(split_sentences(text)))
+            assert streamed_calls == reference_calls == split_sentences(text)
 
     asyncio.run(run())
 
@@ -100,6 +99,32 @@ def test_finished_lines_are_scored_before_the_answer_ends():
         )
         await streaming.finish(text)
         assert calls[1:] == ["Общежитие предоставляется всем иногородним студентам первого курса."]
+
+    asyncio.run(run())
+
+
+def test_repeated_sentences_keep_separate_scorer_results():
+    sentence = "НГУ принимает документы с двадцатого июня до конца июля."
+    text = f"{sentence}\n{sentence}"
+
+    def make_scorer():
+        calls = 0
+
+        async def score(sentence, texts):
+            nonlocal calls
+            calls += 1
+            return [0.4 * calls] * len(texts)
+
+        return score
+
+    async def run():
+        expected = await attribute(text, UNITS, make_scorer(), 0.5)
+        streaming = StreamingAttribution(UNITS, make_scorer(), 0.5)
+        streaming.feed(f"{sentence}\n")
+        await asyncio.sleep(0)
+        actual = await streaming.finish(text)
+        assert actual == expected
+        assert len(actual) == len(UNITS)
 
     asyncio.run(run())
 
