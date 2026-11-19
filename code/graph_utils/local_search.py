@@ -102,10 +102,10 @@ async def find_related_text_units(entities, knowledge_graph, edges_by_entity, ne
                         break
                 if kept >= limit:
                     break
-            for item in entity_chunks:  # the rest of this entity's chunks stay claimed, as without the limit
-                lookup.setdefault(item['id'], {**item, 'data': None})
             if kept >= limit:
                 break
+            for item in entity_chunks:
+                lookup.setdefault(item['id'], {**item, 'data': None})
         else:
             for item in entity_chunks:
                 lookup[item['id']] = item
