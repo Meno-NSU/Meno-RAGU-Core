@@ -310,6 +310,7 @@ class Settings(BaseSettings):
     # teacher's record: over a hundred parts under one link) otherwise fills the pool and no other page is reranked.
     rerank_candidates_per_page: int = Field(default=6, ge=0, validation_alias="RERANK_CANDIDATES_PER_PAGE")
     source_attribution: bool = Field(default=True, validation_alias="SOURCE_ATTRIBUTION")
+    stream_source_attribution: bool = Field(default=False, validation_alias="STREAM_SOURCE_ATTRIBUTION")
     # The kind of every turn, as in Menon 1.1 (stand/routing.py): general questions may use general knowledge,
     # small talk and turns about the dialogue skip the search. Off: every turn is searched and answered from documents.
     turn_routing: bool = Field(default=True, validation_alias="TURN_ROUTING")

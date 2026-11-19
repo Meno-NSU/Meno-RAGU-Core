@@ -471,8 +471,9 @@ class StandRagPipeline:
 
     def start_source_attribution(self, outcome: PipelineOutcome) -> StreamingAttribution | None:
         """Source attribution that scores the answer's sentences while it streams (feed it the text so far, pass it
-        to finalize_sources): the same sources as attributing the whole answer at the end. None without a scorer."""
-        if self.source_scorer is None:
+        to finalize_sources): the same sources as attributing the whole answer at the end. Enabled explicitly with
+        STREAM_SOURCE_ATTRIBUTION, and needs a scorer."""
+        if not self.settings.stream_source_attribution or self.source_scorer is None:
             return None
         try:
             units = [EvidenceUnit(**unit) for unit in outcome.evidence]

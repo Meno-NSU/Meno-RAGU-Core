@@ -243,6 +243,7 @@ async def run_phase(name, optimized, cases, settings, resources, router, scorer,
                     hub_index, titles, document, output):
     resources.graph.engines.local_engine.hub_index = hub_index if optimized else None
     phase_settings = settings.model_copy(update={"early_first_query": optimized, "rerank_priority": int(optimized),
+                                                 "stream_source_attribution": optimized,
                                                  "graph_hub_min_edges": 5000 if optimized else 0})
     executor = ThreadPoolExecutor(max_workers=settings.retrieval_executor_max_workers or 4)
     pipeline = RaguRagPipeline(

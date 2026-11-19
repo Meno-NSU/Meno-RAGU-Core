@@ -6,6 +6,8 @@ import copy
 import hashlib
 import random
 
+from meno_rag.api import benchmark_config
+from meno_rag.config import Settings
 from meno_rag.schemas import ChatMessage
 from meno_rag.stand.attribution import EvidenceUnit, StreamingAttribution, attribute, split_sentences, to_sources
 from meno_rag.stand.pipeline import ModelRuntime, PipelineRuntime
@@ -133,7 +135,7 @@ def test_a_scoring_error_while_streaming_gives_no_sources_as_before():
     async def failing(sentence, texts):
         raise RuntimeError("cross-encoder down")
 
-    pipeline = ragu_fakes.pipeline(source_scorer=failing)
+    pipeline = ragu_fakes.pipeline(source_scorer=failing, stream_source_attribution=True)
     pipeline.resources.documents[0]["url"] = "https://example.org/a"
     runtime = PipelineRuntime.uniform(ModelRuntime("fake-model", "http://fake/v1"))
     outcome = asyncio.run(pipeline.prepare(messages=[ChatMessage(role="user", content="ФИТ")], runtime=runtime))
@@ -192,7 +194,7 @@ def test_close_waits_until_the_scorer_finishes_cancellation():
 
 def test_the_pipeline_s_streamed_sources_are_its_sources_at_the_end():
     calls = []
-    pipeline = ragu_fakes.pipeline(source_scorer=scorer_with(calls))
+    pipeline = ragu_fakes.pipeline(source_scorer=scorer_with(calls), stream_source_attribution=True)
     pipeline.resources.documents[0]["url"] = "https://example.org/a"
     runtime = PipelineRuntime.uniform(ModelRuntime("fake-model", "http://fake/v1"))
     outcome = asyncio.run(pipeline.prepare(messages=[ChatMessage(role="user", content="ФИТ")], runtime=runtime))
@@ -218,3 +220,37 @@ def test_the_pipeline_s_streamed_sources_are_its_sources_at_the_end():
     assert {key: streamed_timings[key] for key in ("sentences", "units", "pairs")} == {
         key: whole_timings[key] for key in ("sentences", "units", "pairs")
     }
+
+
+def test_streaming_is_opt_in_and_default_pipeline_attributes_the_completed_answer(monkeypatch):
+    monkeypatch.delenv("STREAM_SOURCE_ATTRIBUTION", raising=False)
+    calls = []
+
+    async def score(sentence, texts):
+        calls.append(sentence)
+        return [0.8] * len(texts)
+
+    pipeline = ragu_fakes.pipeline(source_scorer=score)
+    pipeline.resources.documents[0]["url"] = "https://example.org/a"
+    runtime = PipelineRuntime.uniform(ModelRuntime("fake-model", "http://fake/v1"))
+    text = "На факультете учатся студенты Новосибирского государственного университета."
+
+    async def run():
+        outcome = await pipeline.prepare(messages=[ChatMessage(role="user", content="ФИТ")], runtime=runtime)
+        assert pipeline.settings.stream_source_attribution is False
+        assert pipeline.start_source_attribution(outcome) is None
+        assert calls == []
+        sources = await pipeline.finalize_sources(outcome, text)
+        assert sources == [{"document_title": "НГУ", "source_url": "https://example.org/a"}]
+        assert calls == split_sentences(text)
+        assert "streamed" not in outcome.stage_details["source_attribution"]["timings"]
+
+    asyncio.run(run())
+    monkeypatch.setenv("STREAM_SOURCE_ATTRIBUTION", "true")
+    assert Settings(_env_file=None).stream_source_attribution is True
+    assert "stream_source_attribution" in benchmark_config._OPERATIONAL_SETTINGS
+
+
+def test_streaming_opt_in_without_a_scorer_creates_no_worker():
+    pipeline = ragu_fakes.pipeline(stream_source_attribution=True)
+    assert pipeline.start_source_attribution(None) is None
