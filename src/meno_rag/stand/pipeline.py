@@ -202,9 +202,10 @@ class StandRagPipeline:
                 if analysis.route in NO_SEARCH_ROUTES:
                     return analysis, None
                 if self.settings.early_first_query:
-                    # The first query's search overlaps the rewrite; EARLY_RERANK also overlaps its scores.
-                    # The rerank history is "" with dialogue memory.
-                    early = self._start_early_query(analysis.standalone_question, "", runtime.core)
+                    early_question, early_history = self._rerank_inputs(
+                        question, analysis.standalone_question, prepared_dialogue_history, has_memory=True)
+                    early = self._start_early_query(analysis.standalone_question, early_history, runtime.core,
+                                                    rerank_question=early_question)
                     if early is not None:
                         early_turn.append(early)
                 rewrite_started = time.perf_counter()
@@ -273,6 +274,8 @@ class StandRagPipeline:
             stage_details.setdefault(StageName.QUERY_REWRITE, {})["timings"] = dict(turn_timings)
             searching = route not in NO_SEARCH_ROUTES
 
+        rerank_question, rerank_history = self._rerank_inputs(
+            question, search_question, prepared_dialogue_history, has_memory=memory is not None)
         try:
             # Few-shot selection is fail-safe and surfaced as its own stage so the
             # UI can show "found a similar case". Only run (and emit) when enabled
@@ -307,8 +310,7 @@ class StandRagPipeline:
                 reranked_global_chunks = await self._timed_stage(
                     StageName.RERANK,
                     emit,
-                    lambda: self._rerank(fused_batches, search_question,
-                                         "" if memory is not None else prepared_dialogue_history, runtime.core,
+                    lambda: self._rerank(fused_batches, rerank_question, rerank_history, runtime.core,
                                          **({"early": early_turn[0]} if early_turn else {})),
                     stage_durations,
                     stage_details,
@@ -403,13 +405,15 @@ class StandRagPipeline:
                     "rerank_sampling": asdict(RerankSampling()),
                     "generation_sampling_defaults": asdict(QaSampling()),
                     "generation_max_tokens": completion_tokens,
+                    "rerank_question": rerank_question,
+                    "rerank_dialogue_history": rerank_history,
                     "final_context_budget_chars": context_budget,
                     "settings": {name: getattr(self.settings, name) for name in (
                         "max_rewrite_queries", "rerank_candidates_per_query", "rerank_top_k", "rerank_weight",
                         "max_context_chunks", "max_qa_prompt_chars", "graph_source_documents", "graph_max_elements",
                         "source_urls_per_document", "min_document_quality", "rerank_candidates_per_page",
                         "source_attribution", "source_attribution_threshold", "max_sources", "turn_routing",
-                        "source_prior_weight", "source_authority", "prompt_timezone",
+                        "source_prior_weight", "source_authority", "prompt_timezone", "rerank_question_source",
                     )},
                 },
             )
@@ -707,7 +711,25 @@ class StandRagPipeline:
     async def _retrieve(self, search_queries: list[str], early: Any = None) -> list[dict[str, Any]]:
         raise NotImplementedError("Use RaguRagPipeline for graph retrieval.")
 
-    def _start_early_query(self, question: str, dialogue_history: str, runtime: ModelRuntime) -> Any:
+    def _rerank_inputs(
+        self, question: str, resolved: str, dialogue_history: str, *, has_memory: bool
+    ) -> tuple[str, str]:
+        if self.settings.rerank_question_source == "resolved":
+            return resolved, "" if has_memory else dialogue_history
+        if question == resolved:
+            return question, dialogue_history
+        combined = (
+            "Исходная реплика пользователя (сохраните все её просьбы и ограничения):\n"
+            + question
+            + "\n\nСамостоятельная формулировка для разрешения ссылок по истории "
+            "(уточняет исходную реплику, но не заменяет её):\n"
+            + resolved
+        )
+        return combined, dialogue_history
+
+    def _start_early_query(
+        self, question: str, dialogue_history: str, runtime: ModelRuntime, *, rerank_question: str | None = None
+    ) -> Any:
         """EARLY_FIRST_QUERY hook: the graph pipeline starts retrieval and optional scores; here nothing."""
         return None
 

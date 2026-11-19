@@ -41,9 +41,11 @@ class GraphSelection(_RerankOutput):
 class EarlyQuery:
     """The first search query's search and rerank scores of one turn, started while the rewrite call runs."""
 
-    def __init__(self, query, dialogue_history):
+    def __init__(self, query, dialogue_history, *, rerank_question=None, runtime=None):
         self.query = query
+        self.rerank_question = query if rerank_question is None else rerank_question
         self.dialogue_history = dialogue_history
+        self.runtime = runtime
         self.retrieval = None  # task: the retrieval batches of [query]
         self.started = None  # task: waits for the search, then starts the scoring tasks
         self.scores = {}  # candidate key -> scoring task
@@ -131,13 +133,13 @@ class RaguRagPipeline(StandRagPipeline):
                                      self.resources.chunk_mapping, max_source_titles=0)
         return await self._score_document_with_llm(user_question, dialogue_history, text, runtime, candidate.key)
 
-    def _start_early_query(self, question, dialogue_history, runtime: ModelRuntime):
+    def _start_early_query(self, question, dialogue_history, runtime: ModelRuntime, *, rerank_question=None):
         """Start the first retrieval during the rewrite; EARLY_RERANK additionally starts its LLM scores.
 
         The question is the first search query and its pool depends on its own search only, so later stages reuse
         these results unchanged. Retrieval alone leaves every LLM score to the normal rerank stage.
         """
-        early = EarlyQuery(question, dialogue_history)
+        early = EarlyQuery(question, dialogue_history, rerank_question=rerank_question, runtime=runtime)
         early.retrieval = asyncio.create_task(self._retrieve([question]))
         if not self.settings.early_rerank:
             return early
@@ -148,13 +150,14 @@ class RaguRagPipeline(StandRagPipeline):
                 return
             with counting_rerank_calls(early.calls):
                 if self._rerank_warm_up(len(pool)):  # question-first prompts: the first one fills the cache
-                    first = asyncio.create_task(self._score_candidate(pool[0], question, dialogue_history, runtime))
+                    first = asyncio.create_task(self._score_candidate(
+                        pool[0], early.rerank_question, dialogue_history, runtime))
                     early.scores[pool[0].key] = first
                     await first
                 for candidate in pool:
                     if candidate.key not in early.scores:
                         early.scores[candidate.key] = asyncio.create_task(
-                            self._score_candidate(candidate, question, dialogue_history, runtime))
+                            self._score_candidate(candidate, early.rerank_question, dialogue_history, runtime))
 
         early.started = asyncio.create_task(start_scores())
         return early
@@ -167,8 +170,8 @@ class RaguRagPipeline(StandRagPipeline):
             return await self._score_candidate(candidate, user_question, dialogue_history, runtime)
 
         use_early = (early is not None and early.started is not None and bool(fused_batches)
-                     and fused_batches[0]["query"] == early.query and user_question == early.query
-                     and dialogue_history == early.dialogue_history)
+                     and fused_batches[0]["query"] == early.query and user_question == early.rerank_question
+                     and dialogue_history == early.dialogue_history and runtime == early.runtime)
         calls = new_rerank_calls()
         if self.settings.llm_rerank:
             candidates = list(unique.values())

@@ -317,6 +317,9 @@ class Settings(BaseSettings):
     rerank_prompt_order: Literal["legacy", "question_first"] = Field(
         default="legacy", validation_alias="RERANK_PROMPT_ORDER"
     )
+    rerank_question_source: Literal["resolved", "original_resolved"] = Field(
+        default="resolved", validation_alias="RERANK_QUESTION_SOURCE"
+    )
     graph_min_rerank_score: float = Field(default=0.0, ge=0, le=1, validation_alias="GRAPH_MIN_RERANK_SCORE")
     # Links shown per document: a summary of several pages carries up to dozens of URLs under one title.
     source_urls_per_document: int = Field(default=1, ge=1, validation_alias="SOURCE_URLS_PER_DOCUMENT")
