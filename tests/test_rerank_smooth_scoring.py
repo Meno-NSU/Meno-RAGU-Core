@@ -6,14 +6,19 @@ that evicted the price-bearing «Регламент» chunk for cost questions. 
 aggregate score gives label-1 chunks ~0.5 so they survive.
 """
 
+import asyncio
+import math
+
 import pytest
 
+from meno_rag.stand.pipeline import ModelRuntime
 from meno_rag.stand.rerank import (
     SYSTEM_PROMPT_FOR_RELEVANCE,
     aggregate_logprobs_to_score,
     build_prompt,
     score_from_logprobs,
 )
+from tests import ragu_fakes
 
 
 def _dominant(label: int) -> dict[int, float]:
@@ -58,6 +63,76 @@ def test_label1_chunk_survives_not_zeroed():
     score = score_from_logprobs(choice)
     assert score > 0.0
     assert 0.4 < score < 0.6  # ~0.5, not 0
+
+
+def _choice(tokens):
+    return {"logprobs": {"content": [{"top_logprobs": [
+        {"token": token, "logprob": logprob} for token, logprob in tokens
+    ]}]}}
+
+
+@pytest.mark.parametrize("dominant", [0, 2])
+def test_duplicate_decoded_digits_do_not_overwrite_the_likely_token(dominant):
+    entries = [(str(label), 0.0 if label == dominant else -20.0) for label in (0, 1, 2)]
+    entries.extend([(str(dominant), -39.0), (str(2 - dominant), -40.0)])
+    assert score_from_logprobs(_choice(entries)) == pytest.approx(dominant / 2, abs=1e-7)
+    assert score_from_logprobs(_choice(list(reversed(entries)))) == pytest.approx(dominant / 2, abs=1e-7)
+
+
+def test_probability_mass_of_distinct_tokens_with_the_same_digit_is_added():
+    entries = [("2", math.log(.3)), ("1", math.log(.4)), ("0", math.log(.1)), ("2", math.log(.2))]
+    assert score_from_logprobs(_choice(entries)) == pytest.approx(.7)
+    assert score_from_logprobs(_choice(list(reversed(entries)))) == pytest.approx(.7)
+
+
+@pytest.mark.parametrize("entries", [
+    [("0", -.1), ("1", -3.), ("2", -5.)],
+    [("1", -.1), ("2", -2.)],
+    [("0", -.1)],
+])
+def test_unique_digit_tokens_keep_the_previous_score(entries):
+    previous = aggregate_logprobs_to_score({label: dict(entries).get(str(label), -100.) for label in (0, 1, 2)})
+    assert score_from_logprobs(_choice(entries)) == previous
+
+
+@pytest.mark.parametrize("entries", [[], [(" ", -.1)], [(" 2", -.1)], [("<|channel>", -.1)]])
+def test_missing_digit_labels_raise_instead_of_becoming_half_relevant(entries):
+    with pytest.raises(ValueError, match="no finite digit label"):
+        score_from_logprobs(_choice(entries))
+
+
+@pytest.mark.parametrize("invalid", [math.nan, math.inf])
+def test_nonfinite_label_logprobs_are_rejected(invalid):
+    with pytest.raises(ValueError, match="nonfinite"):
+        score_from_logprobs(_choice([("0", -.1), ("1", invalid)]))
+
+
+def test_negative_infinity_has_zero_probability_mass():
+    assert score_from_logprobs(_choice([("0", -math.inf), ("1", 0.), ("2", -math.inf)])) == .5
+    with pytest.raises(ValueError, match="no finite digit label"):
+        score_from_logprobs(_choice([("0", -math.inf), ("1", -math.inf), ("2", -math.inf)]))
+
+
+def test_the_pipeline_uses_json_fallback_when_no_digit_label_is_returned():
+    class MissingLabelsLLM(ragu_fakes.LLM):
+        def __init__(self):
+            super().__init__()
+            self.calls = []
+
+        async def chat_completion(self, **kwargs):
+            self.calls.append(kwargs)
+            if kwargs["max_tokens"] == 1:
+                return {"choices": [_choice([("<|channel>", -.1)])]}
+            return {"choices": [{"message": {"content": '{"label": "2"}'}}]}
+
+    pipeline = ragu_fakes.pipeline()
+    pipeline.llm_router = llm = MissingLabelsLLM()
+    score = asyncio.run(pipeline._score_document_with_llm(
+        "Вопрос", "", "Текст документа", ModelRuntime("fake-model", "http://fake/v1"), "test-chunk",
+    ))
+    assert score == pytest.approx(1.)
+    assert len(llm.calls) == 2
+    assert llm.calls[1]["max_tokens"] == 20 and "response_format" in llm.calls[1]
 
 
 def test_build_prompt_structure_minimal():

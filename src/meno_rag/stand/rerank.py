@@ -148,8 +148,26 @@ def score_from_logprobs(choice: dict[str, Any]) -> float:
     except (KeyError, TypeError, IndexError) as exc:
         raise ValueError("Reranker response does not contain top_logprobs.") from exc
 
-    token_to_logprob = {str(item["token"]): float(item["logprob"]) for item in top_logprobs_list if "token" in item}
-    raw = {int(label): token_to_logprob.get(label, -100.0) for label in POSSIBLE_LABELS}
+    label_logprobs: dict[int, list[float]] = {int(label): [] for label in POSSIBLE_LABELS}
+    for item in top_logprobs_list:
+        token = str(item.get("token", ""))
+        if token not in POSSIBLE_LABELS:
+            continue
+        value = float(item["logprob"])
+        if math.isnan(value) or value == math.inf:
+            raise ValueError("Reranker returned a nonfinite label logprob.")
+        label_logprobs[int(token)].append(value)
+    if not any(math.isfinite(value) for values in label_logprobs.values() for value in values):
+        raise ValueError("Reranker top_logprobs contain no finite digit label.")
+
+    raw = {}
+    for label, values in label_logprobs.items():
+        if not values:
+            raw[label] = -100.0
+            continue
+        peak = max(values)
+        # Distinct token IDs can decode to the same digit. Their probability masses add.
+        raw[label] = peak if peak == -math.inf else peak + math.log(sum(math.exp(value - peak) for value in values))
     return aggregate_logprobs_to_score(raw)
 
 

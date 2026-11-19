@@ -841,9 +841,8 @@ class StandRagPipeline:
         # vLLM forwards `chat_template_kwargs` into the jinja renderer. Critical
         # for rerank: with `max_tokens=1` a Qwen3 model otherwise spends its
         # only token on `<think>` and never emits a classifier digit, leaving
-        # the response with no "0"/"1"/"2" in top_logprobs and `score_from_logprobs`
-        # returning 0.0 for every chunk — exactly the "Отобрано топ-0" symptom
-        # observed on the stand with `qwen3-30b-fp16`.
+        # the response with no "0"/"1"/"2" in top_logprobs. The parser rejects
+        # that response and triggers the JSON fallback below.
         #
         # Harmless for models without thinking — unknown chat_template_kwargs
         # are ignored by their templates. For non-Qwen3 thinking models that
