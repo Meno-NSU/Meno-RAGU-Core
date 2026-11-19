@@ -19,5 +19,10 @@
     "original_commit": "4a9732fe9b087febe6494eeed20fbaf302961629",
     "targeted_graph_tests_passed": 78,
     "actual_graph_cases_exact": 30
+  },
+  "published_probe_sha256": {
+    "strict_early_replay.py": "6b7afbeefb6376abd2d2ea5418aa3893c19c752d6e0e37cf002740e3aff68492",
+    "real_hub_cpu_probe.py": "3967f5ae46ae0036878bdec20402f692d7836600e1e411dfc726f59504d86fc7",
+    "live_abba.py": "7b43f5055f8ca1c2392f49dd605610e9114a82bed2c69edffa087925b05d9154"
   }
 }
