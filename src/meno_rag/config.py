@@ -97,7 +97,11 @@ class Settings(BaseSettings):
     # cumulative rerank merge across queries. Previously the per-query cap
     # `rerank_top_k` was the only limit, so a 30-query rewrite could push
     # 30*12=360 chunks into the prompt.
-    max_context_chunks: int = Field(default=12, validation_alias="MAX_CONTEXT_CHUNKS")
+    # 16 since 19.11.2026: the LLM labels of the stand saturate at 1.0, so the cut at 12 dropped fragments the rerank
+    # had rated relevant (35 of 92 missed evidence fragments were rerank candidates, 1 was kept). Unified-v1, 1454
+    # tasks, stand-v6k3b, two judges: vital recall +0.014 [0.002; 0.026] (qwen) and +0.010 [-0.000; 0.020] (gpt-oss)
+    # over 12, fewer contradictions (4.9% vs 5.4%, 3.4% vs 3.6%); context text +27% (median 24.2k vs 19.0k chars).
+    max_context_chunks: int = Field(default=16, validation_alias="MAX_CONTEXT_CHUNKS")
     # Last-resort character budget for the QA prompt. ~60k chars ≈ 15k tokens
     # — fits the context window of most free-tier OpenRouter models.
     max_qa_prompt_chars: int = Field(default=60000, validation_alias="MAX_QA_PROMPT_CHARS")

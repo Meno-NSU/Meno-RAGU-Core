@@ -135,7 +135,7 @@ class ArenaSide(BaseModel):
     # run.
     content: str = Field(..., max_length=40_000)
     # Same reasoning as `content`, capping the count rather than each dict's field lengths:
-    # settings.max_context_chunks defaults to 12, so a real side's shown sources should never
+    # settings.max_context_chunks defaults to 16, so a real side's shown sources should never
     # exceed that by more than a small margin.
     sources: list[dict[str, str]] = Field(default_factory=list, max_length=20)
 
