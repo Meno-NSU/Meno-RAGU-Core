@@ -253,4 +253,6 @@ qwen значимых сдвигов не видит. Стенд, код и дв
 | Бенчмарк unified-v1 | GitHub `Meno-QA-Benchmark`, `main` |
 | Журнал, отчёты аудитов, оценки судей, ответы, разбор ошибок | Everest `/workspace/data/release-audit-2026-11-19/` (`README.md` — журнал) |
 | Резервные копии (кеш LLM) | Everest `/workspace/data/meno-backups/` |
+| Граф v6.1 (кандидат в релиз): граф, журнал правок, код, стороны фрагментов v6k3 и v6k3b, отчёты аудита | HF `Meno-NSU/NSU-Data-For-Meno`, ветка `snapshots/ragu-graph-v61` (`ecd3a125`, 43 файла, сверены) |
+| Граф v6 (живой стенд v6k2): этапы сборки, граф, входы, код, ресурсы стенда | HF, ветка `snapshots/ragu-graph-v6` (`f5ca1907`, 87 файлов, сверены) |
 | Рабочие копии на проде | `~/meno-v2/rel1119b` (ответы), `~/meno-v2/judge1119` (судьи, `judge/failures` — разбор), `~/meno-v2/audit1119`, `~/meno-v2/ragu-v2/stand-v6k3{,b}`, `~/meno-v2/ragu-v2/graph-v61` |
