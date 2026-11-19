@@ -19,7 +19,7 @@ def test_table_keeps_names_and_checked_abbreviations_only():
              ('io', 'ИО РАН', 'RESEARCH_INSTITUTE', ''), ('m', 'Механико-математический факультет', 'FACULTY', ''),
              ('mm', 'ММФ', 'FACULTY', ''), ('v', 'факультета информационных технологий', 'FACULTY', '')]
     edges = [('io', 'wrong', 'ALTERNATIVE_NAME'), ('mm', 'm', 'ABBREVIATION'), ('f', 'v', 'PART_OF'), ('f', 'm', 'KNOWS')]
-    built = build_alias_table(nodes, edges)
+    built = build_alias_table(nodes, edges, single_word_max_description_share=0.5)
     names = built['names']
     assert names[name_key('ФИТ')] == ['f', 'a']  # from the brackets of the description; the most connected first
     assert names[name_key('ММФ')] == ['m', 'mm']  # the alias edge passes the check
@@ -37,3 +37,12 @@ def test_common_single_words_are_left_out_and_longest_mention_wins():
     assert table.node_ids('типовой договор с YADRO') == ['y']
     assert table.node_ids('Кто заведует кафедрой общей физики?') == ['k']
     assert table.node_ids('физика и кафедра общей физики') == ['p', 'k']
+
+
+def test_one_word_names_match_as_written_and_common_words_are_left_out():
+    nodes = [('liu', 'Линейный индукционный ускоритель', 'FACILITY', 'Ускоритель (ЛИУ) института'),
+             ('li', 'Ли', 'PERSON', 'Исследователь')]
+    nodes += [(f'n{i}', f'Узел номер {i}', 'CONCEPT', 'Неясно, есть ли связь') for i in range(30)]
+    table = AliasTable(build_alias_table(nodes, [], single_word_max_description_share=0.5)['names'])
+    assert table.node_ids('параметры ЛИУ') == ['liu']
+    assert table.node_ids('можно ли поступить') == []  # «ли» is in most descriptions; the stem of «ЛИУ» is not used

@@ -9,8 +9,10 @@ scanned for the longest names it contains. Everything in the table comes from th
   ``ALTERNATIVE_NAME``/``ABBREVIATION`` edge or from brackets in the node's description, and is kept only after
   this check: 38-75% of the alias edges of graph v6 join different things (audit of 18.11.2026).
 
-A one-word name that many nodes share as a word of their names says little about which node is meant; such names are
-left out unless they are checked abbreviations (``single_word_max_names``).
+A one-word name is matched as written, not by its stem (the stem of «ЛИУ» is «ли», of «ОНИ» «он»), and is left
+out when it says little about which node is meant: a word many node names contain (``single_word_max_names``,
+unless it is a checked abbreviation) or a word common in the descriptions of the graph
+(``single_word_max_description_share``: function words and everyday vocabulary, measured, not listed).
 
 usage: python -m graph_utils.alias_table GRAPH.gml OUT.json
 """
@@ -46,7 +48,11 @@ def stems(text):
 
 
 def name_key(text):
-    """The words of a name as sorted stems: «Кафедра общей физики» and «кафедру физики общей» give one key."""
+    """The words of a name as sorted stems: «Кафедра общей физики» and «кафедру физики общей» give one key.
+    A one-word name is kept as written (``=фит``)."""
+    found = words(text)
+    if len(set(found)) == 1:
+        return '=' + found[0]
     return ' '.join(sorted(set(stems(text))))
 
 
@@ -67,7 +73,8 @@ def is_abbreviation_of(short, full):
     return False
 
 
-def build_alias_table(nodes, edges, single_word_max_names=50, max_nodes_per_name=5):
+def build_alias_table(nodes, edges, single_word_max_names=50, max_nodes_per_name=5,
+                      single_word_max_description_share=0.01):
     """``nodes``: (id, name, type, description); ``edges``: (subject id, object id, relation type).
     Returns {'names': {key: [node ids, most connected first]}, 'meta': {...}}."""
     names, descriptions = {}, {}
@@ -82,12 +89,15 @@ def build_alias_table(nodes, edges, single_word_max_names=50, max_nodes_per_name
         if kind in ALIAS_RELATIONS and subject in names and target in names:
             alias_pairs.append((subject, target))
     by_key = defaultdict(set)
-    word_names = Counter()  # in how many names a stem occurs
+    word_names = Counter()  # in how many names a word occurs
+    word_descriptions = Counter()  # in how many descriptions
     for node_id, name in names.items():
         key = name_key(name)
         if key:
             by_key[key].add(node_id)
-            word_names.update(key.split(' '))
+            word_names.update(set(words(name)))
+        word_descriptions.update(set(words(descriptions[node_id])))
+    common = single_word_max_description_share * max(len(names), 1)
     checked = defaultdict(set)  # abbreviation key -> nodes it names
     stats = Counter(nodes=len(names), alias_edges=len(alias_pairs))
     for first, second in alias_pairs:
@@ -108,20 +118,23 @@ def build_alias_table(nodes, edges, single_word_max_names=50, max_nodes_per_name
         if not key:
             continue
         targets = by_key.get(key, set()) | checked.get(key, set())
-        if ' ' not in key and key not in checked and word_names[key] > single_word_max_names:
-            stats['single_words_left_out'] += 1
-            continue
+        if key.startswith('='):
+            word = key[1:]
+            if word_descriptions[word] > common or (key not in checked and word_names[word] > single_word_max_names):
+                stats['single_words_left_out'] += 1
+                continue
         table[key] = sorted(targets, key=lambda node_id: (-degree[node_id], node_id))[:max_nodes_per_name]
     stats['names'] = len(table)
     stats['abbreviations'] = sum(1 for key in checked if key in table)
     return {'names': table, 'meta': {**stats, 'single_word_max_names': single_word_max_names,
+                                     'single_word_max_description_share': single_word_max_description_share,
                                      'max_nodes_per_name': max_nodes_per_name}}
 
 
 class AliasTable:
     def __init__(self, names):
         self.names = names
-        self.longest = max((key.count(' ') + 1 for key in names), default=0)
+        self.longest = max((key.count(' ') + 1 for key in names), default=0)  # words of the longest name
 
     @classmethod
     def load(cls, path):
@@ -130,6 +143,7 @@ class AliasTable:
     def link(self, text):
         """The names found in the text, longest first and without overlaps: [(words of the mention, node ids)]."""
         tokens = stems(text)
+        written = words(text)
         taken = [False] * len(tokens)
         found = []
         for size in range(min(self.longest, MAX_MENTION_WORDS, len(tokens)), 0, -1):
@@ -139,7 +153,8 @@ class AliasTable:
                 span = tokens[start:start + size]
                 if len(set(span)) != size:
                     continue
-                node_ids = self.names.get(' '.join(sorted(span)))
+                key = '=' + written[start] if size == 1 else ' '.join(sorted(span))
+                node_ids = self.names.get(key)
                 if node_ids:
                     found.append((start, span, node_ids))
                     taken[start:start + size] = [True] * size
