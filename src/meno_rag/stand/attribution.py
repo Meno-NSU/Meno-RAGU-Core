@@ -272,6 +272,11 @@ class StreamingAttribution:
             if not task.done():
                 task.cancel()
 
+    async def aclose(self) -> None:
+        """Finish cancelling requests before the response releases its resources."""
+        self.cancel()
+        await asyncio.gather(*self._scores.values(), return_exceptions=True)
+
 
 def to_sources(scored: Sequence[tuple[EvidenceUnit, float]], max_sources: int) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []

@@ -1302,7 +1302,7 @@ async def _stream_response(
         if not prepare_task.done():
             prepare_task.cancel()
         if attribution is not None:  # the client left mid-answer: stop scoring its sentences
-            attribution.cancel()
+            await attribution.aclose()
         if not bench:
             metrics_mod.dec_chat_in_flight()
         if on_finish is not None:

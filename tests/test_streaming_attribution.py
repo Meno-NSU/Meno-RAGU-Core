@@ -142,6 +142,29 @@ def test_cancel_stops_the_scoring_still_running():
     assert asyncio.run(run()) == [True]
 
 
+def test_close_waits_until_the_scorer_finishes_cancellation():
+    async def run():
+        started = asyncio.Event()
+        cleaned_up = asyncio.Event()
+
+        async def slow(sentence, texts):
+            started.set()
+            try:
+                await asyncio.sleep(10)
+            finally:
+                await asyncio.sleep(0.01)
+                cleaned_up.set()
+
+        streaming = StreamingAttribution(UNITS, slow, 0.5)
+        streaming.feed("НГУ принимает документы с двадцатого июня до конца июля.\n")
+        await started.wait()
+        await streaming.aclose()
+        assert cleaned_up.is_set()
+        assert all(task.done() for task in streaming._scores.values())
+
+    asyncio.run(run())
+
+
 def test_the_pipeline_s_streamed_sources_are_its_sources_at_the_end():
     calls = []
     pipeline = ragu_fakes.pipeline(source_scorer=scorer_with(calls))

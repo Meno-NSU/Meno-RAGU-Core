@@ -509,7 +509,7 @@ class StandRagPipeline:
             counts["failed"] = True
         finally:
             if streaming is not None:
-                streaming.cancel()
+                await streaming.aclose()
         _record_attribution_timings(outcome, {"attribution_ms": _elapsed_ms(started), **counts})
         return outcome.sources
 
