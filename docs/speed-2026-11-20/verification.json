@@ -23,6 +23,37 @@
   "published_probe_sha256": {
     "strict_early_replay.py": "6b7afbeefb6376abd2d2ea5418aa3893c19c752d6e0e37cf002740e3aff68492",
     "real_hub_cpu_probe.py": "3967f5ae46ae0036878bdec20402f692d7836600e1e411dfc726f59504d86fc7",
-    "live_abba.py": "7b43f5055f8ca1c2392f49dd605610e9114a82bed2c69edffa087925b05d9154"
+    "live_abba.py": "da6c5018b284e83e18728a95bd4b6531a5e9d2280edabf26f04c63e4179efca7"
+  },
+  "github_ci": {
+    "code_commit": "8e29801d048d679bd2c989f53842b481e3593e40",
+    "push_workflow": "https://github.com/Meno-NSU/Meno-RAGU-Core/actions/runs/44579885337",
+    "pull_request_workflow": "https://github.com/Meno-NSU/Meno-RAGU-Core/actions/runs/44580028230",
+    "status": "passed"
+  },
+  "live_pilot": {
+    "runtime_commit": "90c1fbd8780be99fc31ba404f9df485f3e93ea63",
+    "answers": 32,
+    "pairs": 16,
+    "errors": 0,
+    "context_equal_pairs": 16,
+    "queries_equal_pairs": 16,
+    "evidence_equal_pairs": 16,
+    "artifact": "live_abba.json",
+    "own_processes_exited": true,
+    "models_available_after": [
+      "gemma-4-12B-it",
+      "BAAI/bge-reranker-v2-m3"
+    ],
+    "h100_status_card_closed": true
+  },
+  "source_streaming_gate": {
+    "commit": "fa9b7896e3410f428ec54fd3660be7628cb0df59",
+    "default": false,
+    "focused_tests_passed": 82,
+    "ruff": "passed",
+    "mypy_source_files": 66,
+    "executed_live_driver_sha256": "7b43f5055f8ca1c2392f49dd605610e9114a82bed2c69edffa087925b05d9154",
+    "published_driver_delta": "One explicit phase setting selecting stream_source_attribution=False for A and True for B; no other change to the executed driver."
   }
 }
