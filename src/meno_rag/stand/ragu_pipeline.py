@@ -9,7 +9,7 @@ from context_utils.context_utils import graph_element_to_text
 
 from meno_rag.api.events import StageName
 from meno_rag.stand.attribution import norm_url
-from meno_rag.stand.context import graph_element_as_note, normalize_urls
+from meno_rag.stand.context import global_chunk_index_to_text, graph_element_as_note, normalize_urls
 from meno_rag.stand.pipeline import ModelRuntime, StandRagPipeline, _RerankOutput
 from meno_rag.stand.rerank import rerank_merge_score
 
@@ -62,7 +62,10 @@ class RaguRagPipeline(StandRagPipeline):
         # embedder, Qdrant and the cross-encoder, and three rewrites used to wait for three searches in a row.
         async def one(query):
             async with self.embed_semaphore:
-                return {"query": query, "graph": await self.resources.graph.search(query)}
+                found = await self.resources.graph.search(query)
+                if self.settings.sibling_fragment_candidates > 0:
+                    found = await self._with_sibling_fragments(query, found)
+                return {"query": query, "graph": found}
 
         tasks = [asyncio.create_task(one(query)) for query in search_queries]
         try:
@@ -72,6 +75,48 @@ class RaguRagPipeline(StandRagPipeline):
                 if not task.done():
                     task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
+
+    def _page_chunks(self, document_index):
+        """The chunk ids of a document (built once from the chunk mapping)."""
+        by_document = getattr(self, "_chunks_by_document", None)
+        if by_document is None:
+            by_document = {}
+            for chunk_id, place in self.resources.chunk_mapping.items():
+                by_document.setdefault(place["doc_index"], []).append(int(chunk_id))
+            self._chunks_by_document = by_document
+        return by_document.get(document_index, [])
+
+    async def _with_sibling_fragments(self, query, found):
+        """SIBLING_FRAGMENT_CANDIDATES: the search found a page but not always its fragment with the answer. The
+        other chunks of the pages of the query's best candidates are ordered by how much of the query they cover
+        (graph_utils.local_search.lexical_scores), taken in turns across the pages up to the budget, scored by the
+        engine's cross-encoder like the rest of the pool, and added to it."""
+        from graph_utils.alias_table import stems
+        from graph_utils.local_search import lexical_scores, round_robin
+
+        ranked = sorted(found["chunks"], key=lambda pair: -pair[1])
+        present = {int(chunk_id) for chunk_id, _ in ranked}
+        cap = self.settings.rerank_candidates_per_query
+        pages: list[int] = []
+        for chunk_id, _ in ranked[:cap] if cap > 0 else ranked:
+            place = self.resources.chunk_mapping.get(str(chunk_id))
+            if place is not None and place["doc_index"] not in pages:
+                pages.append(place["doc_index"])
+        texts: dict[int, str] = {}
+        per_page = []
+        for document_index in pages:
+            siblings = [chunk_id for chunk_id in self._page_chunks(document_index) if chunk_id not in present]
+            for chunk_id in siblings:
+                texts[chunk_id] = global_chunk_index_to_text(chunk_id, self.resources.documents,
+                                                            self.resources.chunk_mapping)
+            scores = lexical_scores(query, [frozenset(stems(texts[chunk_id])) for chunk_id in siblings])
+            order = sorted(range(len(siblings)), key=lambda index: -scores[index])
+            per_page.append([siblings[index] for index in order if scores[index] > 0])
+        chosen = round_robin(per_page, self.settings.sibling_fragment_candidates)
+        if not chosen:
+            return found
+        scores = await self.resources.graph.score_texts(query, [texts[chunk_id] for chunk_id in chosen])
+        return {**found, "chunks": [*found["chunks"], *zip(chosen, scores, strict=True)]}
 
     def _fuse(self, retrieval_batches):
         fused = []

@@ -30,6 +30,7 @@ _CONTENT_SETTINGS = (
     # differently had one fingerprint)
     "hybrid_fusion", "context_style", "graph_element_evidence", "graph_channel",
     "graph_expansion_candidates", "graph_expansion_hub_chunks", "graph_alias_table",
+    "sibling_fragment_candidates",
 )
 # Every other setting, deliberately outside the fingerprint: addresses, keys, timeouts, concurrency, logging,
 # auth, storage and backups. tests/test_benchmark_config.py fails for a field in neither list, so a new setting

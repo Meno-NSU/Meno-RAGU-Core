@@ -260,6 +260,11 @@ class Settings(BaseSettings):
     # A table of entity names and checked abbreviations built from the graph (python -m graph_utils.alias_table):
     # the entities a query names join those of the vector search. None = the vector search only.
     graph_alias_table: Path | None = Field(default=None, validation_alias="GRAPH_ALIAS_TABLE")
+    # Sibling fragments, off by default. > 0: for the pages of a query's best candidates, up to this many of their
+    # other chunks (those that cover the query best, taken in turns across the pages) are scored by the engine's
+    # cross-encoder and join the query's pool. 40 of 108 retrieval misses of the release judging of 19.11 had the
+    # evidence page in the context but not the fragment with the fact.
+    sibling_fragment_candidates: int = Field(default=0, ge=0, validation_alias="SIBLING_FRAGMENT_CANDIDATES")
     # The fusion of the dense and BM25 lists in every hybrid vector search (entities, relations, chunks): "rrfw" is
     # RRF with every rank tie broken in favour of the dense list (BM25 weight 1 - 1e-4); "rrf" is Qdrant's default
     # RRF, whose ties come back in arbitrary order, so a repeated query got another LLM-rerank pool for 35% of 324

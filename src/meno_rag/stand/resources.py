@@ -106,6 +106,16 @@ class GraphRuntime:
         logger.info("graph_search_finished", duration_ms=round((time.perf_counter() - started) * 1000, 2))
         return result
 
+    async def score_texts(self, query: str, texts: list[str]) -> list[float]:
+        """The engine cross-encoder's scores of the texts for the query, in the order of the texts."""
+        scorer = self.engines.local_engine.reranker
+        future = asyncio.run_coroutine_threadsafe(scorer.score(query, texts), self.engines.event_loop)
+        ranked = await asyncio.wait_for(asyncio.wrap_future(future), timeout=self.settings.graph_timeout_seconds)
+        scores = [0.0] * len(texts)
+        for index, value in ranked:
+            scores[index] = float(value)
+        return scores
+
     async def aclose(self):
         if self.engines is not None:
             loop = self.engines.event_loop
