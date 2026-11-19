@@ -155,6 +155,7 @@ def test_every_setting_is_classified_for_the_fingerprint():
     ("graph_element_evidence", True, False),
     ("graph_channel", True, False),
     ("rerank_guidance", "legacy", "structured"),
+    ("prompt_timezone", "Asia/Novosibirsk", "UTC"),
 ])
 def test_answer_affecting_flags_change_the_fingerprint(name, a, b):
     def runtime(value):

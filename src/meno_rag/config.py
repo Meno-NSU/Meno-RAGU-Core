@@ -2,6 +2,7 @@ import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,6 +19,16 @@ class Settings(BaseSettings):
     # this to false wherever that does not hold.
     log_content_previews: bool = Field(default=True, validation_alias="LOG_CONTENT_PREVIEWS")
     app_env: str = Field(default="development", validation_alias=AliasChoices("APP_ENV", "ENVIRONMENT"))
+    prompt_timezone: str = Field(default="Asia/Novosibirsk", validation_alias="PROMPT_TIMEZONE")
+
+    @field_validator("prompt_timezone")
+    @classmethod
+    def _check_prompt_timezone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except (ValueError, ZoneInfoNotFoundError) as exc:
+            raise ValueError("PROMPT_TIMEZONE must name an available IANA timezone.") from exc
+        return value
 
     database_url: str = Field(
         default="sqlite+aiosqlite:///./var/meno_rag.sqlite3",

@@ -2369,6 +2369,7 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "structlog" },
     { name = "transformers" },
+    { name = "tzdata" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -2420,6 +2421,7 @@ requires-dist = [
     { name = "sqlalchemy", specifier = ">=2.0.0" },
     { name = "structlog", specifier = ">=24.4.0" },
     { name = "transformers", specifier = ">=4.57.1,<5" },
+    { name = "tzdata", specifier = ">=2025.2" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.0" },
 ]
 provides-extras = ["indexing"]

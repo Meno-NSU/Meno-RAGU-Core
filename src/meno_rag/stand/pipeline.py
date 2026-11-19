@@ -9,7 +9,6 @@ from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import asdict, dataclass
-from datetime import date, datetime
 from typing import Any, cast
 
 import httpx
@@ -30,6 +29,7 @@ from meno_rag.stand.attribution import (
     page_titles,
     to_sources,
 )
+from meno_rag.stand.clock import prompt_now
 from meno_rag.stand.context import (
     flatten_sources,
     global_chunk_index_to_text,
@@ -146,6 +146,7 @@ class StandRagPipeline:
         generation_max_tokens: int | None = None,
     ) -> PipelineOutcome:
         question, history = extract_question_and_history(messages)
+        question_time = prompt_now(self.settings.prompt_timezone)
         memory = None
         # sub-stage timings of the turn (recorded only): the memory, the analysis, the rewrite
         turn_timings: dict[str, float] = {}
@@ -195,7 +196,7 @@ class StandRagPipeline:
             async def analyze_and_rewrite() -> tuple[TurnAnalysis, list[str] | None]:
                 analysis_started = time.perf_counter()
                 analysis = await analyze(self.llm_router, runtime.core, question=question, recent=memory.recent,
-                                         summary=memory.summary, today=date.today(),
+                                         summary=memory.summary, today=question_time.date(),
                                          timeout_s=self.settings.rewrite_timeout_seconds)
                 turn_timings["analysis_ms"] = _elapsed_ms(analysis_started)
                 if analysis.route in NO_SEARCH_ROUTES:
@@ -342,7 +343,7 @@ class StandRagPipeline:
             context, sources = "", []
 
         fewshots_for_prompt = [example for example, _score in selected_fewshots]
-        system_prompt = system_prompt_with_datetime(datetime.now())
+        system_prompt = system_prompt_with_datetime(question_time)
 
         def qa_prompt(context):
             user_prompt = prepare_prompt_for_question_answering(
@@ -408,7 +409,7 @@ class StandRagPipeline:
                         "max_context_chunks", "max_qa_prompt_chars", "graph_source_documents", "graph_max_elements",
                         "source_urls_per_document", "min_document_quality", "rerank_candidates_per_page",
                         "source_attribution", "source_attribution_threshold", "max_sources", "turn_routing",
-                        "source_prior_weight", "source_authority",
+                        "source_prior_weight", "source_authority", "prompt_timezone",
                     )},
                 },
             )

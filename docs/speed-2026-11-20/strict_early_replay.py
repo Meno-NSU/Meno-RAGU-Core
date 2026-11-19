@@ -199,8 +199,8 @@ async def main(args):
     log("fixtures", captured, "scanned", kept, "kept", len(fixtures), "unique", "seconds", round(time.perf_counter()-started, 2))
     settings = Settings(_env_file=None)
     settings.early_first_query = False
-    pipeline_module.date = FrozenDate
-    pipeline_module.datetime = FrozenDatetime
+    # Historical fixtures contain this exact naive timestamp; scheduling parity fixes it, not the prompt clock.
+    pipeline_module.prompt_now = lambda _timezone: FrozenDatetime.now()
     resources = load_stand_resources(settings)
     graph = PairedGraph(resources.graph)
     resources = replace(resources, graph=graph)

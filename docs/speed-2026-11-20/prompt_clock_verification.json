@@ -1,0 +1,46 @@
+{
+  "base_commit": "c2902bbfd477d06c8a1d02e8170392da61877172",
+  "targeted_unique_tests_passed": 65,
+  "pytest_batches": [
+    {
+      "before_default_clock_test_added": true,
+      "passed": 34,
+      "seconds": 2.61,
+      "maxrss_kib": 231476
+    },
+    {
+      "passed": 30,
+      "seconds": 1.56,
+      "maxrss_kib": 201364
+    },
+    {
+      "updated_clock_file_passed": 9,
+      "new_unique_tests": 1,
+      "seconds": 0.82,
+      "maxrss_kib": 216480
+    }
+  ],
+  "ruff_src_tests": "passed",
+  "uv_lock_check_offline": "passed;193packages; existing versions unchanged",
+  "mypy": {
+    "status": "passed",
+    "source_files": 67,
+    "maxrss_kib": 419684
+  },
+  "canonical_system_prompt_tests": "4passed; constants unchanged",
+  "database_clock": "UTC; no storage/auth/retention source edits",
+  "process_clock_observations": {
+    "native_prod": {
+      "timezone": "UTC",
+      "TZ": null
+    },
+    "active_ragu_backend_container": {
+      "timezone": "Asia/Novosibirsk",
+      "TZ": "Asia/Novosibirsk",
+      "local_date_already_correct": true
+    }
+  },
+  "gpu_requests": 0,
+  "service_changes": false,
+  "ongoing_matrix_and_quality_capture": "pinned21c976c; unchanged"
+}
