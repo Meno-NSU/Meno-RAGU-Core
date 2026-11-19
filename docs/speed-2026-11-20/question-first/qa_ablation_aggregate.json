@@ -1,0 +1,159 @@
+{
+  "rows": [
+    {
+      "arm": "Q_control",
+      "seed": 42,
+      "request_sha256": "6ecb8b209f1a6c30dee0802541b39570218a9a3d738895481a962fe6c05456f1",
+      "ok": true,
+      "secs": 1.3081462755799294,
+      "answer_sha256": "2870ee9b215981c304606c84f4b7ecf9d3cb76f37c4f862c65430047035b20e0",
+      "manual_required_Physics_to_Medicine_present": false
+    },
+    {
+      "arm": "Q_graph_L_order",
+      "seed": 42,
+      "request_sha256": "f4cb3e8030888da510054cc9c00db72045ce70df0e036f4f9026d43ad7f07281",
+      "ok": true,
+      "secs": 1.30595096712932,
+      "answer_sha256": "2870ee9b215981c304606c84f4b7ecf9d3cb76f37c4f862c65430047035b20e0",
+      "manual_required_Physics_to_Medicine_present": false
+    },
+    {
+      "arm": "Q_graph_L_set",
+      "seed": 42,
+      "request_sha256": "7dd929cdb78b179343b17764b969e157f7df8bd07792390741a7c6d8e7f81d65",
+      "ok": true,
+      "secs": 1.320591690018773,
+      "answer_sha256": "ade694c8ee671ca650ad34c5cc152663d99bca20bb5ef1c167a0a6c5b766bece",
+      "manual_required_Physics_to_Medicine_present": true
+    },
+    {
+      "arm": "Q_without_graph",
+      "seed": 42,
+      "request_sha256": "5ad75c15c264422f6eac8dbd1d70f52dcb57adf837c2decc24de9ee1c1fbe7b3",
+      "ok": true,
+      "secs": 1.3898442252539098,
+      "answer_sha256": "92ba2883ba3b097e541abfcc0ef8f558586f61df95d046c64a0c1723c625e689",
+      "manual_required_Physics_to_Medicine_present": true
+    },
+    {
+      "arm": "Q_graph_L_order",
+      "seed": 43,
+      "request_sha256": "6f8523fa6161097e67114c32ff6712cf33703a7fc172e9f5465091201ba530b3",
+      "ok": true,
+      "secs": 0.8948579542338848,
+      "answer_sha256": "2870ee9b215981c304606c84f4b7ecf9d3cb76f37c4f862c65430047035b20e0",
+      "manual_required_Physics_to_Medicine_present": false
+    },
+    {
+      "arm": "Q_graph_L_set",
+      "seed": 43,
+      "request_sha256": "e48eec665782fd24f6b04e5d89fc7e90fd516505d8683f852658d470b3165e36",
+      "ok": true,
+      "secs": 0.911603503394872,
+      "answer_sha256": "ade694c8ee671ca650ad34c5cc152663d99bca20bb5ef1c167a0a6c5b766bece",
+      "manual_required_Physics_to_Medicine_present": true
+    },
+    {
+      "arm": "Q_control",
+      "seed": 43,
+      "request_sha256": "53fedc8736e0fcd680d39c56e3ed001ead3cde54b080e81fc943c07870ddb001",
+      "ok": true,
+      "secs": 0.9119033152237535,
+      "answer_sha256": "2870ee9b215981c304606c84f4b7ecf9d3cb76f37c4f862c65430047035b20e0",
+      "manual_required_Physics_to_Medicine_present": false
+    },
+    {
+      "arm": "Q_without_graph",
+      "seed": 43,
+      "request_sha256": "84e5e3680530a2d9838699a39355f252d9a8faf8bd802543fe75c7d9b332520f",
+      "ok": true,
+      "secs": 0.96251155808568,
+      "answer_sha256": "92ba2883ba3b097e541abfcc0ef8f558586f61df95d046c64a0c1723c625e689",
+      "manual_required_Physics_to_Medicine_present": true
+    }
+  ],
+  "manifest": {
+    "qa_count": 8,
+    "document_hashes": [
+      "ef9e939d5637509b9f563637e453e89c0eed5f048eefa2f852d12c88d7d67003",
+      "0d9377d41147b7f5772f0e576d48da3ee7cbfcc2008f5afb86c5f118443b53c0",
+      "2315c69285db3e2b9df791f07f4482cb33a9c9daca5292f1a0b3f4ce9a6dbc5a",
+      "b720c398a9867d106288438a065959a030d5be568d3c29c0f1d488fb2f4c2c4d",
+      "a5bd2ec3e23638ccf09be276c0e13969f707563940ef57d3678dcbe5cff3550c",
+      "ecf4b255464b235f04df2eacad58c630c2c3ec26fdc109fd690336ec27f7b34f",
+      "e5095ad509e2aee1d6ec3649e8a70e9abc5f69afe19c188a1290f10fd7fdb37e",
+      "ea4e2fa7ce88c763641b1191eb121fde99f578d7b07d72c123dee1bb6396a7d9",
+      "5e0e94edfe8dc9e4a616f78221226d4c524608df84880bf8512068a3f842861c",
+      "0b38056c623eb75578efca146f86e29a52c94a6d94187c01c3f1a762c637d067"
+    ],
+    "common_note_count": 2,
+    "order_only_changes_prompt": true,
+    "context_hashes": {
+      "Q_control": "dbf32646b87ffd8d3922159a164f1b6201b8d47db02b57bdab857e8c1980e129",
+      "Q_without_graph": "bfc9def616a8a4acff4e5d0d9fb668f3eac8cef5345ab966cd4516914c664221",
+      "Q_graph_L_order": "297fecd3475dc9923ec5e6ad55c1f1012c8eb9efd0ee76e65d39d439d6e6a7e1",
+      "Q_graph_L_set": "2ae42e607ebf65619f54782f0231254dd8fbcab76da8bf252f5b3d909721cf80"
+    },
+    "caveats": [
+      "All-graph removal also changes native note instructions and may change abbreviation dictionary.",
+      "L-set arm changes graph-note selection/text, preserving Q documents byte-for-byte.",
+      "Order arm preserves graph-note text multiset, source docs, model generation fields."
+    ],
+    "L_note_subjects": [
+      "Лечебное дело",
+      "Физика",
+      "Физические основы диагностики"
+    ],
+    "Q_note_subjects": [
+      "Физические основы диагностики",
+      "Лечебное дело",
+      "Математика и компьютерные науки"
+    ]
+  },
+  "processes": {
+    "run.pid": {
+      "pid": 1173833,
+      "alive": false
+    },
+    "qa_ablation.pid": {
+      "pid": 1176575,
+      "alive": false
+    }
+  },
+  "manual_review": {
+    "reviewer": "Codex, direct inspection of selected public benchmark answers; no new judge calls",
+    "interpretation": "Q loses the requested Physics-to-Medicine row while mentioning a different true course. Removing graph notes or restoring the L note set recovers the required row at both seeds; reordering the same Q note set does not.",
+    "caveats": [
+      "Four purposively selected cases and two QA seeds are diagnostic, not population performance evidence.",
+      "All-graph removal changes native note instructions and can change abbreviation dictionary.",
+      "Graph selection, rather than simple note order, is implicated locally; exact individual causal note not isolated."
+    ]
+  },
+  "payload_isolation_checks": {
+    "Q_control": {
+      "same_prefix_before_context": true,
+      "same_suffix_after_context": true,
+      "same_system": true,
+      "same_other_request_fields": true
+    },
+    "Q_without_graph": {
+      "same_prefix_before_context": true,
+      "same_suffix_after_context": false,
+      "same_system": true,
+      "same_other_request_fields": true
+    },
+    "Q_graph_L_order": {
+      "same_prefix_before_context": true,
+      "same_suffix_after_context": true,
+      "same_system": true,
+      "same_other_request_fields": true
+    },
+    "Q_graph_L_set": {
+      "same_prefix_before_context": true,
+      "same_suffix_after_context": true,
+      "same_system": true,
+      "same_other_request_fields": true
+    }
+  }
+}

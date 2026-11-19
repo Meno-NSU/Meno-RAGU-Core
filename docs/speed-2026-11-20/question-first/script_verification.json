@@ -1,0 +1,79 @@
+{
+  "CPU_only": true,
+  "checks": [
+    {
+      "script": "run_qa_ablation.py",
+      "help_exit": 0
+    },
+    {
+      "script": "run_focus.py",
+      "help_exit": 0
+    },
+    {
+      "script": "run_rewrite_ablation.py",
+      "help_exit": 0
+    },
+    {
+      "script": "prepare_focus.py",
+      "help_exit": 0
+    },
+    {
+      "script": "scan_w5.py",
+      "help_exit": 0
+    },
+    {
+      "script": "prepare_qa_ablation.py",
+      "help_exit": 0
+    },
+    {
+      "script": "analyze_focus.py",
+      "help_exit": 0
+    },
+    {
+      "check": "focus_native_QA",
+      "exit": 0
+    },
+    {
+      "check": "QA_ablation",
+      "exit": 0
+    },
+    {
+      "check": "intent_ablation",
+      "exit": 0
+    }
+  ],
+  "ruff_format": "passed",
+  "ruff_check": "passed",
+  "compileall": "passed",
+  "post_format_CPU_smoke": "7/7 --help; 3/3 prepare-only; no model requests",
+  "scripts": {
+    "analyze_focus.py": {
+      "sha256": "2d64c6b284504cb1595aec1b0b6aecfdb74f4a309666f8ca81607c8904cfa15e",
+      "pre_format_sha256": "a9d8080625809f148fc7d1d588c5e0f99a66d28d742a82fcddfa6f252f3a2fbb"
+    },
+    "prepare_focus.py": {
+      "sha256": "09c180612f54861e9b144d13c5ba6ccf10e73f1bdf4c090b2d6a286b3d130f84",
+      "pre_format_sha256": "443b9de7f023ef0bb02bddb6324613af1418cc772ac25b4316a1c353e9978091"
+    },
+    "prepare_qa_ablation.py": {
+      "sha256": "93d155eba3a55d30da4ac96727be2165a7513724ca5f51f5efea4be07867523b",
+      "pre_format_sha256": "05cd0b0b48322ff297332906c394f741e2a8cd3407c48bf63e0bff245f89740a"
+    },
+    "run_focus.py": {
+      "sha256": "cc0aa0a471c454b281fd24f79dddf9275dd6238e89185d6010880ba9971e8640",
+      "pre_format_sha256": "c95fa6c74efeaab0dc1a79f139c8811ea73aade7e9b06168014c6ef050e2e4d3"
+    },
+    "run_qa_ablation.py": {
+      "sha256": "657755ae359ddf5190ce738bb1bde27b7c3e933e120a6b4e97381bb6232f0913",
+      "pre_format_sha256": "762f0ba13af12401863cc2631d669b27c554592b175bc6c57501526212532e1a"
+    },
+    "run_rewrite_ablation.py": {
+      "sha256": "f1a8b0586cba80143da8fa31716e4397ea7ec06c2b948422ab5a5f4570365edc",
+      "pre_format_sha256": "5eef6fde60cc600fa239db52fb8f09662a691dc4b82681e1dd7dfa414a21b509"
+    },
+    "scan_w5.py": {
+      "sha256": "3d68e7027e390e7e1199c84ca682a7be0748a6b02473b9e90b23a3276268c4b2",
+      "pre_format_sha256": "077e924db59140b97273ba53b2a861eefc00567a552822a89977739d74f3b7eb"
+    }
+  }
+}

@@ -1,0 +1,415 @@
+{
+  "aggregate": {
+    "manifest": [
+      {
+        "candidate": 12,
+        "document_sha256": "78dbf14813fbbfcbe19f98824151582c7c901161f5f30c1a448c893d4dbdee64",
+        "native_changed_sections": [
+          "CURRENT QUESTION"
+        ],
+        "role": "required-base-institute-evidence",
+        "pre_inference_reason": "Contains explicit molecular-biology department base institutes, including Vector."
+      },
+      {
+        "candidate": 18,
+        "document_sha256": "c13610fc65a6d791f1e9be1171dde372b7e94543bd265f01ab8c68332e36989b",
+        "native_changed_sections": [
+          "CURRENT QUESTION"
+        ],
+        "role": "required-base-institute-evidence",
+        "pre_inference_reason": "Contains explicit molecular-biology department base institutes, including Vector."
+      },
+      {
+        "candidate": 27,
+        "document_sha256": "e28bdbf046b6a6849b06315b75b00aaa2411974200e7b4b4b8ac7303cece7f6a",
+        "native_changed_sections": [
+          "CURRENT QUESTION"
+        ],
+        "role": "negative-control",
+        "pre_inference_reason": "Public unit/department profile from the same pool; contains neither Vector nor practice/placement claims, so cannot establish either queried association."
+      },
+      {
+        "candidate": 56,
+        "document_sha256": "673c620bf67ae9babfc5f0ad1a8807974f1205b3cba8fb99b559892ee368ad47",
+        "native_changed_sections": [
+          "CURRENT QUESTION"
+        ],
+        "role": "negative-control",
+        "pre_inference_reason": "Public unit/department profile from the same pool; contains neither Vector nor practice/placement claims, so cannot establish either queried association."
+      }
+    ],
+    "original_question": "В описании кафедры молекулярной биологии ФЕН НГУ вижу «Вектор». Это базовая организация кафедры и гарантирует ли это место практики студенту?",
+    "lossy_question": "Гарантирует ли наличие организации «Вектор» в описании кафедры молекулярной биологии ФЕН НГУ место практики студенту?",
+    "n": 32,
+    "errors": 0,
+    "elapsed_s": 0.7583939149044454,
+    "rows": [
+      {
+        "candidate": 12,
+        "order": "L",
+        "question_arm": "lossy",
+        "seed": 42,
+        "request_sha256": "38a818955847a6bb6d7972010ce719072be1196a80dcffbd2520f88b8ad5cf0c",
+        "ok": true,
+        "secs": 0.0903383968397975,
+        "score": 0.005764472814779136,
+        "label": "0"
+      },
+      {
+        "candidate": 56,
+        "order": "L",
+        "question_arm": "lossy",
+        "seed": 42,
+        "request_sha256": "31f9424e6992dff1f324b237990be0e596e1e020a5aa7e930783a88e32bb3ef6",
+        "ok": true,
+        "secs": 0.28621091321110725,
+        "score": 2.566739862206772e-06,
+        "label": "0"
+      },
+      {
+        "candidate": 18,
+        "order": "L",
+        "question_arm": "lossy",
+        "seed": 42,
+        "request_sha256": "a2c20044944e52c0be5bc27c5bbc0b951b41f7eb4ced562a2159fd29f45dda54",
+        "ok": true,
+        "secs": 0.28767068684101105,
+        "score": 0.005730218362381859,
+        "label": "0"
+      },
+      {
+        "candidate": 18,
+        "order": "Q",
+        "question_arm": "lossy",
+        "seed": 42,
+        "request_sha256": "ff44faf478c21d916924c41710ddd3bb5f3be9c52d55a68177b5d49d69f80220",
+        "ok": true,
+        "secs": 0.2878477042540908,
+        "score": 0.007009773235513659,
+        "label": "0"
+      },
+      {
+        "candidate": 12,
+        "order": "Q",
+        "question_arm": "lossy",
+        "seed": 42,
+        "request_sha256": "d6128ba7f77288cafec065f009ae8618add3095ed9641f2df5acecb10d166a0a",
+        "ok": true,
+        "secs": 0.28920810809358954,
+        "score": 0.002065630184461169,
+        "label": "0"
+      },
+      {
+        "candidate": 56,
+        "order": "Q",
+        "question_arm": "lossy",
+        "seed": 42,
+        "request_sha256": "b179f8e02189d93bea22a5ab3a65a6c8d117137944e8715369460a5571baaf7b",
+        "ok": true,
+        "secs": 0.28984766686335206,
+        "score": 7.374862958236416e-07,
+        "label": "0"
+      },
+      {
+        "candidate": 12,
+        "order": "L",
+        "question_arm": "original",
+        "seed": 42,
+        "request_sha256": "82dcbdd9305f56a071e460537d528ee47b4b1f63870b4e3dd73e11709a0d78ab",
+        "ok": true,
+        "secs": 0.28986865654587746,
+        "score": 0.9962045662075167,
+        "label": "2"
+      },
+      {
+        "candidate": 18,
+        "order": "L",
+        "question_arm": "original",
+        "seed": 42,
+        "request_sha256": "469960275e4c3584d3def844791bbf61483fa2d03177ab723d1038f92e0b3016",
+        "ok": true,
+        "secs": 0.29106630105525255,
+        "score": 0.8095748620133404,
+        "label": "2"
+      },
+      {
+        "candidate": 56,
+        "order": "L",
+        "question_arm": "original",
+        "seed": 42,
+        "request_sha256": "f9300fb3a468c6874678aa86fb81ffac3594ae9ddc1a4024e6bd65d0a29bacc3",
+        "ok": true,
+        "secs": 0.20389449223876,
+        "score": 0.0001675657084891643,
+        "label": "0"
+      },
+      {
+        "candidate": 12,
+        "order": "Q",
+        "question_arm": "original",
+        "seed": 42,
+        "request_sha256": "b6eaaa517fd1101d9c1e631b105296eec7a1f75f73509d8ec07af31035d290c5",
+        "ok": true,
+        "secs": 0.08884398685768247,
+        "score": 0.9939532922885657,
+        "label": "2"
+      },
+      {
+        "candidate": 18,
+        "order": "Q",
+        "question_arm": "original",
+        "seed": 42,
+        "request_sha256": "a3943eae2e6d869a137e160fe0fdf9c7455993c0ad98c7cb6d6749b5749e7d24",
+        "ok": true,
+        "secs": 0.20213450584560633,
+        "score": 0.9909604417456628,
+        "label": "2"
+      },
+      {
+        "candidate": 27,
+        "order": "L",
+        "question_arm": "lossy",
+        "seed": 43,
+        "request_sha256": "8c52d318d3569629d2e50c2633069eaa105e47ddcb791278c15583da4cc87bdc",
+        "ok": true,
+        "secs": 0.20122698601335287,
+        "score": 1.6693892084712536e-07,
+        "label": "0"
+      },
+      {
+        "candidate": 27,
+        "order": "Q",
+        "question_arm": "original",
+        "seed": 43,
+        "request_sha256": "b9c3a45396477e2ce5fa4ec0a51e56911d473b25f863d524a80304ba6d7a27de",
+        "ok": true,
+        "secs": 0.1985922520980239,
+        "score": 7.935825681773928e-07,
+        "label": "0"
+      },
+      {
+        "candidate": 56,
+        "order": "Q",
+        "question_arm": "original",
+        "seed": 42,
+        "request_sha256": "a52f39932e41a5ae56a7a2ad88f84467e71c75fb1bd136534c2ef66077459295",
+        "ok": true,
+        "secs": 0.20484683709219098,
+        "score": 1.788509607093365e-05,
+        "label": "0"
+      },
+      {
+        "candidate": 27,
+        "order": "L",
+        "question_arm": "lossy",
+        "seed": 42,
+        "request_sha256": "4d3c51511e5d91ac60fd8dbaab33a942a3d0da041fb6fddd971e310b915d3052",
+        "ok": true,
+        "secs": 0.200077083427459,
+        "score": 1.6693892084712536e-07,
+        "label": "0"
+      },
+      {
+        "candidate": 27,
+        "order": "Q",
+        "question_arm": "lossy",
+        "seed": 43,
+        "request_sha256": "dbc77a0821c6163040fbe1c966e756e1cfd1e27728500500c8beae74ee6e14be",
+        "ok": true,
+        "secs": 0.20308924606069922,
+        "score": 3.625901661821463e-07,
+        "label": "0"
+      },
+      {
+        "candidate": 27,
+        "order": "L",
+        "question_arm": "original",
+        "seed": 43,
+        "request_sha256": "f5d356ec0b73c62f5ddb1746620623015241d8b72964b666cd862060a570fd65",
+        "ok": true,
+        "secs": 0.20324292918667197,
+        "score": 5.098008885000787e-06,
+        "label": "0"
+      },
+      {
+        "candidate": 27,
+        "order": "Q",
+        "question_arm": "lossy",
+        "seed": 42,
+        "request_sha256": "5a24e1d1fa0bf87c5fe8d4b474bd2e0ecbdc1185025fc0896c456bfd5f9f5450",
+        "ok": true,
+        "secs": 0.12165919598191977,
+        "score": 3.5337664522363063e-07,
+        "label": "0"
+      },
+      {
+        "candidate": 27,
+        "order": "L",
+        "question_arm": "original",
+        "seed": 42,
+        "request_sha256": "1501da527eaacb7c130a2c36eb5c0b6a80b1f7a9341e5ff6bc29778856255e98",
+        "ok": true,
+        "secs": 0.07472375500947237,
+        "score": 5.113730125727033e-06,
+        "label": "0"
+      },
+      {
+        "candidate": 27,
+        "order": "Q",
+        "question_arm": "original",
+        "seed": 42,
+        "request_sha256": "3c359480b9d9c1fa9c1ceb4f6e26f1f89809832dbdc6a3b5e9e45bd5407b848a",
+        "ok": true,
+        "secs": 0.08977831806987524,
+        "score": 7.935825681773928e-07,
+        "label": "0"
+      },
+      {
+        "candidate": 18,
+        "order": "L",
+        "question_arm": "lossy",
+        "seed": 43,
+        "request_sha256": "2487a9abe293630ccac138f5dd6e0082d1933bddd3ff31827c6d72dfaed68be5",
+        "ok": true,
+        "secs": 0.0883135562762618,
+        "score": 0.005730218362381859,
+        "label": "0"
+      },
+      {
+        "candidate": 56,
+        "order": "L",
+        "question_arm": "lossy",
+        "seed": 43,
+        "request_sha256": "7c9984cea00ad2b0ba3c6163b3ef00d344288ed3a282d60eaaa739013e4ac490",
+        "ok": true,
+        "secs": 0.09030881011858582,
+        "score": 2.566739862206772e-06,
+        "label": "0"
+      },
+      {
+        "candidate": 56,
+        "order": "Q",
+        "question_arm": "lossy",
+        "seed": 43,
+        "request_sha256": "8bb073a376290759820b9a0c42fe7375f6139115128b14f7426ae09fb127a8e9",
+        "ok": true,
+        "secs": 0.0894085243344307,
+        "score": 7.374862958236416e-07,
+        "label": "0"
+      },
+      {
+        "candidate": 12,
+        "order": "Q",
+        "question_arm": "lossy",
+        "seed": 43,
+        "request_sha256": "77e69e7e1e46ff3d18518cb170853589e72cc2191df19f5b6c89ec40eec8d86f",
+        "ok": true,
+        "secs": 0.09179172711446881,
+        "score": 0.002065630184461169,
+        "label": "0"
+      },
+      {
+        "candidate": 12,
+        "order": "L",
+        "question_arm": "lossy",
+        "seed": 43,
+        "request_sha256": "eb8fe684cedad0c4850579771fda48c2ce54e9e05110023a96b3a48d58ccb5f6",
+        "ok": true,
+        "secs": 0.09575868118554354,
+        "score": 0.005764472814779136,
+        "label": "0"
+      },
+      {
+        "candidate": 18,
+        "order": "Q",
+        "question_arm": "lossy",
+        "seed": 43,
+        "request_sha256": "32e22f559ea0d9da90b5e3594f10e76897a9c795429ca571551aee4a439f48f0",
+        "ok": true,
+        "secs": 0.09274260979145765,
+        "score": 0.007009773235513659,
+        "label": "0"
+      },
+      {
+        "candidate": 12,
+        "order": "L",
+        "question_arm": "original",
+        "seed": 43,
+        "request_sha256": "ea6dbfb920242eb51a4daf21f80af2328020cb14103d663f72f67f80aa38606f",
+        "ok": true,
+        "secs": 0.06874975375831127,
+        "score": 0.9962045657617372,
+        "label": "2"
+      },
+      {
+        "candidate": 18,
+        "order": "L",
+        "question_arm": "original",
+        "seed": 43,
+        "request_sha256": "32f552ede8bf87514e00568a26756f59ff3553ec25c46a52f899e0e9b6c2b562",
+        "ok": true,
+        "secs": 0.05250828620046377,
+        "score": 0.8095748620133404,
+        "label": "2"
+      },
+      {
+        "candidate": 56,
+        "order": "L",
+        "question_arm": "original",
+        "seed": 43,
+        "request_sha256": "a08ef3fec3bcde6517fdee06c473fc2ea208e208a3fea6898805b70a03b65b98",
+        "ok": true,
+        "secs": 0.05046244477853179,
+        "score": 0.0001675657084891643,
+        "label": "0"
+      },
+      {
+        "candidate": 12,
+        "order": "Q",
+        "question_arm": "original",
+        "seed": 43,
+        "request_sha256": "f2bcfccfb0b15c3d4517d1832d628e4f9827a91e5fb1c74ddf5246ecb1292ed6",
+        "ok": true,
+        "secs": 0.09716802928596735,
+        "score": 0.9937339996865243,
+        "label": "2"
+      },
+      {
+        "candidate": 18,
+        "order": "Q",
+        "question_arm": "original",
+        "seed": 43,
+        "request_sha256": "ed4b8472848b0f703e16a47e6e2b3c270716612acc5e9bc6e17abced0310a667",
+        "ok": true,
+        "secs": 0.09856388019397855,
+        "score": 0.9909604417456628,
+        "label": "2"
+      },
+      {
+        "candidate": 56,
+        "order": "Q",
+        "question_arm": "original",
+        "seed": 43,
+        "request_sha256": "79470ef0d79199e0da1ebfaff6982486137b1fb9b2b210b7c2c89eaa513aedce",
+        "ok": true,
+        "secs": 0.09916178975254297,
+        "score": 1.788509607093365e-05,
+        "label": "0"
+      }
+    ]
+  },
+  "processes": {
+    "run.pid": {
+      "pid": 1173833,
+      "alive": false
+    },
+    "qa_ablation.pid": {
+      "pid": 1176575,
+      "alive": false
+    },
+    "rewrite_ablation.pid": {
+      "pid": 1183674,
+      "alive": false
+    }
+  }
+}
