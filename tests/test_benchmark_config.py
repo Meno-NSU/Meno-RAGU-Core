@@ -160,3 +160,9 @@ def test_answer_affecting_flags_change_the_fingerprint(name, a, b):
     def runtime(value):
         return config_mod.runtime_identity(Settings(_env_file=None, **{name: value}))
     assert runtime(a) != runtime(b)
+
+
+def test_early_rerank_is_operational_and_keeps_content_fingerprint():
+    settings = Settings(_env_file=None, early_first_query=True, early_rerank=True)
+    assert config_mod.runtime_identity(settings) == config_mod.runtime_identity(
+        settings.model_copy(update={"early_rerank": False}))

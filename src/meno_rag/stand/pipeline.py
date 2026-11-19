@@ -201,8 +201,8 @@ class StandRagPipeline:
                 if analysis.route in NO_SEARCH_ROUTES:
                     return analysis, None
                 if self.settings.early_first_query:
-                    # the standalone question is the first search query: its search and the scores of its
-                    # candidates run while the rewrite call does (the rerank history is "" with dialogue memory)
+                    # The first query's search overlaps the rewrite; EARLY_RERANK also overlaps its scores.
+                    # The rerank history is "" with dialogue memory.
                     early = self._start_early_query(analysis.standalone_question, "", runtime.core)
                     if early is not None:
                         early_turn.append(early)
@@ -707,7 +707,7 @@ class StandRagPipeline:
         raise NotImplementedError("Use RaguRagPipeline for graph retrieval.")
 
     def _start_early_query(self, question: str, dialogue_history: str, runtime: ModelRuntime) -> Any:
-        """EARLY_FIRST_QUERY hook: the graph pipeline starts the first query's search and scores; here nothing."""
+        """EARLY_FIRST_QUERY hook: the graph pipeline starts retrieval and optional scores; here nothing."""
         return None
 
     async def _run_retrieval(self, fn: Callable[..., Any], *args: Any) -> Any:

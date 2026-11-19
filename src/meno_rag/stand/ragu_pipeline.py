@@ -132,11 +132,15 @@ class RaguRagPipeline(StandRagPipeline):
         return await self._score_document_with_llm(user_question, dialogue_history, text, runtime, candidate.key)
 
     def _start_early_query(self, question, dialogue_history, runtime: ModelRuntime):
-        """EARLY_FIRST_QUERY: the search of the standalone question and the LLM scores of its rerank candidates start
-        now, while the rewrite call runs. The question is the first search query and its candidate pool depends on its
-        own search only, so the retrieval and rerank stages reuse these results unchanged."""
+        """Start the first retrieval during the rewrite; EARLY_RERANK additionally starts its LLM scores.
+
+        The question is the first search query and its pool depends on its own search only, so later stages reuse
+        these results unchanged. Retrieval alone leaves every LLM score to the normal rerank stage.
+        """
         early = EarlyQuery(question, dialogue_history)
         early.retrieval = asyncio.create_task(self._retrieve([question]))
+        if not self.settings.early_rerank:
+            return early
 
         async def start_scores():
             pool = self._candidate_pool(self._fuse(await early.retrieval)[0]["pool"])
