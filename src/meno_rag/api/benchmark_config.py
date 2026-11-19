@@ -52,7 +52,7 @@ _OPERATIONAL_SETTINGS = (
     "early_first_query",
     "retrieval_executor_max_workers", "rewrite_timeout_seconds", "rerank_timeout_seconds", "graph_timeout_seconds",
     "generation_timeout_seconds", "fewshots_path_override", "stand_resources_dir", "graph_dir_override",
-    "frida_device", "frida_embedder_name",
+    "frida_device", "frida_embedder_name", "graph_hub_min_edges",
 )
 
 

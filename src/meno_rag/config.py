@@ -263,6 +263,7 @@ class Settings(BaseSettings):
     engine_rerank_top_k: int = Field(default=30, gt=0, validation_alias="ENGINE_RERANK_TOP_K")
     graph_timeout_seconds: float = Field(default=120.0, gt=0, validation_alias="GRAPH_TIMEOUT_SECONDS")
     graph_related_candidates: int = Field(default=200, ge=0, validation_alias="GRAPH_RELATED_CANDIDATES")
+    graph_hub_min_edges: int = Field(default=0, ge=0, validation_alias="GRAPH_HUB_MIN_EDGES")
     # The fusion of the dense and BM25 lists in every hybrid vector search (entities, relations, chunks): "rrfw" is
     # RRF with every rank tie broken in favour of the dense list (BM25 weight 1 - 1e-4); "rrf" is Qdrant's default
     # RRF, whose ties come back in arbitrary order, so a repeated query got another LLM-rerank pool for 35% of 324
