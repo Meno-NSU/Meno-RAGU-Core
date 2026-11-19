@@ -185,6 +185,7 @@ class StandRagPipeline:
         )
 
         search_question = question  # what the search and the relevance check work from
+        early_turn: list[Any] = []  # EARLY_FIRST_QUERY: the first query's search and scores, started during the rewrite
         route: str | None  # None: turn routing is off
         if memory is not None and self.settings.turn_routing:
             # One analysis call (Menon 1.1): the route and a question that stands without the history; the rewrite
@@ -198,9 +199,20 @@ class StandRagPipeline:
                 turn_timings["analysis_ms"] = _elapsed_ms(analysis_started)
                 if analysis.route in NO_SEARCH_ROUTES:
                     return analysis, None
+                if self.settings.early_first_query:
+                    # the standalone question is the first search query: its search and the scores of its
+                    # candidates run while the rewrite call does (the rerank history is "" with dialogue memory)
+                    early = self._start_early_query(analysis.standalone_question, "", runtime.core)
+                    if early is not None:
+                        early_turn.append(early)
                 rewrite_started = time.perf_counter()
-                rewritten = await self._rewrite_question(analysis.standalone_question, prepared_dialogue_history,
-                                                         runtime.core)
+                try:
+                    rewritten = await self._rewrite_question(analysis.standalone_question, prepared_dialogue_history,
+                                                             runtime.core)
+                except BaseException:
+                    for early in early_turn:
+                        await early.close()
+                    raise
                 turn_timings["rewrite_ms"] = _elapsed_ms(rewrite_started)
                 return analysis, rewritten
 
@@ -259,49 +271,54 @@ class StandRagPipeline:
             stage_details.setdefault(StageName.QUERY_REWRITE, {})["timings"] = dict(turn_timings)
             searching = route not in NO_SEARCH_ROUTES
 
-        # Few-shot selection is fail-safe and surfaced as its own stage so the
-        # UI can show "found a similar case". Only run (and emit) when enabled
-        # to keep the processing chain clean when the feature is off.
-        selected_fewshots: list[tuple[Any, float]] = []
-        if self.resources.fewshots_enabled:
-            selected_fewshots = await self._timed_stage(
-                StageName.FEWSHOT_SELECTION,
-                emit,
-                lambda: self._select_fewshots(question, search_queries),
-                stage_durations,
-                stage_details,
-            )
+        try:
+            # Few-shot selection is fail-safe and surfaced as its own stage so the
+            # UI can show "found a similar case". Only run (and emit) when enabled
+            # to keep the processing chain clean when the feature is off.
+            selected_fewshots: list[tuple[Any, float]] = []
+            if self.resources.fewshots_enabled:
+                selected_fewshots = await self._timed_stage(
+                    StageName.FEWSHOT_SELECTION,
+                    emit,
+                    lambda: self._select_fewshots(question, search_queries),
+                    stage_durations,
+                    stage_details,
+                )
 
-        if searching:
-            retrieval_batches = await self._timed_stage(
-                StageName.RETRIEVAL,
-                emit,
-                lambda: self._retrieve(search_queries),
-                stage_durations,
-                stage_details,
-            )
+            if searching:
+                retrieval_batches = await self._timed_stage(
+                    StageName.RETRIEVAL,
+                    emit,
+                    lambda: self._retrieve(search_queries, early=early_turn[0] if early_turn else None),
+                    stage_durations,
+                    stage_details,
+                )
 
-            fused_batches = await self._timed_stage(
-                StageName.FUSION,
-                emit,
-                lambda: self._fuse(retrieval_batches),
-                stage_durations,
-                stage_details,
-            )
+                fused_batches = await self._timed_stage(
+                    StageName.FUSION,
+                    emit,
+                    lambda: self._fuse(retrieval_batches),
+                    stage_durations,
+                    stage_details,
+                )
 
-            reranked_global_chunks = await self._timed_stage(
-                StageName.RERANK,
-                emit,
-                lambda: self._rerank(fused_batches, search_question,
-                                     "" if memory is not None else prepared_dialogue_history, runtime.core),
-                stage_durations,
-                stage_details,
-                model_id=runtime.core.model_id,
-            )
-        else:  # small talk, an injection or a turn about the dialogue: no search, no documents
-            search_queries, retrieval_batches, fused_batches = [], [], []
-            reranked_global_chunks = _RerankOutput([])
-            reranked_global_chunks.final_evidence = []
+                reranked_global_chunks = await self._timed_stage(
+                    StageName.RERANK,
+                    emit,
+                    lambda: self._rerank(fused_batches, search_question,
+                                         "" if memory is not None else prepared_dialogue_history, runtime.core,
+                                         early=early_turn[0] if early_turn else None),
+                    stage_durations,
+                    stage_details,
+                    model_id=runtime.core.model_id,
+                )
+            else:  # small talk, an injection or a turn about the dialogue: no search, no documents
+                search_queries, retrieval_batches, fused_batches = [], [], []
+                reranked_global_chunks = _RerankOutput([])
+                reranked_global_chunks.final_evidence = []
+        finally:
+            for early in early_turn:  # unused or failed early work is cancelled, used work is done already
+                await early.close()
         if capture_trace or self.late_sources:
             if not isinstance(reranked_global_chunks, _RerankOutput):
                 reranked_global_chunks = _RerankOutput(reranked_global_chunks)
@@ -662,8 +679,12 @@ class StandRagPipeline:
         )
         return capped
 
-    async def _retrieve(self, search_queries: list[str]) -> list[dict[str, Any]]:
+    async def _retrieve(self, search_queries: list[str], early: Any = None) -> list[dict[str, Any]]:
         raise NotImplementedError("Use RaguRagPipeline for graph retrieval.")
+
+    def _start_early_query(self, question: str, dialogue_history: str, runtime: ModelRuntime) -> Any:
+        """EARLY_FIRST_QUERY hook: the graph pipeline starts the first query's search and scores; here nothing."""
+        return None
 
     async def _run_retrieval(self, fn: Callable[..., Any], *args: Any) -> Any:
         """Run a blocking retrieval call on the dedicated executor when present,
@@ -686,6 +707,7 @@ class StandRagPipeline:
         user_question: str,
         dialogue_history: str,
         runtime: ModelRuntime,
+        early: Any = None,
     ) -> list[tuple[int, float]]:
         # Per-query coverage (meno_stand research model): each rewrite query keeps
         # its OWN top-`rerank_top_k` after reranking, and the per-query winners are

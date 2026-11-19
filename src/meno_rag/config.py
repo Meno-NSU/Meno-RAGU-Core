@@ -145,6 +145,11 @@ class Settings(BaseSettings):
     # value (with that policy) lets the turn analysis, the rewrite and the answers of RAGU and Menon go before the
     # ~85 rerank prompts of a turn (speed audit of 19.11, П3); it changes the order of work, not its results.
     rerank_priority: int = Field(default=0, validation_alias="RERANK_PRIORITY")
+    # The standalone question of a turn is the first search query (_rewrite_question puts it first) and a rerank score
+    # is judged against the question, not the query: so its search and the LLM scores of its candidates can start
+    # right after the turn analysis, while the rewrite call runs. Same prompts, same context; the rewrite's wait
+    # (speed audit 19.11: 2-4 s under load) overlaps the first query's search and about 40 of its rerank calls.
+    early_first_query: bool = Field(default=False, validation_alias="EARLY_FIRST_QUERY")
     generation_concurrency: int = Field(default=32, validation_alias="GENERATION_CONCURRENCY")
     embed_concurrency: int = Field(default=8, validation_alias="EMBED_CONCURRENCY")
     # BM25 (lexical) retrieval runs in threads. Bound it so a burst of concurrent

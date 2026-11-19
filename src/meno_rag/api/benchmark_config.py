@@ -49,6 +49,7 @@ _OPERATIONAL_SETTINGS = (
     "openrouter_unreachable_backoff_seconds", "openrouter_x_title", "model_cache_ttl_seconds",
     "model_discovery_timeout_seconds", "httpx_max_connections", "httpx_max_keepalive", "embed_concurrency",
     "bm25_concurrency", "rerank_concurrency", "rewrite_concurrency", "generation_concurrency", "rerank_priority",
+    "early_first_query",
     "retrieval_executor_max_workers", "rewrite_timeout_seconds", "rerank_timeout_seconds", "graph_timeout_seconds",
     "generation_timeout_seconds", "fewshots_path_override", "stand_resources_dir", "graph_dir_override",
     "frida_device", "frida_embedder_name",
