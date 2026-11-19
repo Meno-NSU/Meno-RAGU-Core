@@ -350,6 +350,9 @@ class Settings(BaseSettings):
     # context chunks; this order at 1 with the KB's quality scale 253, posts 14.5%, news 4.9% (at 1.5: 253, 13.1%, 4.2%).
     source_prior_weight: float = Field(default=1.0, ge=0, validation_alias="SOURCE_PRIOR_WEIGHT")
     source_authority: bool = Field(default=True, validation_alias="SOURCE_AUTHORITY")
+    qa_evidence_policy: Literal["legacy", "document_first"] = Field(
+        default="legacy", validation_alias="QA_EVIDENCE_POLICY"
+    )
     source_attribution_threshold: float = Field(default=0.5, ge=0, le=1, validation_alias="SOURCE_ATTRIBUTION_THRESHOLD")
     max_sources: int = Field(default=5, ge=1, validation_alias="MAX_SOURCES")
 

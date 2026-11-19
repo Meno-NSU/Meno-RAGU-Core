@@ -39,6 +39,7 @@ from meno_rag.stand.context import (
 )
 from meno_rag.stand.dialogue_history import prepare_dialogue_history
 from meno_rag.stand.dialogue_memory import SummaryStore, build_memory, render_history
+from meno_rag.stand.evidence_policy import with_evidence_policy
 from meno_rag.stand.qa import prepare_prompt_for_question_answering, system_prompt_with_datetime
 from meno_rag.stand.rerank import (
     build_prompt,
@@ -355,6 +356,7 @@ class StandRagPipeline:
             )
             system = (with_route_rules(system_prompt, route, bool(context), authority=self.settings.source_authority)
                       if route is not None else system_prompt)
+            system = with_evidence_policy(system, self.settings.qa_evidence_policy, route, bool(context))
             return [{"role": "system", "content": system}, {"role": "user", "content": user_prompt}]
 
         qa_messages = qa_prompt(context)
@@ -414,6 +416,7 @@ class StandRagPipeline:
                         "source_urls_per_document", "min_document_quality", "rerank_candidates_per_page",
                         "source_attribution", "source_attribution_threshold", "max_sources", "turn_routing",
                         "source_prior_weight", "source_authority", "prompt_timezone", "rerank_question_source",
+                        "qa_evidence_policy",
                     )},
                 },
             )

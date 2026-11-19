@@ -157,6 +157,7 @@ def test_every_setting_is_classified_for_the_fingerprint():
     ("rerank_guidance", "legacy", "structured"),
     ("prompt_timezone", "Asia/Novosibirsk", "UTC"),
     ("rerank_question_source", "resolved", "original_resolved"),
+    ("qa_evidence_policy", "legacy", "document_first"),
 ])
 def test_answer_affecting_flags_change_the_fingerprint(name, a, b):
     def runtime(value):
