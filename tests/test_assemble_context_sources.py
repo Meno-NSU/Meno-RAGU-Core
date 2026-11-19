@@ -15,6 +15,7 @@ class _StubResources:
         }
     ]
     chunk_mapping = {"0": {"doc_index": 0, "local_chunk_index": 0}}
+    chunk_addresses: dict = {}  # StandResources.chunk_addresses: empty without chunk_addresses.json
     abbreviations: dict = {}
     stemmer = None
 
