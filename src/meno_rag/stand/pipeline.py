@@ -408,6 +408,24 @@ class StandRagPipeline:
             units.extend({"text": unit.text, "url": unit.url, "prior": unit.prior,
                           "title": self.page_titles.get(norm_url(unit.url), unit.title) if whole_page else unit.title}
                          for unit in document_units(document, texts))
+        if self.resources.chunk_addresses:
+            # the same text under another address is evidence of that page too; each unit keeps the prior of its
+            # own document, so the choice between the addresses stays with the attribution
+            elsewhere: dict[int, list[int]] = {}
+            for chunk_ids in by_document.values():
+                for chunk_id in chunk_ids:
+                    for address in self.resources.chunk_addresses.get(str(chunk_id), ()):
+                        if address["doc_index"] not in by_document and chunk_id not in elsewhere.setdefault(
+                                address["doc_index"], []):
+                            elsewhere[address["doc_index"]].append(chunk_id)
+            for document_index, chunk_ids in elsewhere.items():
+                document = self.resources.documents[document_index]
+                texts = [global_chunk_index_to_text(cid, self.resources.documents, self.resources.chunk_mapping)
+                         for cid in chunk_ids]
+                whole_page = len(normalize_urls(document.get("url"))) == 1 and not document.get("sections")
+                units.extend({"text": unit.text, "url": unit.url, "prior": unit.prior,
+                              "title": self.page_titles.get(norm_url(unit.url), unit.title) if whole_page else unit.title}
+                             for unit in document_units(document, texts))
         return units
 
     async def finalize_sources(self, outcome: PipelineOutcome, answer: str) -> list[dict[str, str]]:
@@ -832,6 +850,7 @@ class StandRagPipeline:
             chunk_mapping=self.resources.chunk_mapping,
             min_document_quality=self.settings.min_document_quality,
             numbered=self.settings.context_style == "legacy",
+            chunk_addresses=self.resources.chunk_addresses or None,
         )
         # Char-budget selection (below): `sources` and `context` stay in sync.
         # `budget_override` lets the caller reserve room for few-shots so the

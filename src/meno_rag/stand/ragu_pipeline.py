@@ -262,7 +262,8 @@ class RaguRagPipeline(StandRagPipeline):
                 continue  # no retrieved chunk backs it: its description could not be cited or checked
             element = dict(element, sources=references)
             if sources_style:
-                text = graph_element_as_note(element, self.resources.documents, self.resources.chunk_mapping)
+                text = graph_element_as_note(element, self.resources.documents, self.resources.chunk_mapping,
+                                             chunk_addresses=self.resources.chunk_addresses or None)
             else:
                 text = graph_element_to_text(element, self.resources.documents, self.resources.chunk_mapping)
             cost = len(text) + 2 + (len(heading) + 2 if not blocks else 0)
@@ -284,6 +285,18 @@ class RaguRagPipeline(StandRagPipeline):
                     })
                     source_rows.extend({"document_title": document.get("doc_title", ""), "source_url": url}
                                        for url in urls or [""])
+                    for address in self.resources.chunk_addresses.get(str(chunk_id), ()):
+                        other = self.resources.documents[address["doc_index"]]
+                        other_urls = [url for url in normalize_urls(other.get("url")) if url not in urls]
+                        if not other_urls:
+                            continue
+                        source_references.append({
+                            "chunk_id": chunk_id, "document_index": address["doc_index"],
+                            "local_chunk_index": address["local_chunk_index"],
+                            "title": other.get("doc_title", ""), "urls": other_urls,
+                        })
+                        source_rows.extend({"document_title": other.get("doc_title", ""), "source_url": url}
+                                           for url in other_urls)
                 graph_evidence.append({
                     "kind": element.get("kind", "entity"), "element_key": element.get("key"),
                     "text": text, "chunk_ids": list(references), "sources": source_rows,
