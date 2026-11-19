@@ -36,6 +36,18 @@ def test_gml_round_trip_keeps_the_stand_format(tmp_path):
     assert list(loaded.edges(keys=True)) == [(b.id, a.id, g.edges[0].id)]
 
 
+def test_control_characters_survive_the_file(tmp_path):
+    g = graph([node('Мезоны $D^0\x08ar{D}^0$ &amp; <b>', 'CONCEPT')])
+    gp.write_gml(g, tmp_path / 'g.gml')
+    assert gp.read_gml(tmp_path / 'g.gml') == g
+
+
+def test_a_rename_may_take_the_id_another_renamed_node_leaves():
+    a, b = node('Институт Новосибирский государственный университет', 'FACULTY'), node('Институт НГУ', 'FACULTY')
+    patched, _ = gp.rename_nodes(graph([a, b]), {a.id: ('Институт НГУ', []), b.id: ('Институт Новосибирского университета', [])}, 's', 'r')
+    assert all(n.id == gp.entity_id(n.name, n.type) for n in patched.nodes.values()) and len(patched.nodes) == 2
+
+
 def test_ids_are_the_ids_ragu_gives():
     assert gp.entity_id('"Circassian" helmets with plated mailaventails of the late middle ages and early Modern times',
                         'PUBLICATION') == 'ent-7d7ddc1f0306ec8275e646144c5b46fb'

@@ -24,6 +24,7 @@ import dataclasses
 import functools
 import hashlib
 import html
+import html.entities
 import json
 import re
 from collections import Counter, defaultdict
@@ -73,8 +74,19 @@ _LIST_START = '_networkx_list_start'
 _NOT_ASCII = re.compile(r'[^ -~]|[&"]')
 
 
+_REFERENCE = re.compile(r'&(?:#(\d+)|#x([0-9a-fA-F]+)|(\w+));')
+
+
+def _reference(match) -> str:
+    # as networkx reads it: every numeric reference is its character (html.unescape drops control characters)
+    if match.group(1) or match.group(2):
+        return chr(int(match.group(1)) if match.group(1) else int(match.group(2), 16))
+    code = html.entities.name2codepoint.get(match.group(3))
+    return chr(code) if code else match.group(0)
+
+
 def _unquote(value: str) -> str:
-    return html.unescape(value[1:-1]) if value.startswith('"') else value
+    return _REFERENCE.sub(_reference, value[1:-1]) if value.startswith('"') else value
 
 
 def _quote(value: str) -> str:
@@ -253,13 +265,12 @@ def rename_nodes(graph: Graph, renames: dict, step: str, reason: str) -> tuple[G
                 if member != target:
                     merges.append((member, target, 'same name key and type after: ' + reason, renames.get(member, ('', []))[1]))
     absorbed = {duplicate for duplicate, *_ in merges}
-    moved = {}
+    moved = {node_id: (new_id_of.get(node_id, node_id) if node_id not in absorbed else node_id) for node_id in nodes}
+    taken = Counter(moved.values())
     for node_id, node in nodes.items():
-        new_id = new_id_of.get(node_id, node_id) if node_id not in absorbed else node_id
-        if new_id != node_id and new_id in nodes and new_id not in absorbed:
-            new_id = node_id  # the id of the new name is taken by a node of another key: keep the old id
-        moved[node_id] = new_id
-        final[new_id] = dataclasses.replace(node, id=new_id)
+        if taken[moved[node_id]] > 1 and moved[node_id] != node_id:
+            moved[node_id] = node_id  # never two nodes under one id
+        final[moved[node_id]] = dataclasses.replace(node, id=moved[node_id])
     for change in changes:
         change['to'] = moved[change['node']]  # the id of the new name; a node that merges away keeps its id till then
     edges, edge_changes = _follow(graph.edges, {old: new for old, new in moved.items() if old != new}, step)
