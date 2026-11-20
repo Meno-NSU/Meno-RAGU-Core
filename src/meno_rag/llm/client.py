@@ -90,7 +90,7 @@ class VLLMClient:
         attempts = 1 if payload.get("stream") else 3
         for attempt in range(attempts):
             try:
-                return await self._http.post(
+                response = await self._http.post(
                     url, headers=self._headers(base_url), json=payload, timeout=timeout,
                 )
             except (httpx.ReadError, httpx.RemoteProtocolError, httpx.ConnectError) as exc:
@@ -100,7 +100,15 @@ class VLLMClient:
                     "vllm_transport_retry", base_url=base_url, attempt=attempt + 1,
                     error_type=type(exc).__name__,
                 )
-                await asyncio.sleep(0.25 * 2**attempt)
+            else:
+                if response.status_code not in {502, 503, 504} or attempt == attempts - 1:
+                    return response
+                await response.aclose()
+                logger.warning(
+                    "vllm_gateway_retry", base_url=base_url, attempt=attempt + 1,
+                    status_code=response.status_code,
+                )
+            await asyncio.sleep(0.25 * 2**attempt)
         raise AssertionError("Unreachable retry state")
 
     async def tokenize_messages(
@@ -183,6 +191,8 @@ class VLLMClient:
                         yield content
                     if fr is not None:
                         finish_reason = fr
+        if finish_reason is None:
+            raise RuntimeError("Поток vLLM завершился без finish_reason.")
         _log_vllm_stream_completion(
             model=model, base_url=base_url, content="".join(accumulated), finish_reason=finish_reason
         )

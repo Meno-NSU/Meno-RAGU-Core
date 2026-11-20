@@ -1,5 +1,6 @@
 """Unit tests for VLLMClient. Use a fake httpx transport so no network calls happen."""
 
+import asyncio
 import json
 from unittest.mock import AsyncMock, call
 
@@ -95,7 +96,7 @@ async def test_transport_retries_stop_after_three_attempts(monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("status", [400, 429, 500])
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 405, 408, 409, 422, 429, 500])
 async def test_http_status_errors_are_not_retried(monkeypatch, status):
     attempts = []
     sleep = AsyncMock()
@@ -219,3 +220,235 @@ async def test_only_intentional_single_token_classification_suppresses_truncatio
             )
     assert bool([log for log in logs if log["event"] == "generation_truncated"]) is warn
     assert any(log["event"] == "vllm_response" for log in logs)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [502, 503, 504])
+async def test_gateway_errors_retry_without_changing_request(monkeypatch, status):
+    requests = []
+    sleep = AsyncMock()
+    monkeypatch.setattr(client_module.asyncio, "sleep", sleep)
+
+    def handler(request):
+        requests.append(request)
+        if len(requests) < 3:
+            return httpx.Response(status, json={"error": "temporarily unavailable"})
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        client = VLLMClient(http_client=http, endpoint_api_keys={"http://x": "endpoint-key"})
+        result = await client.chat_completion(
+            base_url="http://x/v1", model="m", messages=[{"role": "user", "content": "Вопрос"}],
+            seed=42, timeout=12,
+        )
+    assert result["choices"][0]["message"]["content"] == "ok"
+    assert len(requests) == 3
+    assert len({request.content for request in requests}) == 1
+    assert all(request.headers["Authorization"] == "Bearer endpoint-key" for request in requests)
+    assert all(request.extensions["timeout"]["read"] == 12 for request in requests)
+    assert sleep.await_args_list == [call(0.25), call(0.5)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sequence", [("transport", 503, 200), (503, "transport", 200), (502, 503, 504), (503, "transport", "transport")])
+async def test_transport_and_gateway_failures_share_three_attempt_cap(monkeypatch, sequence):
+    requests = []
+    sleep = AsyncMock()
+    monkeypatch.setattr(client_module.asyncio, "sleep", sleep)
+
+    def handler(request):
+        step = sequence[len(requests)]
+        requests.append(request)
+        if step == "transport":
+            raise httpx.ReadError("reset", request=request)
+        return httpx.Response(step, json={"choices": [{"message": {"content": "ok"}}]})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        client = VLLMClient(http_client=http)
+        if sequence[-1] == 200:
+            assert (await client.chat_completion(base_url="http://x/v1", model="m", messages=[]))["choices"]
+        else:
+            error = httpx.ReadError if sequence[-1] == "transport" else httpx.HTTPStatusError
+            with pytest.raises(error):
+                await client.chat_completion(base_url="http://x/v1", model="m", messages=[])
+    assert len(requests) == 3
+    assert sleep.await_args_list == [call(0.25), call(0.5)]
+
+
+@pytest.mark.asyncio
+async def test_gateway_response_is_closed_before_backoff_and_cancel_stops_retry(monkeypatch):
+    events = []
+
+    class UnreadBody(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b"unavailable"
+
+        async def aclose(self):
+            events.append("closed")
+
+    request = httpx.Request("POST", "http://x/v1/chat/completions")
+    response = httpx.Response(503, request=request, stream=UnreadBody())
+    http = AsyncMock(spec=httpx.AsyncClient)
+    http.post.return_value = response
+
+    async def cancel_during_backoff(_delay):
+        assert response.is_closed
+        events.append("backoff")
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(client_module.asyncio, "sleep", cancel_during_backoff)
+    with pytest.raises(asyncio.CancelledError):
+        await VLLMClient(http_client=http).chat_completion(base_url="http://x/v1", model="m", messages=[])
+    assert http.post.await_count == 1
+    assert events == ["closed", "backoff"]
+
+
+@pytest.mark.asyncio
+async def test_tokenize_gateway_retry_does_not_change_404_cache(monkeypatch):
+    requests = []
+    monkeypatch.setattr(client_module.asyncio, "sleep", AsyncMock())
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(503 if len(requests) == 1 else 404)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        client = VLLMClient(http_client=http)
+        for _ in range(2):
+            assert await client.tokenize_messages(base_url="http://x/v1", model="m", messages=[]) is None
+    assert len(requests) == 2
+
+
+@pytest.mark.asyncio
+async def test_stream_gateway_error_is_never_replayed(monkeypatch):
+    requests = []
+    sleep = AsyncMock()
+    monkeypatch.setattr(client_module.asyncio, "sleep", sleep)
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(503)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        client = VLLMClient(http_client=http)
+        with pytest.raises(httpx.HTTPStatusError):
+            async for _ in client.stream_chat_completion(base_url="http://x/v1", model="m", messages=[]):
+                pass
+    assert len(requests) == 1
+    sleep.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_one_hundred_healthy_responses_keep_request_bytes_and_results(monkeypatch):
+    requests = []
+    sleep = AsyncMock()
+    monkeypatch.setattr(client_module.asyncio, "sleep", sleep)
+
+    def handler(request):
+        requests.append(request)
+        i = len(requests) - 1
+        return httpx.Response(200, content=json.dumps({"choices": [{"message": {"content": f" Ответ {i} "}, "finish_reason": "stop"}]}).encode())
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        client = VLLMClient(http_client=http)
+        for i in range(100):
+            messages = [{"role": "user", "content": f"Вопрос {i}"}]
+            result = await client.chat_completion(base_url="http://x/v1", model="m", messages=messages, seed=42)
+            expected = {"model": "m", "messages": messages, "stream": False, "seed": 42}
+            assert requests[-1].content == httpx.Request("POST", "http://x/v1/chat/completions", json=expected).content
+            assert result == {"choices": [{"message": {"content": f" Ответ {i} "}, "finish_reason": "stop"}]}
+    assert len(requests) == 100
+    sleep.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("event,expected", [
+    ('data: {"choices":[{"delta":{"role":"assistant"}}]}\n\n', []),
+    ('data: {"choices":[{"delta":{"content":"partial"}}]}\n\n', ["partial"]),
+])
+async def test_clean_eof_without_finish_reason_is_error_and_closes_response(event, expected):
+    responses = []
+
+    def handler(request):
+        response = httpx.Response(200, content=event.encode())
+        responses.append(response)
+        return response
+
+    received = []
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        client = VLLMClient(http_client=http)
+        with pytest.raises(RuntimeError, match="finish_reason"):
+            async for token in client.stream_chat_completion(base_url="http://x/v1", model="m", messages=[]):
+                received.append(token)
+    assert received == expected
+    assert len(responses) == 1
+    assert responses[0].is_closed
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("finish", ["stop", "length"])
+async def test_stream_with_explicit_finish_keeps_text_and_length_warning(monkeypatch, finish):
+    content = ('data: {"choices":[{"delta":{"content":"hello "}}]}\n\n'
+               'data: {"choices":[{"delta":{"content":"world"}}]}\n\n'
+               f'data: {{"choices":[{{"delta":{{}},"finish_reason":"{finish}"}}]}}\n\n'
+               'data: [DONE]\n\n')
+    with capture_logs() as logs:
+        monkeypatch.setattr(client_module, "logger", structlog.get_logger(__name__))
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(200, content=content.encode()))) as http:
+            received = [part async for part in VLLMClient(http_client=http).stream_chat_completion(base_url="http://x/v1", model="m", messages=[])]
+    assert received == ["hello ", "world"]
+    assert bool([entry for entry in logs if entry["event"] == "generation_truncated"]) == (finish == "length")
+
+
+@pytest.mark.asyncio
+async def test_sse_error_is_not_replayed_and_closes_response():
+    responses = []
+
+    def handler(request):
+        response = httpx.Response(200, content=b'data: {"error":{"message":"provider failed"}}\n\n')
+        responses.append(response)
+        return response
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        with pytest.raises(RuntimeError, match="provider failed"):
+            async for _ in VLLMClient(http_client=http).stream_chat_completion(base_url="http://x/v1", model="m", messages=[]):
+                pass
+    assert len(responses) == 1
+    assert responses[0].is_closed
+
+
+@pytest.mark.asyncio
+async def test_stream_cancellation_after_text_closes_response_without_retry():
+    entered = asyncio.Event()
+    closed = []
+    requests = []
+
+    class HangingBody(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b'data: {"choices":[{"delta":{"content":"partial"}}]}\n\n'
+            entered.set()
+            await asyncio.Event().wait()
+
+        async def aclose(self):
+            closed.append(True)
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, stream=HangingBody())
+
+    received = []
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        client = VLLMClient(http_client=http)
+
+        async def consume():
+            async for part in client.stream_chat_completion(base_url="http://x/v1", model="m", messages=[]):
+                received.append(part)
+
+        task = asyncio.create_task(consume())
+        await entered.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    assert received == ["partial"]
+    assert len(requests) == 1
+    assert closed == [True]
