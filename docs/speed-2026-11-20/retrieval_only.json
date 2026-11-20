@@ -1,0 +1,4209 @@
+{
+  "unique_question_ids": [
+    "app-4d5ecf798e8ad5",
+    "app-5b07c894210e8d",
+    "archive-bench-052",
+    "b954-097",
+    "b954-887",
+    "legacy-004",
+    "legacy-009",
+    "scenario-student-second-retake"
+  ],
+  "unique_question_count": 8,
+  "temporal_blocks": [
+    1,
+    2
+  ],
+  "status": "complete",
+  "driver_sha256": "f54fbc8093370d03e6c317b6df9679704fec02e1a3ec2e74f3bb7234af082508",
+  "candidate_commit": "29939ce",
+  "cells": [
+    {
+      "load": 1,
+      "early": 0,
+      "priority": 0,
+      "phase_count": 2,
+      "ragu_requested": 16,
+      "question_repeat_counts": {
+        "legacy-009": 2,
+        "scenario-student-second-retake": 2,
+        "archive-bench-052": 2,
+        "b954-887": 2,
+        "app-5b07c894210e8d": 2,
+        "app-4d5ecf798e8ad5": 2,
+        "b954-097": 2,
+        "legacy-004": 2
+      },
+      "ragu_status_counts": {
+        "ok": 16
+      },
+      "ragu": {
+        "prepare_ms": {
+          "n": 16,
+          "median": 7575.3369999999995,
+          "p95": 12568.7315,
+          "mean": 7618.2088125
+        },
+        "ttft_ms": {
+          "n": 16,
+          "median": 7920.067999999999,
+          "p95": 13001.578000000001,
+          "mean": 7989.382750000001
+        },
+        "generation_ms": {
+          "n": 16,
+          "median": 2565.3810000000003,
+          "p95": 5051.2365,
+          "mean": 2600.9564375
+        },
+        "source_tail_ms": {
+          "n": 16,
+          "median": 285.3295,
+          "p95": 400.88,
+          "mean": 267.56850000000003
+        },
+        "total_ms": {
+          "n": 16,
+          "median": 10827.7915,
+          "p95": 15656.592,
+          "mean": 10486.7336875
+        },
+        "offered_to_finish_ms": {
+          "n": 16,
+          "median": 48903.138999999996,
+          "p95": 83939.5255,
+          "mean": 47628.3449375
+        }
+      },
+      "ragu_throughput_per_second_by_block": {
+        "1": {
+          "completed": 0.09542156477983366,
+          "successful": 0.09542156477983366
+        },
+        "2": {
+          "completed": 0.09489628672134884,
+          "successful": 0.09489628672134884
+        }
+      },
+      "menon_offered": 8,
+      "menon_underload_offered": 8,
+      "menon_status_counts": {
+        "ok": 8
+      },
+      "menon_underload_status_counts": {
+        "ok": 8
+      },
+      "menon_underload": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 2429.817,
+          "p95": 6058.7207499999995,
+          "mean": 3236.639125
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 8038.7925,
+          "p95": 11477.510849999999,
+          "mean": 7263.098875
+        },
+        "offered_lag_ms": {
+          "n": 8,
+          "median": 1.3445,
+          "p95": 2.0728,
+          "mean": 1.418
+        }
+      }
+    },
+    {
+      "load": 1,
+      "early": 1,
+      "priority": 0,
+      "phase_count": 2,
+      "ragu_requested": 16,
+      "question_repeat_counts": {
+        "legacy-009": 2,
+        "scenario-student-second-retake": 2,
+        "archive-bench-052": 2,
+        "b954-887": 2,
+        "app-5b07c894210e8d": 2,
+        "app-4d5ecf798e8ad5": 2,
+        "b954-097": 2,
+        "legacy-004": 2
+      },
+      "ragu_status_counts": {
+        "ok": 16
+      },
+      "ragu": {
+        "prepare_ms": {
+          "n": 16,
+          "median": 7594.7880000000005,
+          "p95": 12854.11375,
+          "mean": 7614.9530625
+        },
+        "ttft_ms": {
+          "n": 16,
+          "median": 7940.683000000001,
+          "p95": 13285.771,
+          "mean": 7981.5290625
+        },
+        "generation_ms": {
+          "n": 16,
+          "median": 2688.2615,
+          "p95": 5084.37475,
+          "mean": 2607.1348125
+        },
+        "source_tail_ms": {
+          "n": 16,
+          "median": 289.71500000000003,
+          "p95": 395.65200000000004,
+          "mean": 275.2535625
+        },
+        "total_ms": {
+          "n": 16,
+          "median": 10703.0295,
+          "p95": 15833.48275,
+          "mean": 10497.3415625
+        },
+        "offered_to_finish_ms": {
+          "n": 16,
+          "median": 49031.2655,
+          "p95": 83721.412,
+          "mean": 47931.997375
+        }
+      },
+      "ragu_throughput_per_second_by_block": {
+        "1": {
+          "completed": 0.09602523812128494,
+          "successful": 0.09602523812128494
+        },
+        "2": {
+          "completed": 0.09411245426575875,
+          "successful": 0.09411245426575875
+        }
+      },
+      "menon_offered": 8,
+      "menon_underload_offered": 8,
+      "menon_status_counts": {
+        "ok": 8
+      },
+      "menon_underload_status_counts": {
+        "ok": 8
+      },
+      "menon_underload": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 2421.763,
+          "p95": 6068.22365,
+          "mean": 3287.944125
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 8175.079,
+          "p95": 11640.657949999999,
+          "mean": 7344.008875
+        },
+        "offered_lag_ms": {
+          "n": 8,
+          "median": 1.0434999999999999,
+          "p95": 75.72559999999994,
+          "mean": 15.38675
+        }
+      }
+    },
+    {
+      "load": 4,
+      "early": 0,
+      "priority": 0,
+      "phase_count": 2,
+      "ragu_requested": 16,
+      "question_repeat_counts": {
+        "b954-887": 2,
+        "archive-bench-052": 2,
+        "scenario-student-second-retake": 2,
+        "legacy-009": 2,
+        "app-5b07c894210e8d": 2,
+        "app-4d5ecf798e8ad5": 2,
+        "b954-097": 2,
+        "legacy-004": 2
+      },
+      "ragu_status_counts": {
+        "ok": 16
+      },
+      "ragu": {
+        "prepare_ms": {
+          "n": 16,
+          "median": 16872.641499999998,
+          "p95": 24153.712,
+          "mean": 15980.6895625
+        },
+        "ttft_ms": {
+          "n": 16,
+          "median": 18101.094,
+          "p95": 25698.77625,
+          "mean": 17385.32225
+        },
+        "generation_ms": {
+          "n": 16,
+          "median": 7506.421,
+          "p95": 15101.09975,
+          "mean": 7684.089625
+        },
+        "source_tail_ms": {
+          "n": 16,
+          "median": 324.574,
+          "p95": 1282.46425,
+          "mean": 498.4636875
+        },
+        "total_ms": {
+          "n": 16,
+          "median": 23766.134,
+          "p95": 31386.42,
+          "mean": 24163.24275
+        },
+        "offered_to_finish_ms": {
+          "n": 16,
+          "median": 32086.5405,
+          "p95": 53243.72325,
+          "mean": 36365.9255625
+        }
+      },
+      "ragu_throughput_per_second_by_block": {
+        "1": {
+          "completed": 0.14707561015557824,
+          "successful": 0.14707561015557824
+        },
+        "2": {
+          "completed": 0.15121759652635033,
+          "successful": 0.15121759652635033
+        }
+      },
+      "menon_offered": 8,
+      "menon_underload_offered": 8,
+      "menon_status_counts": {
+        "ok": 8
+      },
+      "menon_underload_status_counts": {
+        "ok": 8
+      },
+      "menon_underload": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 9048.512999999999,
+          "p95": 14169.209799999997,
+          "mean": 8043.174125
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 15201.446,
+          "p95": 25709.37395,
+          "mean": 16095.57075
+        },
+        "offered_lag_ms": {
+          "n": 8,
+          "median": 3.6855,
+          "p95": 552.0185499999999,
+          "mean": 161.8735
+        }
+      }
+    },
+    {
+      "load": 4,
+      "early": 1,
+      "priority": 0,
+      "phase_count": 2,
+      "ragu_requested": 16,
+      "question_repeat_counts": {
+        "b954-887": 2,
+        "archive-bench-052": 2,
+        "scenario-student-second-retake": 2,
+        "legacy-009": 2,
+        "app-5b07c894210e8d": 2,
+        "app-4d5ecf798e8ad5": 2,
+        "b954-097": 2,
+        "legacy-004": 2
+      },
+      "ragu_status_counts": {
+        "ok": 16
+      },
+      "ragu": {
+        "prepare_ms": {
+          "n": 16,
+          "median": 15707.343,
+          "p95": 23861.87225,
+          "mean": 15574.473
+        },
+        "ttft_ms": {
+          "n": 16,
+          "median": 17506.046499999997,
+          "p95": 24321.528,
+          "mean": 17020.0971875
+        },
+        "generation_ms": {
+          "n": 16,
+          "median": 6515.052,
+          "p95": 15340.15975,
+          "mean": 8193.7440625
+        },
+        "source_tail_ms": {
+          "n": 16,
+          "median": 430.58299999999997,
+          "p95": 1374.70675,
+          "mean": 591.1069375
+        },
+        "total_ms": {
+          "n": 16,
+          "median": 25148.6145,
+          "p95": 33436.6735,
+          "mean": 24359.323875
+        },
+        "offered_to_finish_ms": {
+          "n": 16,
+          "median": 36919.88,
+          "p95": 53532.15925,
+          "mean": 38034.062625
+        }
+      },
+      "ragu_throughput_per_second_by_block": {
+        "1": {
+          "completed": 0.14351708567317012,
+          "successful": 0.14351708567317012
+        },
+        "2": {
+          "completed": 0.1531363960995394,
+          "successful": 0.1531363960995394
+        }
+      },
+      "menon_offered": 8,
+      "menon_underload_offered": 8,
+      "menon_status_counts": {
+        "ok": 8
+      },
+      "menon_underload_status_counts": {
+        "ok": 8
+      },
+      "menon_underload": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 10227.7745,
+          "p95": 18064.49665,
+          "mean": 10206.498625
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 17405.03,
+          "p95": 27106.6849,
+          "mean": 17342.44775
+        },
+        "offered_lag_ms": {
+          "n": 8,
+          "median": 45.4255,
+          "p95": 662.6564499999997,
+          "mean": 167.625875
+        }
+      }
+    },
+    {
+      "load": 8,
+      "early": 0,
+      "priority": 0,
+      "phase_count": 2,
+      "ragu_requested": 24,
+      "question_repeat_counts": {
+        "b954-887": 3,
+        "app-5b07c894210e8d": 3,
+        "app-4d5ecf798e8ad5": 3,
+        "archive-bench-052": 3,
+        "legacy-009": 3,
+        "scenario-student-second-retake": 3,
+        "b954-097": 3,
+        "legacy-004": 3
+      },
+      "ragu_status_counts": {
+        "ok": 24
+      },
+      "ragu": {
+        "prepare_ms": {
+          "n": 24,
+          "median": 22592.0985,
+          "p95": 43415.16114999999,
+          "mean": 23688.506333333335
+        },
+        "ttft_ms": {
+          "n": 24,
+          "median": 24738.999499999998,
+          "p95": 44158.76485,
+          "mean": 25718.744916666667
+        },
+        "generation_ms": {
+          "n": 24,
+          "median": 13550.092499999999,
+          "p95": 36082.7632,
+          "mean": 15755.792
+        },
+        "source_tail_ms": {
+          "n": 24,
+          "median": 569.8735,
+          "p95": 3002.683249999999,
+          "mean": 1070.8247916666667
+        },
+        "total_ms": {
+          "n": 24,
+          "median": 44828.364,
+          "p95": 54916.6265,
+          "mean": 40515.123166666664
+        },
+        "offered_to_finish_ms": {
+          "n": 24,
+          "median": 52113.459,
+          "p95": 76454.46535,
+          "mean": 55080.488375
+        }
+      },
+      "ragu_throughput_per_second_by_block": {
+        "1": {
+          "completed": 0.1567479338956866,
+          "successful": 0.1567479338956866
+        },
+        "2": {
+          "completed": 0.17043293630128656,
+          "successful": 0.17043293630128656
+        }
+      },
+      "menon_offered": 8,
+      "menon_underload_offered": 8,
+      "menon_status_counts": {
+        "ok": 8
+      },
+      "menon_underload_status_counts": {
+        "ok": 8
+      },
+      "menon_underload": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 17404.823,
+          "p95": 28730.7961,
+          "mean": 17264.0495
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 31446.284,
+          "p95": 36265.89465,
+          "mean": 29837.7095
+        },
+        "offered_lag_ms": {
+          "n": 8,
+          "median": 2.4595000000000002,
+          "p95": 909.3306999999996,
+          "mean": 211.407875
+        }
+      }
+    },
+    {
+      "load": 8,
+      "early": 1,
+      "priority": 0,
+      "phase_count": 2,
+      "ragu_requested": 24,
+      "question_repeat_counts": {
+        "app-4d5ecf798e8ad5": 3,
+        "b954-887": 3,
+        "app-5b07c894210e8d": 3,
+        "archive-bench-052": 3,
+        "scenario-student-second-retake": 3,
+        "b954-097": 3,
+        "legacy-009": 3,
+        "legacy-004": 3
+      },
+      "ragu_status_counts": {
+        "ok": 24
+      },
+      "ragu": {
+        "prepare_ms": {
+          "n": 24,
+          "median": 26242.612999999998,
+          "p95": 43471.9629,
+          "mean": 25973.913083333333
+        },
+        "ttft_ms": {
+          "n": 24,
+          "median": 27617.1135,
+          "p95": 45361.7262,
+          "mean": 28420.11054166667
+        },
+        "generation_ms": {
+          "n": 24,
+          "median": 9858.731,
+          "p95": 34444.191649999986,
+          "mean": 13993.866208333333
+        },
+        "source_tail_ms": {
+          "n": 24,
+          "median": 889.0314999999999,
+          "p95": 3903.9305,
+          "mean": 1511.838
+        },
+        "total_ms": {
+          "n": 24,
+          "median": 42534.697,
+          "p95": 57326.96815,
+          "mean": 41479.61754166667
+        },
+        "offered_to_finish_ms": {
+          "n": 24,
+          "median": 55322.051999999996,
+          "p95": 75640.50779999999,
+          "mean": 54413.53683333333
+        }
+      },
+      "ragu_throughput_per_second_by_block": {
+        "1": {
+          "completed": 0.15736456733241672,
+          "successful": 0.15736456733241672
+        },
+        "2": {
+          "completed": 0.1660978254458851,
+          "successful": 0.1660978254458851
+        }
+      },
+      "menon_offered": 8,
+      "menon_underload_offered": 8,
+      "menon_status_counts": {
+        "ok": 8
+      },
+      "menon_underload_status_counts": {
+        "ok": 8
+      },
+      "menon_underload": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 17161.3815,
+          "p95": 30572.7777,
+          "mean": 18027.91525
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 32881.1915,
+          "p95": 40276.948549999994,
+          "mean": 30439.737375
+        },
+        "offered_lag_ms": {
+          "n": 8,
+          "median": 1.6139999999999999,
+          "p95": 4295.650999999997,
+          "mean": 890.737875
+        }
+      }
+    }
+  ],
+  "effects": [
+    {
+      "load": 1,
+      "population": "ragu",
+      "factor": "early",
+      "metrics": {
+        "prepare_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": -14.884499999999889,
+            "p95": 310.3904999999995,
+            "mean": -3.2557499999999777
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": -3.2557499999999777,
+          "question_balanced_median_of_mean_deltas": -7.432749999999942,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -76.82637499999987,
+              "question_balanced_median_of_mean_deltas": -92.77700000000004
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 70.31487499999992,
+              "question_balanced_median_of_mean_deltas": 6.778500000000122
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -77.67115,
+            80.63048749999997
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -108.48474999999985,
+            57.006499999999505
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 16,
+                "median": -14.884499999999889,
+                "p95": 310.3904999999995,
+                "mean": -3.2557499999999777
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 16,
+              "question_balanced_mean_delta": -3.2557499999999777,
+              "question_balanced_median_of_mean_deltas": -7.432749999999942,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": -76.82637499999987,
+                  "question_balanced_median_of_mean_deltas": -92.77700000000004
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": 70.31487499999992,
+                  "question_balanced_median_of_mean_deltas": 6.778500000000122
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -77.67115,
+                80.63048749999997
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -108.48474999999985,
+                57.006499999999505
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 16,
+          "equal_query_pairs": 16
+        },
+        "ttft_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": -22.386000000000422,
+            "p95": 306.78949999999986,
+            "mean": -7.853687500000149
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": -7.853687500000149,
+          "question_balanced_median_of_mean_deltas": -15.7662499999999,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -85.70000000000005,
+              "question_balanced_median_of_mean_deltas": -90.66750000000047
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 69.99262499999975,
+              "question_balanced_median_of_mean_deltas": 7.876999999999953
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -82.10600468750053,
+            76.63706562499961
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -108.76375000000075,
+            57.60250000000042
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 16,
+                "median": -22.386000000000422,
+                "p95": 306.78949999999986,
+                "mean": -7.853687500000149
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 16,
+              "question_balanced_mean_delta": -7.853687500000149,
+              "question_balanced_median_of_mean_deltas": -15.7662499999999,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": -85.70000000000005,
+                  "question_balanced_median_of_mean_deltas": -90.66750000000047
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": 69.99262499999975,
+                  "question_balanced_median_of_mean_deltas": 7.876999999999953
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -82.10600468750053,
+                76.63706562499961
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -108.76375000000075,
+                57.60250000000042
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 16,
+          "equal_query_pairs": 16
+        },
+        "generation_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": -8.81899999999996,
+            "p95": 367.5794999999998,
+            "mean": 6.178374999999917
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": 6.178374999999917,
+          "question_balanced_median_of_mean_deltas": -16.890250000000037,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 9.801374999999922,
+              "question_balanced_median_of_mean_deltas": -13.38000000000011
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 2.5553749999999127,
+              "question_balanced_median_of_mean_deltas": 11.344499999999925
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -97.43786562500003,
+            128.1769703124998
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -55.13150000000019,
+            34.15949999999975
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 16,
+                "median": -8.81899999999996,
+                "p95": 367.5794999999998,
+                "mean": 6.178374999999917
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 16,
+              "question_balanced_mean_delta": 6.178374999999917,
+              "question_balanced_median_of_mean_deltas": -16.890250000000037,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": 9.801374999999922,
+                  "question_balanced_median_of_mean_deltas": -13.38000000000011
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": 2.5553749999999127,
+                  "question_balanced_median_of_mean_deltas": 11.344499999999925
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -97.43786562500003,
+                128.1769703124998
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -55.13150000000019,
+                34.15949999999975
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 16,
+          "equal_query_pairs": 16
+        },
+        "source_tail_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": -1.475999999999999,
+            "p95": 64.53175,
+            "mean": 7.685062499999994
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": 7.685062499999994,
+          "question_balanced_median_of_mean_deltas": -1.3710000000000164,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 3.4006249999999882,
+              "question_balanced_median_of_mean_deltas": 1.8889999999999816
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 11.969499999999998,
+              "question_balanced_median_of_mean_deltas": -2.316999999999986
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -7.7009078125,
+            25.55407187499998
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -11.559537499999992,
+            30.50136249999988
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 16,
+                "median": -1.475999999999999,
+                "p95": 64.53175,
+                "mean": 7.685062499999994
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 16,
+              "question_balanced_mean_delta": 7.685062499999994,
+              "question_balanced_median_of_mean_deltas": -1.3710000000000164,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": 3.4006249999999882,
+                  "question_balanced_median_of_mean_deltas": 1.8889999999999816
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": 11.969499999999998,
+                  "question_balanced_median_of_mean_deltas": -2.316999999999986
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -7.7009078125,
+                25.55407187499998
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -11.559537499999992,
+                30.50136249999988
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 16,
+          "equal_query_pairs": 16
+        },
+        "total_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": -10.408499999999549,
+            "p95": 376.8902500000004,
+            "mean": 10.60787500000015
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": 10.60787500000015,
+          "question_balanced_median_of_mean_deltas": 0.12625000000002728,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -63.62424999999962,
+              "question_balanced_median_of_mean_deltas": -101.89399999999932
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 84.83999999999992,
+              "question_balanced_median_of_mean_deltas": 193.60899999999992
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -107.45718593749969,
+            133.66662031249987
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -190.66449999999986,
+            198.37450000000035
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 16,
+                "median": -10.408499999999549,
+                "p95": 376.8902500000004,
+                "mean": 10.60787500000015
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 16,
+              "question_balanced_mean_delta": 10.60787500000015,
+              "question_balanced_median_of_mean_deltas": 0.12625000000002728,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": -63.62424999999962,
+                  "question_balanced_median_of_mean_deltas": -101.89399999999932
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": 84.83999999999992,
+                  "question_balanced_median_of_mean_deltas": 193.60899999999992
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -107.45718593749969,
+                133.66662031249987
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -190.66449999999986,
+                198.37450000000035
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 16,
+          "equal_query_pairs": 16
+        },
+        "offered_to_finish_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": 263.59599999999955,
+            "p95": 1027.1360000000022,
+            "mean": 303.6524375000011
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": 303.6524375000011,
+          "question_balanced_median_of_mean_deltas": 249.11099999999897,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 22.379500000000235,
+              "question_balanced_median_of_mean_deltas": 102.72400000000107
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 584.925375000002,
+              "question_balanced_median_of_mean_deltas": 665.5550000000003
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            83.14364999999947,
+            525.0250843750019
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -29.568999999997686,
+            582.8560000000011
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 16,
+                "median": 263.59599999999955,
+                "p95": 1027.1360000000022,
+                "mean": 303.6524375000011
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 16,
+              "question_balanced_mean_delta": 303.6524375000011,
+              "question_balanced_median_of_mean_deltas": 249.11099999999897,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": 22.379500000000235,
+                  "question_balanced_median_of_mean_deltas": 102.72400000000107
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": 584.925375000002,
+                  "question_balanced_median_of_mean_deltas": 665.5550000000003
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                83.14364999999947,
+                525.0250843750019
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -29.568999999997686,
+                582.8560000000011
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 16,
+          "equal_query_pairs": 16
+        }
+      }
+    },
+    {
+      "load": 1,
+      "population": "menon",
+      "factor": "early",
+      "metrics": {
+        "ttft_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 8,
+            "median": -22.795500000000175,
+            "p95": 356.70625,
+            "mean": 51.305000000000064
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 8,
+          "question_balanced_mean_delta": 51.305000000000064,
+          "question_balanced_median_of_mean_deltas": -22.795500000000175,
+          "per_block": {
+            "1": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": -47.98974999999996,
+              "question_balanced_median_of_mean_deltas": -78.83750000000009
+            },
+            "2": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": 150.59975000000009,
+              "question_balanced_median_of_mean_deltas": 141.18450000000007
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -73.57587499999994,
+            188.93545625000007
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -150.99299999999994,
+            249.93749999999977
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 8,
+                "median": -22.795500000000175,
+                "p95": 356.70625,
+                "mean": 51.305000000000064
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 51.305000000000064,
+              "question_balanced_median_of_mean_deltas": -22.795500000000175,
+              "per_block": {
+                "1": {
+                  "question_clusters": 4,
+                  "paired_repeated_turns": 4,
+                  "question_balanced_mean_delta": -47.98974999999996,
+                  "question_balanced_median_of_mean_deltas": -78.83750000000009
+                },
+                "2": {
+                  "question_clusters": 4,
+                  "paired_repeated_turns": 4,
+                  "question_balanced_mean_delta": 150.59975000000009,
+                  "question_balanced_median_of_mean_deltas": 141.18450000000007
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -73.57587499999994,
+                188.93545625000007
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -150.99299999999994,
+                249.93749999999977
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 8,
+          "successful_pairs": 8,
+          "equal_context_pairs": null,
+          "equal_query_pairs": null
+        },
+        "total_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 8,
+            "median": 71.76050000000032,
+            "p95": 352.7228499999999,
+            "mean": 80.9100000000002
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 8,
+          "question_balanced_mean_delta": 80.9100000000002,
+          "question_balanced_median_of_mean_deltas": 71.76050000000032,
+          "per_block": {
+            "1": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": -31.30874999999969,
+              "question_balanced_median_of_mean_deltas": -26.36749999999938
+            },
+            "2": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": 193.12875000000008,
+              "question_balanced_median_of_mean_deltas": 178.48350000000028
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -40.91478437499997,
+            207.74062500000014
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -141.17599999999948,
+            239.72699999999986
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 8,
+                "median": 71.76050000000032,
+                "p95": 352.7228499999999,
+                "mean": 80.9100000000002
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 80.9100000000002,
+              "question_balanced_median_of_mean_deltas": 71.76050000000032,
+              "per_block": {
+                "1": {
+                  "question_clusters": 4,
+                  "paired_repeated_turns": 4,
+                  "question_balanced_mean_delta": -31.30874999999969,
+                  "question_balanced_median_of_mean_deltas": -26.36749999999938
+                },
+                "2": {
+                  "question_clusters": 4,
+                  "paired_repeated_turns": 4,
+                  "question_balanced_mean_delta": 193.12875000000008,
+                  "question_balanced_median_of_mean_deltas": 178.48350000000028
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -40.91478437499997,
+                207.74062500000014
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -141.17599999999948,
+                239.72699999999986
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 8,
+          "successful_pairs": 8,
+          "equal_context_pairs": null,
+          "equal_query_pairs": null
+        }
+      }
+    },
+    {
+      "load": 4,
+      "population": "ragu",
+      "factor": "early",
+      "metrics": {
+        "prepare_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": -357.9399999999996,
+            "p95": 3740.6325,
+            "mean": -406.2165625000002
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": -406.21656250000024,
+          "question_balanced_median_of_mean_deltas": 594.4960000000005,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -425.5268749999998,
+              "question_balanced_median_of_mean_deltas": 1927.6415000000015
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -386.90625000000057,
+              "question_balanced_median_of_mean_deltas": -496.866500000001
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -3020.9321250000003,
+            1614.3759328124995
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -2544.1800000000003,
+            926.9921124999948
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 16,
+                "median": -357.9399999999996,
+                "p95": 3740.6325,
+                "mean": -406.2165625000002
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 16,
+              "question_balanced_mean_delta": -406.21656250000024,
+              "question_balanced_median_of_mean_deltas": 594.4960000000005,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": -425.5268749999998,
+                  "question_balanced_median_of_mean_deltas": 1927.6415000000015
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": -386.90625000000057,
+                  "question_balanced_median_of_mean_deltas": -496.866500000001
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -3020.9321250000003,
+                1614.3759328124995
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -2544.1800000000003,
+                926.9921124999948
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 15,
+          "equal_query_pairs": 15
+        },
+        "ttft_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": 20.82799999999861,
+            "p95": 3796.0047499999996,
+            "mean": -365.2250625000002
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": -365.2250625000002,
+          "question_balanced_median_of_mean_deltas": 101.21024999999872,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -216.17487500000004,
+              "question_balanced_median_of_mean_deltas": 1366.5049999999992
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -514.2752500000004,
+              "question_balanced_median_of_mean_deltas": -453.76350000000093
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -2911.4983656249997,
+            1689.709303124999
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -1488.6294999999982,
+            851.6555312499872
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 16,
+                "median": 20.82799999999861,
+                "p95": 3796.0047499999996,
+                "mean": -365.2250625000002
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 16,
+              "question_balanced_mean_delta": -365.2250625000002,
+              "question_balanced_median_of_mean_deltas": 101.21024999999872,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": -216.17487500000004,
+                  "question_balanced_median_of_mean_deltas": 1366.5049999999992
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": -514.2752500000004,
+                  "question_balanced_median_of_mean_deltas": -453.76350000000093
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -2911.4983656249997,
+                1689.709303124999
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -1488.6294999999982,
+                851.6555312499872
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 15,
+          "equal_query_pairs": 15
+        },
+        "generation_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": 84.5985,
+            "p95": 5915.043250000001,
+            "mean": 509.6544375
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": 509.6544375,
+          "question_balanced_median_of_mean_deltas": -510.6490000000001,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 1798.2153750000002,
+              "question_balanced_median_of_mean_deltas": 1005.7065000000002
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -778.9065000000003,
+              "question_balanced_median_of_mean_deltas": 4.54999999999967
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -1018.1695265625,
+            2484.9254328124957
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -1419.4384375000002,
+            1861.6555000000003
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 16,
+                "median": 84.5985,
+                "p95": 5915.043250000001,
+                "mean": 509.6544375
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 16,
+              "question_balanced_mean_delta": 509.6544375,
+              "question_balanced_median_of_mean_deltas": -510.6490000000001,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": 1798.2153750000002,
+                  "question_balanced_median_of_mean_deltas": 1005.7065000000002
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": -778.9065000000003,
+                  "question_balanced_median_of_mean_deltas": 4.54999999999967
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -1018.1695265625,
+                2484.9254328124957
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -1419.4384375000002,
+                1861.6555000000003
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 15,
+          "equal_query_pairs": 15
+        },
+        "source_tail_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": 65.2235,
+            "p95": 706.83125,
+            "mean": 92.64325000000001
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": 92.64325000000001,
+          "question_balanced_median_of_mean_deltas": 135.48975000000002,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -8.982624999999963,
+              "question_balanced_median_of_mean_deltas": 17.414499999999975
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 194.269125,
+              "question_balanced_median_of_mean_deltas": 175.1515
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -203.81217656249999,
+            308.82444218749987
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            65.2235,
+            430.182
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 16,
+                "median": 65.2235,
+                "p95": 706.83125,
+                "mean": 92.64325000000001
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 16,
+              "question_balanced_mean_delta": 92.64325000000001,
+              "question_balanced_median_of_mean_deltas": 135.48975000000002,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": -8.982624999999963,
+                  "question_balanced_median_of_mean_deltas": 17.414499999999975
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": 194.269125,
+                  "question_balanced_median_of_mean_deltas": 175.1515
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -203.81217656249999,
+                308.82444218749987
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                65.2235,
+                430.182
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 15,
+          "equal_query_pairs": 15
+        },
+        "total_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": -415.1795000000002,
+            "p95": 7245.693999999999,
+            "mean": 196.08112499999993
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": 196.08112499999993,
+          "question_balanced_median_of_mean_deltas": -345.4340000000002,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 1363.7056249999996,
+              "question_balanced_median_of_mean_deltas": 950.2604999999994
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -971.5433749999997,
+              "question_balanced_median_of_mean_deltas": -590.7389999999996
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -2609.727384375,
+            3472.7730796874994
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -867.3729999999996,
+            549.7794999999996
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 16,
+                "median": -415.1795000000002,
+                "p95": 7245.693999999999,
+                "mean": 196.08112499999993
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 16,
+              "question_balanced_mean_delta": 196.08112499999993,
+              "question_balanced_median_of_mean_deltas": -345.4340000000002,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": 1363.7056249999996,
+                  "question_balanced_median_of_mean_deltas": 950.2604999999994
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": -971.5433749999997,
+                  "question_balanced_median_of_mean_deltas": -590.7389999999996
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -2609.727384375,
+                3472.7730796874994
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -867.3729999999996,
+                549.7794999999996
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 15,
+          "equal_query_pairs": 15
+        },
+        "offered_to_finish_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": 800.2945,
+            "p95": 9393.4565,
+            "mean": 1668.1370624999997
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": 1668.1370624999997,
+          "question_balanced_median_of_mean_deltas": 617.2154999999984,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 4452.4265,
+              "question_balanced_median_of_mean_deltas": 2083.869999999999
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -1116.1523750000001,
+              "question_balanced_median_of_mean_deltas": -591.2380000000012
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -74.13528437500021,
+            4190.480839062499
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -503.5030000000006,
+            2840.6034999999993
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 16,
+                "median": 800.2945,
+                "p95": 9393.4565,
+                "mean": 1668.1370624999997
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 16,
+              "question_balanced_mean_delta": 1668.1370624999997,
+              "question_balanced_median_of_mean_deltas": 617.2154999999984,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": 4452.4265,
+                  "question_balanced_median_of_mean_deltas": 2083.869999999999
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 8,
+                  "question_balanced_mean_delta": -1116.1523750000001,
+                  "question_balanced_median_of_mean_deltas": -591.2380000000012
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -74.13528437500021,
+                4190.480839062499
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -503.5030000000006,
+                2840.6034999999993
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 15,
+          "equal_query_pairs": 15
+        }
+      }
+    },
+    {
+      "load": 4,
+      "population": "menon",
+      "factor": "early",
+      "metrics": {
+        "ttft_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 8,
+            "median": 380.97000000000025,
+            "p95": 9109.492699999999,
+            "mean": 2163.3245
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 8,
+          "question_balanced_mean_delta": 2163.3245,
+          "question_balanced_median_of_mean_deltas": 380.97000000000025,
+          "per_block": {
+            "1": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": 134.38050000000032,
+              "question_balanced_median_of_mean_deltas": 169.89900000000011
+            },
+            "2": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": 4192.2685,
+              "question_balanced_median_of_mean_deltas": 3797.5085
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -490.8439374999998,
+            5234.4564218749965
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -897.6590000000001,
+            8070.534
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 8,
+                "median": 380.97000000000025,
+                "p95": 9109.492699999999,
+                "mean": 2163.3245
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 2163.3245,
+              "question_balanced_median_of_mean_deltas": 380.97000000000025,
+              "per_block": {
+                "1": {
+                  "question_clusters": 4,
+                  "paired_repeated_turns": 4,
+                  "question_balanced_mean_delta": 134.38050000000032,
+                  "question_balanced_median_of_mean_deltas": 169.89900000000011
+                },
+                "2": {
+                  "question_clusters": 4,
+                  "paired_repeated_turns": 4,
+                  "question_balanced_mean_delta": 4192.2685,
+                  "question_balanced_median_of_mean_deltas": 3797.5085
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -490.8439374999998,
+                5234.4564218749965
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -897.6590000000001,
+                8070.534
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 8,
+          "successful_pairs": 8,
+          "equal_context_pairs": null,
+          "equal_query_pairs": null
+        },
+        "total_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 8,
+            "median": 995.9874999999997,
+            "p95": 3180.568349999999,
+            "mean": 1246.877
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 8,
+          "question_balanced_mean_delta": 1246.877,
+          "question_balanced_median_of_mean_deltas": 995.9874999999997,
+          "per_block": {
+            "1": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": 2394.5455,
+              "question_balanced_median_of_mean_deltas": 2931.7390000000005
+            },
+            "2": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": 99.20849999999973,
+              "question_balanced_median_of_mean_deltas": -292.45600000000013
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            169.39786249999997,
+            2261.1453749999996
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -304.71299999999974,
+            3007.3960000000006
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 8,
+                "median": 995.9874999999997,
+                "p95": 3180.568349999999,
+                "mean": 1246.877
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 1246.877,
+              "question_balanced_median_of_mean_deltas": 995.9874999999997,
+              "per_block": {
+                "1": {
+                  "question_clusters": 4,
+                  "paired_repeated_turns": 4,
+                  "question_balanced_mean_delta": 2394.5455,
+                  "question_balanced_median_of_mean_deltas": 2931.7390000000005
+                },
+                "2": {
+                  "question_clusters": 4,
+                  "paired_repeated_turns": 4,
+                  "question_balanced_mean_delta": 99.20849999999973,
+                  "question_balanced_median_of_mean_deltas": -292.45600000000013
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                169.39786249999997,
+                2261.1453749999996
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -304.71299999999974,
+                3007.3960000000006
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 8,
+          "successful_pairs": 8,
+          "equal_context_pairs": null,
+          "equal_query_pairs": null
+        }
+      }
+    },
+    {
+      "load": 8,
+      "population": "ragu",
+      "factor": "early",
+      "metrics": {
+        "prepare_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 24,
+            "median": 584.6700000000001,
+            "p95": 14769.744249999982,
+            "mean": 2285.4067499999996
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 24,
+          "question_balanced_mean_delta": 2285.4067499999996,
+          "question_balanced_median_of_mean_deltas": 1244.6975000000007,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 473.0053125000002,
+              "question_balanced_median_of_mean_deltas": -20.04399999999805
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 3829.425874999999,
+              "question_balanced_median_of_mean_deltas": 3349.0549999999985
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            855.0176864583333,
+            3958.512194791665
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            61.63533333333422,
+            5656.683333333333
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 24,
+                "median": 584.6700000000001,
+                "p95": 14769.744249999982,
+                "mean": 2285.4067499999996
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 24,
+              "question_balanced_mean_delta": 2285.4067499999996,
+              "question_balanced_median_of_mean_deltas": 1244.6975000000007,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 12,
+                  "question_balanced_mean_delta": 473.0053125000002,
+                  "question_balanced_median_of_mean_deltas": -20.04399999999805
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 12,
+                  "question_balanced_mean_delta": 3829.425874999999,
+                  "question_balanced_median_of_mean_deltas": 3349.0549999999985
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                855.0176864583333,
+                3958.512194791665
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                61.63533333333422,
+                5656.683333333333
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 24,
+          "successful_pairs": 24,
+          "equal_context_pairs": 23,
+          "equal_query_pairs": 23
+        },
+        "ttft_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 24,
+            "median": 878.1434999999992,
+            "p95": 15080.146249999983,
+            "mean": 2701.3656250000004
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 24,
+          "question_balanced_mean_delta": 2701.3656250000004,
+          "question_balanced_median_of_mean_deltas": 1325.3253333333337,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 384.8646250000004,
+              "question_balanced_median_of_mean_deltas": -206.0655000000006
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 4478.38425,
+              "question_balanced_median_of_mean_deltas": 3257.429
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            1014.8984635416671,
+            4731.751930208333
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            417.4906666666672,
+            6751.125999999999
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 24,
+                "median": 878.1434999999992,
+                "p95": 15080.146249999983,
+                "mean": 2701.3656250000004
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 24,
+              "question_balanced_mean_delta": 2701.3656250000004,
+              "question_balanced_median_of_mean_deltas": 1325.3253333333337,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 12,
+                  "question_balanced_mean_delta": 384.8646250000004,
+                  "question_balanced_median_of_mean_deltas": -206.0655000000006
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 12,
+                  "question_balanced_mean_delta": 4478.38425,
+                  "question_balanced_median_of_mean_deltas": 3257.429
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                1014.8984635416671,
+                4731.751930208333
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                417.4906666666672,
+                6751.125999999999
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 24,
+          "successful_pairs": 24,
+          "equal_context_pairs": 23,
+          "equal_query_pairs": 23
+        },
+        "generation_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 24,
+            "median": -256.6245000000015,
+            "p95": 6972.5106499999965,
+            "mean": -1761.925791666667
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 24,
+          "question_balanced_mean_delta": -1761.9257916666668,
+          "question_balanced_median_of_mean_deltas": -100.6683333333338,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": -1351.0799375000006,
+              "question_balanced_median_of_mean_deltas": -479.6612500000008
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": -1114.6102500000002,
+              "question_balanced_median_of_mean_deltas": 619.2385000000002
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -5568.446406249999,
+            1587.4483656249984
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -10008.109,
+            2014.1148333333338
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 24,
+                "median": -256.6245000000015,
+                "p95": 6972.5106499999965,
+                "mean": -1761.925791666667
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 24,
+              "question_balanced_mean_delta": -1761.9257916666668,
+              "question_balanced_median_of_mean_deltas": -100.6683333333338,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 12,
+                  "question_balanced_mean_delta": -1351.0799375000006,
+                  "question_balanced_median_of_mean_deltas": -479.6612500000008
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 12,
+                  "question_balanced_mean_delta": -1114.6102500000002,
+                  "question_balanced_median_of_mean_deltas": 619.2385000000002
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -5568.446406249999,
+                1587.4483656249984
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -10008.109,
+                2014.1148333333338
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 24,
+          "successful_pairs": 24,
+          "equal_context_pairs": 23,
+          "equal_query_pairs": 23
+        },
+        "source_tail_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 24,
+            "median": 73.9685,
+            "p95": 1621.8355499999996,
+            "mean": 441.01320833333335
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 24,
+          "question_balanced_mean_delta": 441.01320833333335,
+          "question_balanced_median_of_mean_deltas": 519.3476666666666,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 204.462125,
+              "question_balanced_median_of_mean_deltas": 107.4505
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 695.2175,
+              "question_balanced_median_of_mean_deltas": 828.00875
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            165.01026041666663,
+            734.6443989583333
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -75.5413333333334,
+            886.7658333333334
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 24,
+                "median": 73.9685,
+                "p95": 1621.8355499999996,
+                "mean": 441.01320833333335
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 24,
+              "question_balanced_mean_delta": 441.01320833333335,
+              "question_balanced_median_of_mean_deltas": 519.3476666666666,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 12,
+                  "question_balanced_mean_delta": 204.462125,
+                  "question_balanced_median_of_mean_deltas": 107.4505
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 12,
+                  "question_balanced_mean_delta": 695.2175,
+                  "question_balanced_median_of_mean_deltas": 828.00875
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                165.01026041666663,
+                734.6443989583333
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -75.5413333333334,
+                886.7658333333334
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 24,
+          "successful_pairs": 24,
+          "equal_context_pairs": 23,
+          "equal_query_pairs": 23
+        },
+        "total_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 24,
+            "median": 1317.8659999999982,
+            "p95": 15846.288449999993,
+            "mean": 964.4943749999993
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 24,
+          "question_balanced_mean_delta": 964.4943749999993,
+          "question_balanced_median_of_mean_deltas": 1457.4438333333323,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": -673.6123125000006,
+              "question_balanced_median_of_mean_deltas": 201.83799999999974
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 3410.0332499999986,
+              "question_balanced_median_of_mean_deltas": 3325.279999999997
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -1216.4558458333331,
+            2930.441021874997
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -3387.6146666666646,
+            3617.6078333333317
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 24,
+                "median": 1317.8659999999982,
+                "p95": 15846.288449999993,
+                "mean": 964.4943749999993
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 24,
+              "question_balanced_mean_delta": 964.4943749999993,
+              "question_balanced_median_of_mean_deltas": 1457.4438333333323,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 12,
+                  "question_balanced_mean_delta": -673.6123125000006,
+                  "question_balanced_median_of_mean_deltas": 201.83799999999974
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 12,
+                  "question_balanced_mean_delta": 3410.0332499999986,
+                  "question_balanced_median_of_mean_deltas": 3325.279999999997
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -1216.4558458333331,
+                2930.441021874997
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -3387.6146666666646,
+                3617.6078333333317
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 24,
+          "successful_pairs": 24,
+          "equal_context_pairs": 23,
+          "equal_query_pairs": 23
+        },
+        "offered_to_finish_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 24,
+            "median": 238.46099999999933,
+            "p95": 8513.381899999995,
+            "mean": -666.9515416666667
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 24,
+          "question_balanced_mean_delta": -666.9515416666666,
+          "question_balanced_median_of_mean_deltas": 1581.449000000002,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": -1423.028625,
+              "question_balanced_median_of_mean_deltas": -302.880250000002
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 1713.3073124999996,
+              "question_balanced_median_of_mean_deltas": 3888.995499999999
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -4630.950152083333,
+            2427.878815624999
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -8751.802333333333,
+            2500.5159999999987
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 24,
+                "median": 238.46099999999933,
+                "p95": 8513.381899999995,
+                "mean": -666.9515416666667
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 24,
+              "question_balanced_mean_delta": -666.9515416666666,
+              "question_balanced_median_of_mean_deltas": 1581.449000000002,
+              "per_block": {
+                "1": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 12,
+                  "question_balanced_mean_delta": -1423.028625,
+                  "question_balanced_median_of_mean_deltas": -302.880250000002
+                },
+                "2": {
+                  "question_clusters": 8,
+                  "paired_repeated_turns": 12,
+                  "question_balanced_mean_delta": 1713.3073124999996,
+                  "question_balanced_median_of_mean_deltas": 3888.995499999999
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -4630.950152083333,
+                2427.878815624999
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -8751.802333333333,
+                2500.5159999999987
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 24,
+          "successful_pairs": 24,
+          "equal_context_pairs": 23,
+          "equal_query_pairs": 23
+        }
+      }
+    },
+    {
+      "load": 8,
+      "population": "menon",
+      "factor": "early",
+      "metrics": {
+        "ttft_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 8,
+            "median": 868.5790000000006,
+            "p95": 6770.36095,
+            "mean": 763.8657499999998
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 8,
+          "question_balanced_mean_delta": 763.8657499999998,
+          "question_balanced_median_of_mean_deltas": 868.5790000000006,
+          "per_block": {
+            "1": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": -3404.36775,
+              "question_balanced_median_of_mean_deltas": 211.01699999999983
+            },
+            "2": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": 4932.099249999999,
+              "question_balanced_median_of_mean_deltas": 6620.681999999999
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -4084.2477500000005,
+            4794.743681249986
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -332.5039999999999,
+            6679.034
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 8,
+                "median": 868.5790000000006,
+                "p95": 6770.36095,
+                "mean": 763.8657499999998
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 763.8657499999998,
+              "question_balanced_median_of_mean_deltas": 868.5790000000006,
+              "per_block": {
+                "1": {
+                  "question_clusters": 4,
+                  "paired_repeated_turns": 4,
+                  "question_balanced_mean_delta": -3404.36775,
+                  "question_balanced_median_of_mean_deltas": 211.01699999999983
+                },
+                "2": {
+                  "question_clusters": 4,
+                  "paired_repeated_turns": 4,
+                  "question_balanced_mean_delta": 4932.099249999999,
+                  "question_balanced_median_of_mean_deltas": 6620.681999999999
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -4084.2477500000005,
+                4794.743681249986
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -332.5039999999999,
+                6679.034
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 8,
+          "successful_pairs": 8,
+          "equal_context_pairs": null,
+          "equal_query_pairs": null
+        },
+        "total_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 8,
+            "median": 1314.3015000000014,
+            "p95": 4713.582999999999,
+            "mean": 602.0278750000007
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 8,
+          "question_balanced_mean_delta": 602.0278750000007,
+          "question_balanced_median_of_mean_deltas": 1314.3015000000014,
+          "per_block": {
+            "1": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": 1451.3300000000008,
+              "question_balanced_median_of_mean_deltas": 441.25850000000173
+            },
+            "2": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": -247.27424999999948,
+              "question_balanced_median_of_mean_deltas": 1817.6885000000002
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -2030.8608656249992,
+            2748.8692999999994
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -1024.9219999999987,
+            2421.605000000003
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "conditioned_on_other_factor": {
+            "priority0": {
+              "pooled_repeated_turn_deltas": {
+                "n": 8,
+                "median": 1314.3015000000014,
+                "p95": 4713.582999999999,
+                "mean": 602.0278750000007
+              },
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 602.0278750000007,
+              "question_balanced_median_of_mean_deltas": 1314.3015000000014,
+              "per_block": {
+                "1": {
+                  "question_clusters": 4,
+                  "paired_repeated_turns": 4,
+                  "question_balanced_mean_delta": 1451.3300000000008,
+                  "question_balanced_median_of_mean_deltas": 441.25850000000173
+                },
+                "2": {
+                  "question_clusters": 4,
+                  "paired_repeated_turns": 4,
+                  "question_balanced_mean_delta": -247.27424999999948,
+                  "question_balanced_median_of_mean_deltas": 1817.6885000000002
+                }
+              },
+              "nominal_question_cluster_bootstrap95_mean": [
+                -2030.8608656249992,
+                2748.8692999999994
+              ],
+              "nominal_question_cluster_bootstrap95_median": [
+                -1024.9219999999987,
+                2421.605000000003
+              ],
+              "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+            },
+            "priority1": {
+              "pooled_repeated_turn_deltas": {
+                "n": 0
+              },
+              "question_clusters": 0,
+              "paired_repeated_turns": 0
+            }
+          },
+          "possible_pairs": 8,
+          "successful_pairs": 8,
+          "equal_context_pairs": null,
+          "equal_query_pairs": null
+        }
+      }
+    }
+  ],
+  "warnings": [
+    "Burst loads are short and contain only eight unique questions",
+    "Live rewrite/analysis decisions can differ between scheduling arms",
+    "Source/answer equality alone does not measure semantic answer quality",
+    "Global GPU counters may include unrelated service traffic"
+  ],
+  "stability_against_e0p0": [
+    {
+      "load": 1,
+      "reference_early": 0,
+      "reference_priority": 0,
+      "candidate_early": 1,
+      "candidate_priority": 0,
+      "counts": {
+        "paired_offered": 16,
+        "queries_equal": 16,
+        "context_equal": 16,
+        "evidence_equal": 16,
+        "answer_equal": 5,
+        "sources_equal": 14,
+        "identical_observed_result": 5,
+        "http_request_counts_equal": 7,
+        "generation_changed_on_same_context_and_evidence": 11
+      },
+      "changed_cases": [
+        {
+          "id": "scenario-student-second-retake",
+          "block": 1,
+          "position": 1,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 267,
+            "prepare_ms": -218.9369999999999,
+            "ttft_ms": -229.94500000000153,
+            "total_ms": 199.85900000000038
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 3,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "app-5b07c894210e8d",
+          "block": 1,
+          "position": 4,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -76,
+            "prepare_ms": -76.36799999999994,
+            "ttft_ms": -75.56900000000041,
+            "total_ms": -121.46999999999935
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": -1,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "app-4d5ecf798e8ad5",
+          "block": 1,
+          "position": 5,
+          "classification": "identical_observed_result",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": true,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 0,
+            "prepare_ms": -109.18600000000015,
+            "ttft_ms": -105.76600000000053,
+            "total_ms": -89.17599999999948
+          },
+          "request_count_deltas": {
+            "rerank": 1,
+            "generation": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "b954-097",
+          "block": 1,
+          "position": 6,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -127,
+            "prepare_ms": -214.08499999999913,
+            "ttft_ms": -227.05699999999888,
+            "total_ms": -382.1270000000004
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": -1,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "legacy-004",
+          "block": 1,
+          "position": 7,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -27,
+            "prepare_ms": 12.453999999999724,
+            "ttft_ms": 9.241000000000895,
+            "total_ms": -114.61199999999917
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "app-5b07c894210e8d",
+          "block": 2,
+          "position": 0,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -33,
+            "prepare_ms": -119.2239999999997,
+            "ttft_ms": -113.3060000000005,
+            "total_ms": -128.61799999999948
+          },
+          "request_count_deltas": {
+            "generation": 0,
+            "tokenize": 0,
+            "rerank": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "b954-097",
+          "block": 2,
+          "position": 2,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 34,
+            "prepare_ms": 305.2019999999993,
+            "ttft_ms": 298.2950000000001,
+            "total_ms": 357.3600000000006
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 1,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "legacy-004",
+          "block": 2,
+          "position": 3,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 38,
+            "prepare_ms": 101.55899999999929,
+            "ttft_ms": 105.96399999999994,
+            "total_ms": 272.77000000000044
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "legacy-009",
+          "block": 2,
+          "position": 4,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -30,
+            "prepare_ms": 325.95600000000013,
+            "ttft_ms": 332.27299999999923,
+            "total_ms": 284.0499999999993
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 2,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "scenario-student-second-retake",
+          "block": 2,
+          "position": 5,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 197,
+            "prepare_ms": -19.409999999999854,
+            "ttft_ms": -16.235000000000582,
+            "total_ms": 435.48099999999977
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 2,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "archive-bench-052",
+          "block": 2,
+          "position": 6,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -351,
+            "prepare_ms": 23.916000000000167,
+            "ttft_ms": 31.989000000000487,
+            "total_ms": -486.4400000000005
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": -1,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "b954-887",
+          "block": 2,
+          "position": 7,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -52,
+            "prepare_ms": -45.121000000000095,
+            "ttft_ms": -50.50200000000041,
+            "total_ms": -170.33100000000013
+          },
+          "request_count_deltas": {
+            "rerank": 1,
+            "generation": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        }
+      ],
+      "limit": "First changed observable stage only; complete raw material remains server-local for factual review"
+    },
+    {
+      "load": 4,
+      "reference_early": 0,
+      "reference_priority": 0,
+      "candidate_early": 1,
+      "candidate_priority": 0,
+      "counts": {
+        "paired_offered": 16,
+        "queries_equal": 15,
+        "context_equal": 15,
+        "evidence_equal": 14,
+        "answer_equal": 8,
+        "sources_equal": 13,
+        "live_analysis_or_rewrite_decision_changed": 1,
+        "http_request_counts_equal": 9,
+        "identical_observed_result": 8,
+        "generation_changed_on_same_context_and_evidence": 6,
+        "evidence_changed_despite_same_context": 1
+      },
+      "changed_cases": [
+        {
+          "id": "legacy-009",
+          "block": 1,
+          "position": 0,
+          "classification": "live_analysis_or_rewrite_decision_changed",
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 534,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 315,
+            "prepare_ms": 2104.3719999999994,
+            "ttft_ms": 2062.0499999999993,
+            "total_ms": 3389.1169999999984
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 1,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "scenario-student-second-retake",
+          "block": 1,
+          "position": 1,
+          "classification": "identical_observed_result",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": true,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 0,
+            "prepare_ms": 859.4030000000002,
+            "ttft_ms": 836.8629999999976,
+            "total_ms": 2240.9840000000004
+          },
+          "request_count_deltas": {
+            "rerank": -1,
+            "generation": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "app-5b07c894210e8d",
+          "block": 1,
+          "position": 4,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 206,
+            "prepare_ms": -15930.798,
+            "ttft_ms": -15909.132,
+            "total_ms": -12534.237
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 1,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "b954-097",
+          "block": 1,
+          "position": 6,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -112,
+            "prepare_ms": -4421.877,
+            "ttft_ms": -2309.5769999999993,
+            "total_ms": -830.3169999999991
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": -2,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "legacy-004",
+          "block": 1,
+          "position": 7,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -236,
+            "prepare_ms": 2416.5640000000003,
+            "ttft_ms": 765.5079999999998,
+            "total_ms": -2071.848000000002
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": -6,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "app-5b07c894210e8d",
+          "block": 2,
+          "position": 0,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -27,
+            "prepare_ms": -512.090000000001,
+            "ttft_ms": 226.04299999999967,
+            "total_ms": -573.1029999999992
+          },
+          "request_count_deltas": {
+            "generation": 0,
+            "tokenize": 0,
+            "rerank": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "legacy-004",
+          "block": 2,
+          "position": 3,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 27,
+            "prepare_ms": -487.65200000000004,
+            "ttft_ms": -496.6720000000023,
+            "total_ms": 337.1020000000026
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "legacy-009",
+          "block": 2,
+          "position": 4,
+          "classification": "evidence_changed_despite_same_context",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -238,
+            "prepare_ms": -329.15799999999945,
+            "ttft_ms": -184.38700000000244,
+            "total_ms": -3801.219000000001
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "scenario-student-second-retake",
+          "block": 2,
+          "position": 5,
+          "classification": "identical_observed_result",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": true,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 0,
+            "prepare_ms": -506.08100000000195,
+            "ttft_ms": -700.8580000000002,
+            "total_ms": -3144.831000000002
+          },
+          "request_count_deltas": {
+            "rerank": -1,
+            "generation": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "archive-bench-052",
+          "block": 2,
+          "position": 6,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 16,
+            "prepare_ms": -1090.5770000000011,
+            "ttft_ms": -2850.0869999999995,
+            "total_ms": -670.4759999999987
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": -1,
+            "analysis_or_rewrite": 0
+          }
+        }
+      ],
+      "limit": "First changed observable stage only; complete raw material remains server-local for factual review"
+    },
+    {
+      "load": 8,
+      "reference_early": 0,
+      "reference_priority": 0,
+      "candidate_early": 1,
+      "candidate_priority": 0,
+      "counts": {
+        "paired_offered": 24,
+        "queries_equal": 23,
+        "context_equal": 23,
+        "evidence_equal": 23,
+        "answer_equal": 6,
+        "sources_equal": 17,
+        "generation_changed_on_same_context_and_evidence": 17,
+        "http_request_counts_equal": 13,
+        "identical_observed_result": 6,
+        "live_analysis_or_rewrite_decision_changed": 1
+      },
+      "changed_cases": [
+        {
+          "id": "legacy-009",
+          "block": 1,
+          "position": 0,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 238,
+            "prepare_ms": -415.08400000000256,
+            "ttft_ms": -430.6599999999962,
+            "total_ms": 1436.913999999997
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "archive-bench-052",
+          "block": 1,
+          "position": 2,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -338,
+            "prepare_ms": -129.84700000000157,
+            "ttft_ms": -121.41100000000006,
+            "total_ms": -1730.8830000000016
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": -1,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "b954-887",
+          "block": 1,
+          "position": 3,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -52,
+            "prepare_ms": -135.02200000000084,
+            "ttft_ms": 111.4910000000018,
+            "total_ms": 1070.8729999999996
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "app-5b07c894210e8d",
+          "block": 1,
+          "position": 4,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -8,
+            "prepare_ms": 1262.503999999999,
+            "ttft_ms": -29.92200000000048,
+            "total_ms": 506.5529999999999
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "b954-097",
+          "block": 1,
+          "position": 6,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 28,
+            "prepare_ms": -533.4969999999958,
+            "ttft_ms": -651.2330000000002,
+            "total_ms": -792.2019999999975
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 1,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "legacy-004",
+          "block": 1,
+          "position": 7,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -36,
+            "prepare_ms": 1668.0720000000001,
+            "ttft_ms": 1785.2070000000022,
+            "total_ms": -102.87700000000041
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": -3,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "legacy-009",
+          "block": 1,
+          "position": 8,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -67,
+            "prepare_ms": 8292.468,
+            "ttft_ms": 7763.613999999998,
+            "total_ms": 2832.023000000001
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": -1,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "scenario-student-second-retake",
+          "block": 1,
+          "position": 9,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 197,
+            "prepare_ms": -3079.6860000000015,
+            "ttft_ms": -2628.151999999998,
+            "total_ms": 4212.237000000005
+          },
+          "request_count_deltas": {
+            "rerank": -1,
+            "generation": 0,
+            "score": 2,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "b954-887",
+          "block": 1,
+          "position": 11,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -52,
+            "prepare_ms": 1121.8400000000001,
+            "ttft_ms": 1124.9310000000005,
+            "total_ms": 1032.449999999997
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "app-5b07c894210e8d",
+          "block": 2,
+          "position": 0,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -21,
+            "prepare_ms": 47.5,
+            "ttft_ms": 5739.551000000001,
+            "total_ms": -27335.218999999997
+          },
+          "request_count_deltas": {
+            "generation": 0,
+            "tokenize": -1,
+            "rerank": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "app-4d5ecf798e8ad5",
+          "block": 2,
+          "position": 1,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 30,
+            "prepare_ms": -2302.884,
+            "ttft_ms": 631.355999999998,
+            "total_ms": -21827.926
+          },
+          "request_count_deltas": {
+            "generation": 0,
+            "tokenize": 0,
+            "rerank": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "legacy-004",
+          "block": 2,
+          "position": 3,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -25,
+            "prepare_ms": 2913.7270000000026,
+            "ttft_ms": 2535.9029999999984,
+            "total_ms": 5445.572
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": -2,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "scenario-student-second-retake",
+          "block": 2,
+          "position": 5,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 464,
+            "prepare_ms": 2255.352999999999,
+            "ttft_ms": 2322.232,
+            "total_ms": 8847.741999999998
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 5,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "archive-bench-052",
+          "block": 2,
+          "position": 6,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 62,
+            "prepare_ms": 3577.3989999999976,
+            "ttft_ms": 3627.2450000000026,
+            "total_ms": 6690.572999999997
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "b954-887",
+          "block": 2,
+          "position": 7,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 52,
+            "prepare_ms": 3191.755000000001,
+            "ttft_ms": 3061.9579999999987,
+            "total_ms": 11202.265
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 0,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "app-5b07c894210e8d",
+          "block": 2,
+          "position": 8,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 48,
+            "prepare_ms": 15912.792999999998,
+            "ttft_ms": 16371.299,
+            "total_ms": 16665.822000000004
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": 1,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "b954-097",
+          "block": 2,
+          "position": 10,
+          "classification": "live_analysis_or_rewrite_decision_changed",
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": -160,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 20,
+            "prepare_ms": -2857.3009999999995,
+            "ttft_ms": -929.0149999999994,
+            "total_ms": 1331.7779999999984
+          },
+          "request_count_deltas": {
+            "rerank": -2,
+            "generation": 0,
+            "score": -1,
+            "analysis_or_rewrite": 0
+          }
+        },
+        {
+          "id": "legacy-004",
+          "block": 2,
+          "position": 11,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -51,
+            "prepare_ms": -1292.187,
+            "ttft_ms": -3068.637999999999,
+            "total_ms": -5181.830999999998
+          },
+          "request_count_deltas": {
+            "rerank": 0,
+            "generation": 0,
+            "score": -2,
+            "analysis_or_rewrite": 0
+          }
+        }
+      ],
+      "limit": "First changed observable stage only; complete raw material remains server-local for factual review"
+    }
+  ],
+  "repeatability_same_arm": [
+    {
+      "load": 1,
+      "early": 0,
+      "priority": 0,
+      "repeated_question_clusters": 8,
+      "counts": {
+        "correlated_repeat_pairs": 8,
+        "queries_equal": 8,
+        "context_equal": 8,
+        "evidence_equal": 8,
+        "answer_equal": 2,
+        "sources_equal": 6
+      },
+      "upstream_changed_repeats": [],
+      "limit": "Repeated turns hold scheduling settings fixed and estimate live-model drift; pair counts are correlated within eight question IDs"
+    },
+    {
+      "load": 1,
+      "early": 1,
+      "priority": 0,
+      "repeated_question_clusters": 8,
+      "counts": {
+        "correlated_repeat_pairs": 8,
+        "queries_equal": 8,
+        "context_equal": 8,
+        "evidence_equal": 8,
+        "answer_equal": 2,
+        "sources_equal": 6
+      },
+      "upstream_changed_repeats": [],
+      "limit": "Repeated turns hold scheduling settings fixed and estimate live-model drift; pair counts are correlated within eight question IDs"
+    },
+    {
+      "load": 4,
+      "early": 0,
+      "priority": 0,
+      "repeated_question_clusters": 8,
+      "counts": {
+        "correlated_repeat_pairs": 8,
+        "queries_equal": 6,
+        "context_equal": 6,
+        "evidence_equal": 6,
+        "answer_equal": 2,
+        "sources_equal": 4
+      },
+      "upstream_changed_repeats": [
+        {
+          "id": "b954-097",
+          "earlier_block": 1,
+          "earlier_position": 6,
+          "later_block": 2,
+          "later_position": 2,
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "legacy-009",
+          "earlier_block": 1,
+          "earlier_position": 0,
+          "later_block": 2,
+          "later_position": 4,
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        }
+      ],
+      "limit": "Repeated turns hold scheduling settings fixed and estimate live-model drift; pair counts are correlated within eight question IDs"
+    },
+    {
+      "load": 4,
+      "early": 1,
+      "priority": 0,
+      "repeated_question_clusters": 8,
+      "counts": {
+        "correlated_repeat_pairs": 8,
+        "queries_equal": 7,
+        "context_equal": 7,
+        "evidence_equal": 7,
+        "answer_equal": 1,
+        "sources_equal": 5
+      },
+      "upstream_changed_repeats": [
+        {
+          "id": "b954-097",
+          "earlier_block": 1,
+          "earlier_position": 6,
+          "later_block": 2,
+          "later_position": 2,
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        }
+      ],
+      "limit": "Repeated turns hold scheduling settings fixed and estimate live-model drift; pair counts are correlated within eight question IDs"
+    },
+    {
+      "load": 8,
+      "early": 0,
+      "priority": 0,
+      "repeated_question_clusters": 8,
+      "counts": {
+        "correlated_repeat_pairs": 24,
+        "queries_equal": 24,
+        "context_equal": 24,
+        "evidence_equal": 24,
+        "answer_equal": 9,
+        "sources_equal": 19
+      },
+      "upstream_changed_repeats": [],
+      "limit": "Repeated turns hold scheduling settings fixed and estimate live-model drift; pair counts are correlated within eight question IDs"
+    },
+    {
+      "load": 8,
+      "early": 1,
+      "priority": 0,
+      "repeated_question_clusters": 8,
+      "counts": {
+        "correlated_repeat_pairs": 24,
+        "queries_equal": 22,
+        "context_equal": 22,
+        "evidence_equal": 22,
+        "answer_equal": 10,
+        "sources_equal": 20
+      },
+      "upstream_changed_repeats": [
+        {
+          "id": "b954-097",
+          "earlier_block": 1,
+          "earlier_position": 6,
+          "later_block": 2,
+          "later_position": 10,
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "b954-097",
+          "earlier_block": 2,
+          "earlier_position": 2,
+          "later_block": 2,
+          "later_position": 10,
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        }
+      ],
+      "limit": "Repeated turns hold scheduling settings fixed and estimate live-model drift; pair counts are correlated within eight question IDs"
+    }
+  ],
+  "menon_alone": {
+    "warmup": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1746.0484999999999,
+          "p95": 2334.2386,
+          "mean": 1689.07925
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4217.6515,
+          "p95": 5109.3597,
+          "mean": 4012.102625
+        }
+      }
+    },
+    "before": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1757.0475000000001,
+          "p95": 2332.40575,
+          "mean": 1667.164125
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4105.407,
+          "p95": 5128.33645,
+          "mean": 3919.21475
+        }
+      }
+    },
+    "after": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1747.3085,
+          "p95": 2330.2506,
+          "mean": 1667.907625
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4152.2445,
+          "p95": 4915.73835,
+          "mean": 3879.179
+        }
+      }
+    }
+  },
+  "menon_alone_drift_after_minus_before": {
+    "ttft_ms": {
+      "pooled_repeated_turn_deltas": {
+        "n": 8,
+        "median": 8.471000000000004,
+        "p95": 64.7662000000001,
+        "mean": 0.7434999999999832
+      },
+      "question_clusters": 8,
+      "paired_repeated_turns": 8,
+      "question_balanced_mean_delta": 0.7434999999999832,
+      "question_balanced_median_of_mean_deltas": 8.471000000000004,
+      "per_block": {
+        "0": {
+          "question_clusters": 8,
+          "paired_repeated_turns": 8,
+          "question_balanced_mean_delta": 0.7434999999999832,
+          "question_balanced_median_of_mean_deltas": 8.471000000000004
+        }
+      },
+      "nominal_question_cluster_bootstrap95_mean": [
+        -33.84994687500009,
+        35.47545937500004
+      ],
+      "nominal_question_cluster_bootstrap95_median": [
+        -29.234662499999978,
+        42.21900000000005
+      ],
+      "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+    },
+    "total_ms": {
+      "pooled_repeated_turn_deltas": {
+        "n": 8,
+        "median": 39.47250000000008,
+        "p95": 95.17805000000035,
+        "mean": -40.03575000000001
+      },
+      "question_clusters": 8,
+      "paired_repeated_turns": 8,
+      "question_balanced_mean_delta": -40.03575000000001,
+      "question_balanced_median_of_mean_deltas": 39.47250000000008,
+      "per_block": {
+        "0": {
+          "question_clusters": 8,
+          "paired_repeated_turns": 8,
+          "question_balanced_mean_delta": -40.03575000000001,
+          "question_balanced_median_of_mean_deltas": 39.47250000000008
+        }
+      },
+      "nominal_question_cluster_bootstrap95_mean": [
+        -135.72874374999998,
+        58.89194375000005
+      ],
+      "nominal_question_cluster_bootstrap95_median": [
+        -213.8130000000001,
+        81.99800000000005
+      ],
+      "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+    }
+  },
+  "design": {
+    "early_rerank": false,
+    "priority": 0,
+    "rerank_guidance": "structured",
+    "prompt_timezone": "Asia/Novosibirsk",
+    "source_streaming": false
+  }
+}

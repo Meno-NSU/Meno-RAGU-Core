@@ -1,0 +1,46 @@
+{
+  "artifact_scope": "numeric/hash aggregates and offline analysis only; no raw questions, answers, context or private paths",
+  "files": {
+    "load_factorial.json": {
+      "sha256": "9cdea34b1bbd3e60c87ff0a114b5a40e8d097a9a2499ea4056aa51c840caf4e4",
+      "bytes": 410945
+    },
+    "retrieval_only.json": {
+      "sha256": "c349e3a2b69dc55d0c6a8e1f0c2ca4254910f2d57a3d77497e9632cf7ae90a41",
+      "bytes": 140775
+    },
+    "maxbatch.json": {
+      "sha256": "de59dd3821bcbdb050b64168bcc12af6a9ee87920f6d9cca2de5adddd9a6e28f",
+      "bytes": 111799
+    },
+    "maxbatch_observers.json": {
+      "sha256": "14cc54151fc7e4920d748a2221816065feb41e1f860605aeed03a01ea241540a",
+      "bytes": 56182
+    },
+    "aggregate_factorial.py": {
+      "sha256": "8e1b34696019ab51cec475b6ed253bafdf05f594f7c90779e1cec46f93e0726f",
+      "bytes": 16816
+    },
+    "aggregate_retrieval_only.py": {
+      "sha256": "cff3005402fbd5744d6f9a79a6bc89bfaf00382148bbe9d9c5136b4740bd56ed",
+      "bytes": 1217
+    },
+    "aggregate_maxbatch.py": {
+      "sha256": "54fe506fc68809518bb25d4b285edaa4c511b3e043542b29ba31cf0df731dcad",
+      "bytes": 5675
+    },
+    "test_numeric_analysis.py": {
+      "sha256": "ed8be50cb3803f0f595e070d5c91c5f7628c16cd931b156497a308c0a4bac701",
+      "bytes": 1778
+    },
+    "corpus_provenance.json": {
+      "sha256": "ddb86dfbc72c9cf205e52366399a5639ffd3af252c0db425b63640a3f15fd85e",
+      "bytes": 2300
+    }
+  },
+  "executed_driver_sha256": {
+    "factorial": "41410f215baca9ade9bfe1667eca0a768a9df6c719c81986374d24e635e92cd3",
+    "retrieval_only": "f54fbc8093370d03e6c317b6df9679704fec02e1a3ec2e74f3bb7234af082508",
+    "maxbatch": "257ac6327bae998b35f643b91df9db3ef81fbe77ffe76a5c562a94b2ce40844d"
+  }
+}
