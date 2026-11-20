@@ -551,7 +551,6 @@ class StandRagPipeline:
             else:
                 response = await self.llm_router.chat_completion(**call)
                 choice = response["choices"][0]
-                answer = completion_text(response)
                 outcome.trace["generation"] = {
                     "finish_reason": choice.get("finish_reason"),
                     "usage": deepcopy(response.get("usage")),
@@ -560,6 +559,7 @@ class StandRagPipeline:
                     "message": deepcopy(choice["message"]),
                     "sampling": generation_sampling,
                 }
+                answer = completion_text(response)
         logger.info(
             "generation_completed",
             model_id=runtime.generation.model_id,

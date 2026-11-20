@@ -144,8 +144,8 @@ async def test_traced_generation_retains_actual_finish_usage_message_and_samplin
         "choices": [{"finish_reason": "length", "message": {"content": " answer ", "reasoning": "notes"}}],
     }
     p.llm_router.chat_completion = AsyncMock(return_value=response)
-    answer = await p.generate_text(outcome=outcome, runtime=RUNTIME, max_tokens=21, temperature=0.3)
-    assert answer == "answer"
+    with pytest.raises(RuntimeError, match="finish_reason=length"):
+        await p.generate_text(outcome=outcome, runtime=RUNTIME, max_tokens=21, temperature=0.3)
     assert outcome.trace["generation"] == {
         "finish_reason": "length", "upstream_model": "meno-actual", "upstream_response_id": "upstream-42",
         "usage": {"prompt_tokens": 88, "completion_tokens": 21},

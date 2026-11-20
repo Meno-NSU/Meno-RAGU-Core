@@ -53,7 +53,7 @@ async def test_traced_generation_validates_the_actual_message(content):
     else:
         with pytest.raises(ValueError, match="no non-empty text content"):
             await pipeline.generate_text(outcome=outcome, runtime=runtime)
-        assert "generation" not in outcome.trace
+        assert outcome.trace["generation"]["message"]["content"] == content
 
 
 @pytest.mark.asyncio
@@ -78,4 +78,5 @@ async def test_traced_generation_rejects_truncated_response():
     runtime = PipelineRuntime.uniform(ModelRuntime("test", "http://closed.invalid/v1"))
     with pytest.raises(RuntimeError, match="finish_reason=length"):
         await pipeline.generate_text(outcome=outcome, runtime=runtime)
-    assert "generation" not in outcome.trace
+    assert outcome.trace["generation"]["finish_reason"] == "length"
+    assert outcome.trace["generation"]["message"]["content"] == "partial"
