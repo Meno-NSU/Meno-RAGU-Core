@@ -946,12 +946,12 @@ class StandRagPipeline:
         tokenizer = getattr(self.llm_router, "tokenize_messages", None)
         if tokenizer is None:
             return True
-        # A token covers at least one character, so once the model's context length is known a prompt that is
-        # shorter in characters (with a margin for the chat template) fits without asking the tokenizer — the
-        # reranker used to make one tokenizer round trip per candidate.
+        # Byte-fallback tokens can split a single Unicode character. UTF-8 bytes,
+        # with the template margin, bound byte-based tokenizers conservatively;
+        # counting characters would wrongly skip tokenization for rare scripts.
         known = getattr(self, "_context_lengths", {}).get((runtime.base_url, runtime.model_id))
-        chars = sum(len(str(message.get("content") or "")) for message in messages)
-        if known is not None and chars + completion_tokens + 32 + PROMPT_TEMPLATE_MARGIN_TOKENS <= known:
+        byte_count = sum(len(str(message.get("content") or "").encode("utf-8")) for message in messages)
+        if known is not None and byte_count + completion_tokens + 32 + PROMPT_TEMPLATE_MARGIN_TOKENS <= known:
             return True
         budget = await tokenizer(runtime=runtime, messages=messages, chat_template_kwargs=chat_template_kwargs)
         if budget is None:

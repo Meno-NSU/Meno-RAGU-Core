@@ -150,8 +150,8 @@ async def test_the_search_queries_of_one_question_run_at_once_and_keep_their_ord
 
 @pytest.mark.asyncio
 async def test_a_short_prompt_is_not_sent_to_the_tokenizer_once_the_context_length_is_known():
-    # A token is at least one character, so a prompt shorter than the context in characters always fits; the
-    # tokenizer round trip (one per reranked candidate) is needed only near the limit.
+    # A short UTF-8 byte bound keeps the common prompt from needing another
+    # tokenizer round trip; near the limit the actual tokenizer still decides.
     p = pipeline()
     calls = []
 
@@ -168,3 +168,24 @@ async def test_a_short_prompt_is_not_sent_to_the_tokenizer_once_the_context_leng
     assert len(calls) == 1
     assert not await p._prompt_fits(long, runtime, 20)  # near the limit the tokenizer still decides
     assert len(calls) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("character", ["𠀀", "🧬", "ა", "я"])
+async def test_unicode_char_count_cannot_bypass_the_actual_token_budget(character):
+    p = pipeline()
+    runtime = ModelRuntime("byte-fallback", "http://fake/v1")
+    p._context_lengths = {(runtime.base_url, runtime.model_id): 1000}
+    calls = []
+
+    async def byte_fallback_tokenizer(*, messages, **kwargs):
+        # A supported byte-fallback tokenizer can emit more than one token for
+        # a character. This valid count must override the tempting char shortcut.
+        calls.append(messages)
+        return sum(len(m["content"].encode("utf-8")) for m in messages), 1000
+
+    p.llm_router.tokenize_messages = byte_fallback_tokenizer
+    messages = [{"role": "user", "content": character * 500}]
+    assert len(messages[0]["content"]) + 20 + 32 + 256 < 1000
+    assert not await p._prompt_fits(messages, runtime, 20)
+    assert calls == [messages]
