@@ -1,0 +1,161 @@
+{
+  "scope": "Historical judge history versus pipeline input history; actual prepared QA-memory text is not reconstructable from these answer records alone.",
+  "actual_W5_judge_max_context": 40000,
+  "builder_context_cap": 40000,
+  "default_judge_max_context_not_W5_override": 12000,
+  "systems": {
+    "ragu_v6k3b16": {
+      "all1454": {
+        "items": 1454,
+        "nonempty_item_history": 29,
+        "item_history_clipped": 8,
+        "history_turn_limit_applied": 6,
+        "history_content_limit_applied": 6,
+        "judge_history_matches_builder_rule": 1454,
+        "judge_differs_from_pipeline_input": 14,
+        "user_only_history_needing_replayed_answers": 8,
+        "assistant_turns_missing_from_judge": 59,
+        "history_materialization_missing_reference": 0
+      },
+      "robust29": {
+        "items": 29,
+        "nonempty_item_history": 18,
+        "item_history_clipped": 5,
+        "history_turn_limit_applied": 3,
+        "history_content_limit_applied": 5,
+        "judge_history_matches_builder_rule": 29,
+        "judge_differs_from_pipeline_input": 5,
+        "user_only_history_needing_replayed_answers": 0,
+        "assistant_turns_missing_from_judge": 24,
+        "history_materialization_missing_reference": 0
+      },
+      "context_cap_audit": {
+        "all1454": {
+          "n": 1454,
+          "truncated_at40000": 0,
+          "median_chars": 24269.5,
+          "p95_chars": 29352,
+          "max_chars": 33085,
+          "evidence_kinds": {
+            "document": 18284,
+            "entity": 2985,
+            "relation": 1293
+          },
+          "wholly_excluded_evidence_items": {},
+          "partially_excluded_evidence_items": {}
+        },
+        "robust29": {
+          "n": 29,
+          "truncated_at40000": 0,
+          "median_chars": 23749,
+          "p95_chars": 30852,
+          "max_chars": 33085,
+          "evidence_kinds": {
+            "document": 378,
+            "entity": 61,
+            "relation": 22
+          },
+          "wholly_excluded_evidence_items": {},
+          "partially_excluded_evidence_items": {}
+        }
+      }
+    },
+    "ragu_v6k3bq": {
+      "all1454": {
+        "items": 1454,
+        "nonempty_item_history": 29,
+        "item_history_clipped": 8,
+        "history_turn_limit_applied": 6,
+        "history_content_limit_applied": 6,
+        "judge_history_matches_builder_rule": 1454,
+        "judge_differs_from_pipeline_input": 14,
+        "user_only_history_needing_replayed_answers": 8,
+        "assistant_turns_missing_from_judge": 59,
+        "history_materialization_missing_reference": 0
+      },
+      "robust29": {
+        "items": 29,
+        "nonempty_item_history": 18,
+        "item_history_clipped": 5,
+        "history_turn_limit_applied": 3,
+        "history_content_limit_applied": 5,
+        "judge_history_matches_builder_rule": 29,
+        "judge_differs_from_pipeline_input": 5,
+        "user_only_history_needing_replayed_answers": 0,
+        "assistant_turns_missing_from_judge": 24,
+        "history_materialization_missing_reference": 0
+      },
+      "context_cap_audit": {
+        "all1454": {
+          "n": 1454,
+          "truncated_at40000": 0,
+          "median_chars": 24603.5,
+          "p95_chars": 29723,
+          "max_chars": 34469,
+          "evidence_kinds": {
+            "document": 18673,
+            "entity": 2994,
+            "relation": 1289
+          },
+          "wholly_excluded_evidence_items": {},
+          "partially_excluded_evidence_items": {}
+        },
+        "robust29": {
+          "n": 29,
+          "truncated_at40000": 0,
+          "median_chars": 24107,
+          "p95_chars": 30349,
+          "max_chars": 32763,
+          "evidence_kinds": {
+            "document": 380,
+            "entity": 62,
+            "relation": 21
+          },
+          "wholly_excluded_evidence_items": {},
+          "partially_excluded_evidence_items": {}
+        }
+      }
+    }
+  },
+  "qwen_robustness_declines_history_overlap": {
+    "declines": 5,
+    "clipped": 0,
+    "cases": [
+      {
+        "id": "dialogue-certificate-referent-missing-order",
+        "history_turns": 2,
+        "clipped": false,
+        "turn_clip": false,
+        "content_clip": false
+      },
+      {
+        "id": "unified-behavior-out-of-domain-request",
+        "history_turns": 0,
+        "clipped": false,
+        "turn_clip": false,
+        "content_clip": false
+      },
+      {
+        "id": "story-extension-academic-04",
+        "history_turns": 4,
+        "clipped": false,
+        "turn_clip": false,
+        "content_clip": false
+      },
+      {
+        "id": "story-extension-academic-05",
+        "history_turns": 4,
+        "clipped": false,
+        "turn_clip": false,
+        "content_clip": false
+      },
+      {
+        "id": "story-student-01",
+        "history_turns": 0,
+        "clipped": false,
+        "turn_clip": false,
+        "content_clip": false
+      }
+    ]
+  }
+}

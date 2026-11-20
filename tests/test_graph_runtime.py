@@ -16,10 +16,11 @@ def test_graph_runtime_passes_candidate_budget_to_search_engine(monkeypatch):
     monkeypatch.setattr(graph_utils, 'load_graph_engines', loader)
     monkeypatch.setattr(GraphRuntime, '_validate_collections', AsyncMock())
     runtime = object.__new__(GraphRuntime)
-    runtime.settings = Settings(_env_file=None, graph_related_candidates=200)
+    runtime.settings = Settings(_env_file=None, graph_related_candidates=200, graph_hub_min_edges=5000)
     try:
         runtime._load()
         assert loader.call_args.kwargs['max_related_candidates'] == 200
+        assert loader.call_args.kwargs['hub_min_edges'] == 5000
         assert loader.call_args.kwargs['hybrid_fusion'] == 'rrfw'  # RRF with rank ties broken (replay of 18.11), unless HYBRID_FUSION says otherwise
     finally:
         loop.close()

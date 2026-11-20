@@ -6,6 +6,7 @@ import locale
 import logging
 import os
 from typing import Any, Dict, List, Union
+from zoneinfo import ZoneInfo
 
 os.environ['HTTP_PROXY'] = ''
 os.environ['HTTPS_PROXY'] = ''
@@ -48,6 +49,7 @@ RANDOM_SEED: int = 42
 
 def main():
     locale.setlocale(locale.LC_ALL, '')
+    prompt_timezone = ZoneInfo(os.environ.get('PROMPT_TIMEZONE', 'Asia/Novosibirsk'))
 
     parser = ArgumentParser()
     parser.add_argument('-i', '--input', dest='input_name', type=str, required=True,
@@ -555,7 +557,7 @@ def main():
                     {
                         'role': 'system',
                         'content': QA_SYSTEM_PROMPT.format(
-                            current_datetime=datetime.today().strftime('%d %B %Y') + ' года'
+                            current_datetime=datetime.now(prompt_timezone).strftime('%d %B %Y') + ' года'
                         )
                     }
                 ]

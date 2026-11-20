@@ -1,0 +1,21 @@
+{
+  "base_commit": "a482a32",
+  "experimental_default": "legacy",
+  "quality_claim": "not evaluated; feature flag only",
+  "targeted_tests": {
+    "count": 50,
+    "passed": true,
+    "files": [
+      "test_evidence_policy.py",
+      "test_turn_routing.py",
+      "test_benchmark_config.py",
+      "test_prompt_verbatim.py",
+      "test_ragu_prompt_budget.py"
+    ]
+  },
+  "ruff_passed": true,
+  "mypy_source_files": 68,
+  "mypy_passed": true,
+  "gpu_requests_for_implementation": 0,
+  "source_sha256": "7ca2d938552bf5e2072dcaec5f6ba7571d37ed90f4ac77dc581b4d95348ac265"
+}

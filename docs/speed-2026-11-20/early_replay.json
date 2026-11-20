@@ -1,0 +1,22 @@
+{
+  "processed": 100,
+  "counts": {
+    "identical": 96,
+    "missing_fixture": 4
+  },
+  "accepted_baseline_llm_calls": 10318,
+  "accepted_early_llm_calls": 10318,
+  "accepted_signature_hashes_equal": true,
+  "skipped_case_ids": [
+    "app-5b07c894210e8d",
+    "b954-624",
+    "doc-b7-018",
+    "scenario-student-second-retake"
+  ],
+  "skipped_request_max_tokens": {
+    "1": 8
+  },
+  "results_sha256": "00ca30fddfb8d17273558bd2ab42f0bf3139fbe777a30585752a58102eca686c",
+  "harness_sha256": "9b889d224c144ec804fa01b6909e5e9c5d68ab35fc0398ba0a0569cf4f39a9bd",
+  "code_archive_sha256": "6bb68458d2b7286cd6969b4f8459f45463e847685d7760911ae6431f37b7a172"
+}

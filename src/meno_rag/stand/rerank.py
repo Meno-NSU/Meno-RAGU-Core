@@ -4,6 +4,7 @@ from typing import Any
 
 from nltk.stem.snowball import SnowballStemmer
 
+from meno_rag.stand.abbreviation_cache import AbbreviationTokenCache
 from meno_rag.stand.prompts import SYSTEM_PROMPT_FOR_RELEVANCE
 from meno_rag.stand.rewriting import find_candidates_to_abbreviations
 
@@ -35,6 +36,7 @@ def build_prompt(
     stemmer: SnowballStemmer | None = None,
     is_json: bool = False,
     order: str = "legacy",
+    *, abbreviation_cache: AbbreviationTokenCache | None = None,
 ) -> list[dict[str, str]]:
     """Build the reranker prompt that scores a candidate document by its USEFULNESS
     as a factual basis for answering the user's question (with dialogue history and
@@ -50,11 +52,14 @@ def build_prompt(
         raise ValueError("The estimated document is empty.")
     if order not in RERANK_PROMPT_ORDERS:
         raise ValueError(f"Unknown rerank prompt order {order!r}; expected one of {RERANK_PROMPT_ORDERS}.")
-    found_abbreviations = find_candidates_to_abbreviations(
-        source_text=estimated_document + "\n\n" + dialogue_history + "\n\n" + user_question,
-        all_abbreviations=abbr_dict,
-        stemmer=stemmer,
-    )
+    if abbreviation_cache is not None and abbreviation_cache.stemmer is stemmer:
+        found_abbreviations = abbreviation_cache.find(estimated_document, dialogue_history, user_question, abbr_dict)
+    else:
+        found_abbreviations = find_candidates_to_abbreviations(
+            source_text=estimated_document + "\n\n" + dialogue_history + "\n\n" + user_question,
+            all_abbreviations=abbr_dict,
+            stemmer=stemmer,
+        )
     # Each section without the blank line after it; the prompt joins them with one, which is the text the sections
     # used to be added with one by one (tests/test_rerank_prompt_order.py compares it with the old function).
     abbreviation_section = ""
@@ -148,8 +153,26 @@ def score_from_logprobs(choice: dict[str, Any]) -> float:
     except (KeyError, TypeError, IndexError) as exc:
         raise ValueError("Reranker response does not contain top_logprobs.") from exc
 
-    token_to_logprob = {str(item["token"]): float(item["logprob"]) for item in top_logprobs_list if "token" in item}
-    raw = {int(label): token_to_logprob.get(label, -100.0) for label in POSSIBLE_LABELS}
+    label_logprobs: dict[int, list[float]] = {int(label): [] for label in POSSIBLE_LABELS}
+    for item in top_logprobs_list:
+        token = str(item.get("token", ""))
+        if token not in POSSIBLE_LABELS:
+            continue
+        value = float(item["logprob"])
+        if math.isnan(value) or value == math.inf:
+            raise ValueError("Reranker returned a nonfinite label logprob.")
+        label_logprobs[int(token)].append(value)
+    if not any(math.isfinite(value) for values in label_logprobs.values() for value in values):
+        raise ValueError("Reranker top_logprobs contain no finite digit label.")
+
+    raw = {}
+    for label, values in label_logprobs.items():
+        if not values:
+            raw[label] = -100.0
+            continue
+        peak = max(values)
+        # Distinct token IDs can decode to the same digit. Their probability masses add.
+        raw[label] = peak if peak == -math.inf else peak + math.log(sum(math.exp(value - peak) for value in values))
     return aggregate_logprobs_to_score(raw)
 
 

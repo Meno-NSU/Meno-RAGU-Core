@@ -1,0 +1,298 @@
+{
+  "cases": {
+    "dialogue-certificate-referent-missing-order": {
+      "pool_size": 69,
+      "protocol_comparisons": [
+        {
+          "a": "L",
+          "b": "SL",
+          "repeat": 0,
+          "mean_abs_score_delta": 2.2191528917127585e-09,
+          "spearman": 0.999963463646328,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        },
+        {
+          "a": "L",
+          "b": "SL",
+          "repeat": 1,
+          "mean_abs_score_delta": 3.022101696572956e-05,
+          "spearman": 1.0,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        },
+        {
+          "a": "Q",
+          "b": "SQ",
+          "repeat": 0,
+          "mean_abs_score_delta": 1.7722826374560444e-08,
+          "spearman": 1.0,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        },
+        {
+          "a": "Q",
+          "b": "SQ",
+          "repeat": 1,
+          "mean_abs_score_delta": 5.335393816010529e-06,
+          "spearman": 1.0,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        }
+      ],
+      "gold_candidate_diagnostics": [],
+      "original_question": "Мне нужна вторая справка. Как запросить её дистанционно?",
+      "rerank_question": "Как дистанционно запросить вторую справку для студента НГУ, обучающегося на платном отделении?",
+      "saved_vs_new_L": {
+        "mean_abs_score_delta": 0.0016331766670234055,
+        "spearman": 0.9995250274022652,
+        "first_token_changes": 1
+      }
+    },
+    "doc-b3-005": {
+      "pool_size": 78,
+      "protocol_comparisons": [
+        {
+          "a": "L",
+          "b": "SL",
+          "repeat": 0,
+          "mean_abs_score_delta": 1.739036568934347e-06,
+          "spearman": 1.0,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        },
+        {
+          "a": "L",
+          "b": "SL",
+          "repeat": 1,
+          "mean_abs_score_delta": 2.7576786251302072e-09,
+          "spearman": 1.0,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        },
+        {
+          "a": "Q",
+          "b": "SQ",
+          "repeat": 0,
+          "mean_abs_score_delta": 1.150742408072774e-05,
+          "spearman": 0.9998735441773416,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        },
+        {
+          "a": "Q",
+          "b": "SQ",
+          "repeat": 1,
+          "mean_abs_score_delta": 1.1847961165747255e-09,
+          "spearman": 0.9998988353418733,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        }
+      ],
+      "gold_candidate_diagnostics": [
+        {
+          "candidate": 14,
+          "document_sha256": "f3aece144b3e4d58feec360d4bbb8d8acd2db68050712998325ad4057914302b",
+          "public_cue": "| Физика | 31.05.01 Лечебное дело (Лечебное дело) |\n| Физика | 31.05.01 Лечебное дело (General medicine / Лечебное дело) |\n\n## Данные исследовательского портала НГУ (Pure)\n\n- Доцент — Кафедра общей фи",
+          "score_rank": {
+            "L": {
+              "score": 0.9999999324440259,
+              "rank": 1,
+              "label": "2"
+            },
+            "Q": {
+              "score": 0.9999999479609818,
+              "rank": 1,
+              "label": "2"
+            },
+            "QI": {
+              "score": 0.9999999761747914,
+              "rank": 1,
+              "label": "2"
+            },
+            "SL": {
+              "score": 0.9999999324440341,
+              "rank": 1,
+              "label": "2"
+            },
+            "SQ": {
+              "score": 0.9999999445891656,
+              "rank": 1,
+              "label": "2"
+            }
+          }
+        }
+      ],
+      "original_question": "По каким образовательным программам НГУ Денис Иванович Карпов, доцент кафедры общей физики, преподаёт физику?",
+      "rerank_question": "По каким образовательным программам НГУ Денис Иванович Карпов, доцент кафедры общей физики, преподаёт физику?",
+      "saved_vs_new_L": {
+        "mean_abs_score_delta": 0.0017679963386223623,
+        "spearman": 0.9996712148610882,
+        "first_token_changes": 0
+      }
+    },
+    "legacy-003": {
+      "pool_size": 64,
+      "protocol_comparisons": [
+        {
+          "a": "L",
+          "b": "SL",
+          "repeat": 0,
+          "mean_abs_score_delta": 7.114499936981657e-08,
+          "spearman": 1.0,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        },
+        {
+          "a": "L",
+          "b": "SL",
+          "repeat": 1,
+          "mean_abs_score_delta": 2.3425457898345895e-08,
+          "spearman": 1.0,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        },
+        {
+          "a": "Q",
+          "b": "SQ",
+          "repeat": 0,
+          "mean_abs_score_delta": 8.823039797838691e-08,
+          "spearman": 0.9999542124542125,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        },
+        {
+          "a": "Q",
+          "b": "SQ",
+          "repeat": 1,
+          "mean_abs_score_delta": 7.343809670630895e-05,
+          "spearman": 0.9999542124542125,
+          "first_token_changes": 1,
+          "top16_overlap": 16
+        }
+      ],
+      "gold_candidate_diagnostics": [
+        {
+          "candidate": 12,
+          "document_sha256": "78dbf14813fbbfcbe19f98824151582c7c901161f5f30c1a448c893d4dbdee64",
+          "public_cue": "**Кафедра молекулярной биологии** (базовый институт – НИБХ СО РАН и ГНЦ ВБ «Вектор») готовит специалистов в области молекулярной биологии, генной инженерии, вирусологии, микробиологии, биохимии, биотехнологии. На кафедре специализируются студенты как б",
+          "score_rank": {
+            "L": {
+              "score": 0.005764472814779136,
+              "rank": 15,
+              "label": "0"
+            },
+            "Q": {
+              "score": 0.002065630184461169,
+              "rank": 19,
+              "label": "0"
+            },
+            "QI": {
+              "score": 0.9899015770206232,
+              "rank": 6,
+              "label": "2"
+            },
+            "SL": {
+              "score": 0.005764473745085103,
+              "rank": 15,
+              "label": "0"
+            },
+            "SQ": {
+              "score": 0.0020656297925697484,
+              "rank": 19,
+              "label": "0"
+            }
+          }
+        },
+        {
+          "candidate": 18,
+          "document_sha256": "c13610fc65a6d791f1e9be1171dde372b7e94543bd265f01ab8c68332e36989b",
+          "public_cue": "**Кафедра молекулярной биологии** (базовый институт – НИБХ СО РАН и ГНЦ ВБ «Вектор») готовит специалистов в области молекулярной биологии, генной инженерии, вирусологии, микробиологии, биохимии, биотехнологии. На кафедре специализируются студенты как б",
+          "score_rank": {
+            "L": {
+              "score": 0.005730218362381859,
+              "rank": 16,
+              "label": "0"
+            },
+            "Q": {
+              "score": 0.007009773235513659,
+              "rank": 15,
+              "label": "0"
+            },
+            "QI": {
+              "score": 0.959946460336346,
+              "rank": 9,
+              "label": "2"
+            },
+            "SL": {
+              "score": 0.005730218849379798,
+              "rank": 16,
+              "label": "0"
+            },
+            "SQ": {
+              "score": 0.007009775936245245,
+              "rank": 15,
+              "label": "0"
+            }
+          }
+        }
+      ],
+      "original_question": "В описании кафедры молекулярной биологии ФЕН НГУ вижу «Вектор». Это базовая организация кафедры и гарантирует ли это место практики студенту?",
+      "rerank_question": "Гарантирует ли наличие организации «Вектор» в описании кафедры молекулярной биологии ФЕН НГУ место практики студенту?",
+      "saved_vs_new_L": {
+        "mean_abs_score_delta": 0.0010588700215290367,
+        "spearman": 0.9994505494505495,
+        "first_token_changes": 0
+      }
+    },
+    "prod-0443": {
+      "pool_size": 70,
+      "protocol_comparisons": [
+        {
+          "a": "L",
+          "b": "SL",
+          "repeat": 0,
+          "mean_abs_score_delta": 8.363577668421084e-10,
+          "spearman": 1.0,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        },
+        {
+          "a": "L",
+          "b": "SL",
+          "repeat": 1,
+          "mean_abs_score_delta": 8.363577668421084e-10,
+          "spearman": 1.0,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        },
+        {
+          "a": "Q",
+          "b": "SQ",
+          "repeat": 0,
+          "mean_abs_score_delta": 3.914798547587115e-06,
+          "spearman": 1.0,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        },
+        {
+          "a": "Q",
+          "b": "SQ",
+          "repeat": 1,
+          "mean_abs_score_delta": 8.815538222336778e-10,
+          "spearman": 1.0,
+          "first_token_changes": 0,
+          "top16_overlap": 16
+        }
+      ],
+      "gold_candidate_diagnostics": [],
+      "original_question": "Кто указан ректором НГУ в официальном разделе «Руководство» в ноябре 2026 года?",
+      "rerank_question": "Кто указан ректором НГУ в официальном разделе «Руководство» в ноябре 2026 года?",
+      "saved_vs_new_L": {
+        "mean_abs_score_delta": 0.0016593166974788603,
+        "spearman": 0.9997550520514391,
+        "first_token_changes": 0
+      }
+    }
+  }
+}

@@ -32,7 +32,7 @@ except ImportError as err:
 
 from search_utils.search_utils import combine_relevant_chunks
 from graph_utils import search_timings
-from graph_utils.local_search import EfficientLocalSearchEngine
+from graph_utils.local_search import EfficientLocalSearchEngine, build_hub_index, hub_candidates
 from qdrant_client.http.models import Fusion, FusionQuery, Rrf, RrfQuery
 from graph_utils.graph_cleanup import CleanupInputs, clean_graph
 from graph_utils.relation_review import RelationReviewMixin
@@ -452,7 +452,8 @@ def load_graph_engines(graph_dir: str, embedder_name: str,
                        engine_reranker_name: Optional[str] = None,
                        engine_reranker_url: Optional[str] = None, engine_reranker_key: Optional[str] = None,
                        embedder: Optional[Embedder] = None, scorer: Optional[Scorer] = None,
-                       max_related_candidates: Optional[int] = None, hybrid_fusion: str = 'rrf'
+                       max_related_candidates: Optional[int] = None, hybrid_fusion: str = 'rrf',
+                       hub_min_edges: int = 0
                        ) -> GraphSearchEngines:
     if not os.path.isdir(graph_dir):
         raise IOError(f'The directory "{graph_dir}" does not exist!')
@@ -506,6 +507,12 @@ def load_graph_engines(graph_dir: str, embedder_name: str,
         sparse_embedder=sparse_embedder, reranker=scorer
     )
     local_engine.max_related_candidates = max_related_candidates
+    if hub_min_edges > 0 and max_related_candidates:
+        hubs_started = time.monotonic()
+        local_engine.hub_index = event_loop.run_until_complete(build_hub_index(
+            knowledge_graph, hub_candidates(knowledge_graph, hub_min_edges), max_related_candidates))
+        logger.info('Хаб-сущности графа (от {} связей): {}, окрестности подготовлены за {:.1f} с.',
+                    hub_min_edges, len(local_engine.hub_index), time.monotonic() - hubs_started)
     naive_engine = NaiveSearchEngine(
         llm=dummy_llm, knowledge_graph=knowledge_graph, embedder=embedder,
         sparse_embedder=sparse_embedder, reranker=scorer

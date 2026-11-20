@@ -38,6 +38,30 @@ class GraphSelection(_RerankOutput):
         self.graph_trace = graph_trace
 
 
+class EarlyQuery:
+    """The first search query's search and rerank scores of one turn, started while the rewrite call runs."""
+
+    def __init__(self, query, dialogue_history, *, rerank_question=None, runtime=None):
+        self.query = query
+        self.rerank_question = query if rerank_question is None else rerank_question
+        self.dialogue_history = dialogue_history
+        self.runtime = runtime
+        self.retrieval = None  # task: the retrieval batches of [query]
+        self.started = None  # task: waits for the search, then starts the scoring tasks
+        self.scores = {}  # candidate key -> scoring task
+        self.calls = new_rerank_calls()
+
+    async def close(self):
+        """Cancel what is still running (an unused or failed turn) and wait for it."""
+        pending = [t for t in (self.retrieval, self.started, *self.scores.values()) if t is not None and not t.done()]
+        for task in pending:
+            task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
+        for task in (self.retrieval, self.started, *self.scores.values()):
+            if task is not None and task.done() and not task.cancelled():
+                task.exception()  # retrieved: an unused failure is not reported as "never retrieved"
+
+
 class RaguRagPipeline(StandRagPipeline):
     def _priority(self, candidate: Candidate, merged: float) -> float:
         """The order of relevant candidates: the merged relevance times the quality of the source document to the
@@ -64,10 +88,14 @@ class RaguRagPipeline(StandRagPipeline):
         prior = float(self.resources.documents[mapping["doc_index"]].get("quality_score") or 1.0)
         return min(max(prior, 0.05), 1.0)
 
-    async def _retrieve(self, search_queries):
+    async def _retrieve(self, search_queries, early=None):
+        use_early = (early is not None and early.retrieval is not None
+                     and bool(search_queries) and search_queries[0] == early.query)
         # The queries of one question run at once (still within embed_semaphore): the search mostly waits for the
         # embedder, Qdrant and the cross-encoder, and three rewrites used to wait for three searches in a row.
         async def one(query):
+            if use_early and query == early.query:
+                return (await early.retrieval)[0]
             async with self.embed_semaphore:
                 return {"query": query, "graph": await self.resources.graph.search(query)}
 
@@ -97,28 +125,69 @@ class RaguRagPipeline(StandRagPipeline):
             fused.append({"query": batch["query"], "pool": sorted(unique.values(), key=lambda c: (-c.score, c.key))})
         return fused
 
-    async def _rerank(self, fused_batches, user_question, dialogue_history, runtime: ModelRuntime):
+    async def _score_candidate(self, candidate, user_question, dialogue_history, runtime: ModelRuntime):
+        """The LLM rerank score of one candidate for the user question (not for the search query that found it)."""
+        if candidate.chunk_id is not None:
+            return await self._score_chunk_with_llm(user_question, dialogue_history, candidate.chunk_id, runtime)
+        text = graph_element_to_text(candidate.element, self.resources.documents,
+                                     self.resources.chunk_mapping, max_source_titles=0)
+        return await self._score_document_with_llm(user_question, dialogue_history, text, runtime, candidate.key)
+
+    def _start_early_query(self, question, dialogue_history, runtime: ModelRuntime, *, rerank_question=None):
+        """Start the first retrieval during the rewrite; EARLY_RERANK additionally starts its LLM scores.
+
+        The question is the first search query and its pool depends on its own search only, so later stages reuse
+        these results unchanged. Retrieval alone leaves every LLM score to the normal rerank stage.
+        """
+        early = EarlyQuery(question, dialogue_history, rerank_question=rerank_question, runtime=runtime)
+        early.retrieval = asyncio.create_task(self._retrieve([question]))
+        if not self.settings.early_rerank:
+            return early
+
+        async def start_scores():
+            pool = self._candidate_pool(self._fuse(await early.retrieval)[0]["pool"])
+            if not self.settings.llm_rerank or not pool:
+                return
+            with counting_rerank_calls(early.calls):
+                if self._rerank_warm_up(len(pool)):  # question-first prompts: the first one fills the cache
+                    first = asyncio.create_task(self._score_candidate(
+                        pool[0], early.rerank_question, dialogue_history, runtime))
+                    early.scores[pool[0].key] = first
+                    await first
+                for candidate in pool:
+                    if candidate.key not in early.scores:
+                        early.scores[candidate.key] = asyncio.create_task(
+                            self._score_candidate(candidate, early.rerank_question, dialogue_history, runtime))
+
+        early.started = asyncio.create_task(start_scores())
+        return early
+
+    async def _rerank(self, fused_batches, user_question, dialogue_history, runtime: ModelRuntime, early=None):
         batches = [self._candidate_pool(batch["pool"]) for batch in fused_batches]
         unique = {c.key: c for batch in batches for c in batch}
 
         async def score(candidate):
-            if candidate.chunk_id is not None:
-                return await self._score_chunk_with_llm(user_question, dialogue_history, candidate.chunk_id, runtime)
-            text = graph_element_to_text(candidate.element, self.resources.documents,
-                                         self.resources.chunk_mapping, max_source_titles=0)
-            return await self._score_document_with_llm(user_question, dialogue_history, text, runtime, candidate.key)
+            return await self._score_candidate(candidate, user_question, dialogue_history, runtime)
 
+        use_early = (early is not None and early.started is not None and bool(fused_batches)
+                     and fused_batches[0]["query"] == early.query and user_question == early.rerank_question
+                     and dialogue_history == early.dialogue_history and runtime == early.runtime)
         calls = new_rerank_calls()
         if self.settings.llm_rerank:
             candidates = list(unique.values())
             tasks: list[asyncio.Task] = []
             try:
+                if use_early:
+                    await early.started  # the first query's scoring tasks exist from here on
+                cached_scores = early.scores if use_early else {}
                 if self._rerank_warm_up(len(candidates)):  # question-first prompts: the first one fills the cache
                     with counting_rerank_calls(calls):
-                        tasks.append(asyncio.create_task(score(candidates[0])))
+                        tasks.append(cached_scores.get(candidates[0].key)
+                                     or asyncio.create_task(score(candidates[0])))
                     await tasks[0]
                 with counting_rerank_calls(calls):
-                    tasks.extend(asyncio.create_task(score(candidate)) for candidate in candidates[len(tasks):])
+                    tasks.extend(cached_scores.get(candidate.key) or asyncio.create_task(score(candidate))
+                                 for candidate in candidates[len(tasks):])
                 values = await asyncio.gather(*tasks)
             finally:
                 for task in tasks:
@@ -128,6 +197,9 @@ class RaguRagPipeline(StandRagPipeline):
         else:
             # as Menon 1.1: the engine's cross-encoder score (bge-reranker) is the relevance, no LLM call
             values = [float(candidate.score) for candidate in unique.values()]
+        if use_early:
+            for name, value in early.calls.items():
+                calls[name] = calls.get(name, 0) + value
         scores = dict(zip(unique, values, strict=True))
         order = self._priority
 

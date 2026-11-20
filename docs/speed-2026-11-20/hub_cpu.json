@@ -1,0 +1,349 @@
+{
+  "nodes": 383359,
+  "edges": 1062350,
+  "hub_min_edges": 5000,
+  "hub_count": 3,
+  "preparation_s": 0.8103232970461249,
+  "queries": 30,
+  "exact_full_results": true,
+  "exact_scorer_inputs": true,
+  "source_files_unchanged": true,
+  "peak_rss_kib": 13612316,
+  "timing_ms": {
+    "baseline": {
+      "median": 348.2183620799333,
+      "p95": 798.8958326168358,
+      "total": 15069.46216756478
+    },
+    "hub_index": {
+      "median": 44.60295685566962,
+      "p95": 85.72892285883427,
+      "total": 1295.5268817022443
+    },
+    "prior_hub_index": {
+      "median": 82.07602147012949,
+      "p95": 160.0536210462451,
+      "total": 2416.026137303561
+    }
+  },
+  "cases": [
+    {
+      "case": 0,
+      "anchors": 1,
+      "hub_anchors": 1,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 687.9280512221158,
+      "hub_index_ms": 70.25312865152955,
+      "prior_hub_index_ms": 142.6019100472331
+    },
+    {
+      "case": 1,
+      "anchors": 20,
+      "hub_anchors": 2,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 739.0011050738394,
+      "hub_index_ms": 72.98549357801676,
+      "prior_hub_index_ms": 146.55602304264903
+    },
+    {
+      "case": 2,
+      "anchors": 20,
+      "hub_anchors": 0,
+      "relations": 200,
+      "chunks": 158,
+      "baseline_ms": 8.733727037906647,
+      "hub_index_ms": 8.429016917943954,
+      "prior_hub_index_ms": 12.639407068490982
+    },
+    {
+      "case": 3,
+      "anchors": 12,
+      "hub_anchors": 0,
+      "relations": 49,
+      "chunks": 24,
+      "baseline_ms": 1.2621451169252396,
+      "hub_index_ms": 1.0115881450474262,
+      "prior_hub_index_ms": 1.0932530276477337
+    },
+    {
+      "case": 4,
+      "anchors": 18,
+      "hub_anchors": 1,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 676.843408960849,
+      "hub_index_ms": 81.04413514956832,
+      "prior_hub_index_ms": 153.8616199977696
+    },
+    {
+      "case": 5,
+      "anchors": 20,
+      "hub_anchors": 0,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 9.120313916355371,
+      "hub_index_ms": 9.087000042200089,
+      "prior_hub_index_ms": 10.224658064544201
+    },
+    {
+      "case": 6,
+      "anchors": 3,
+      "hub_anchors": 3,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 765.7504240050912,
+      "hub_index_ms": 73.19264998659492,
+      "prior_hub_index_ms": 143.17855006083846
+    },
+    {
+      "case": 7,
+      "anchors": 20,
+      "hub_anchors": 3,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 780.9920511208475,
+      "hub_index_ms": 80.1984746940434,
+      "prior_hub_index_ms": 151.76457492634654
+    },
+    {
+      "case": 8,
+      "anchors": 20,
+      "hub_anchors": 0,
+      "relations": 200,
+      "chunks": 162,
+      "baseline_ms": 12.220179196447134,
+      "hub_index_ms": 11.89659209921956,
+      "prior_hub_index_ms": 13.029912021011114
+    },
+    {
+      "case": 9,
+      "anchors": 12,
+      "hub_anchors": 0,
+      "relations": 24,
+      "chunks": 23,
+      "baseline_ms": 3.0332179740071297,
+      "hub_index_ms": 2.7513811364769936,
+      "prior_hub_index_ms": 2.740290015935898
+    },
+    {
+      "case": 10,
+      "anchors": 20,
+      "hub_anchors": 3,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 770.3683753497899,
+      "hub_index_ms": 79.94543388485909,
+      "prior_hub_index_ms": 151.51384798809886
+    },
+    {
+      "case": 11,
+      "anchors": 20,
+      "hub_anchors": 0,
+      "relations": 131,
+      "chunks": 88,
+      "baseline_ms": 6.276056170463562,
+      "hub_index_ms": 6.159984972327948,
+      "prior_hub_index_ms": 7.005545310676098
+    },
+    {
+      "case": 12,
+      "anchors": 1,
+      "hub_anchors": 1,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 679.1483550332487,
+      "hub_index_ms": 73.90961516648531,
+      "prior_hub_index_ms": 146.19134971871972
+    },
+    {
+      "case": 13,
+      "anchors": 20,
+      "hub_anchors": 2,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 4614.953422918916,
+      "hub_index_ms": 77.6122990064323,
+      "prior_hub_index_ms": 153.3973067998886
+    },
+    {
+      "case": 14,
+      "anchors": 20,
+      "hub_anchors": 0,
+      "relations": 69,
+      "chunks": 44,
+      "baseline_ms": 4.18414082378149,
+      "hub_index_ms": 4.110640846192837,
+      "prior_hub_index_ms": 4.71740635111928
+    },
+    {
+      "case": 15,
+      "anchors": 12,
+      "hub_anchors": 0,
+      "relations": 29,
+      "chunks": 33,
+      "baseline_ms": 1.3165781274437904,
+      "hub_index_ms": 1.1143521405756474,
+      "prior_hub_index_ms": 1.114673912525177
+    },
+    {
+      "case": 16,
+      "anchors": 18,
+      "hub_anchors": 1,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 698.0876629240811,
+      "hub_index_ms": 82.66595704481006,
+      "prior_hub_index_ms": 157.7450311742723
+    },
+    {
+      "case": 17,
+      "anchors": 20,
+      "hub_anchors": 0,
+      "relations": 130,
+      "chunks": 73,
+      "baseline_ms": 5.864322185516357,
+      "hub_index_ms": 5.730327218770981,
+      "prior_hub_index_ms": 6.704973056912422
+    },
+    {
+      "case": 18,
+      "anchors": 3,
+      "hub_anchors": 3,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 784.297410864383,
+      "hub_index_ms": 77.27245287969708,
+      "prior_hub_index_ms": 149.88126186653972
+    },
+    {
+      "case": 19,
+      "anchors": 20,
+      "hub_anchors": 3,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 798.8958326168358,
+      "hub_index_ms": 82.91667513549328,
+      "prior_hub_index_ms": 158.80513098090887
+    },
+    {
+      "case": 20,
+      "anchors": 20,
+      "hub_anchors": 0,
+      "relations": 152,
+      "chunks": 154,
+      "baseline_ms": 6.921825930476189,
+      "hub_index_ms": 6.807087920606136,
+      "prior_hub_index_ms": 7.671044208109379
+    },
+    {
+      "case": 21,
+      "anchors": 12,
+      "hub_anchors": 0,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 10.022092144936323,
+      "hub_index_ms": 9.42649831995368,
+      "prior_hub_index_ms": 9.329322259873152
+    },
+    {
+      "case": 22,
+      "anchors": 20,
+      "hub_anchors": 3,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 800.2090980298817,
+      "hub_index_ms": 86.43535804003477,
+      "prior_hub_index_ms": 166.62228340283036
+    },
+    {
+      "case": 23,
+      "anchors": 20,
+      "hub_anchors": 0,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 10.942545253783464,
+      "hub_index_ms": 11.207962408661842,
+      "prior_hub_index_ms": 11.884590145200491
+    },
+    {
+      "case": 24,
+      "anchors": 1,
+      "hub_anchors": 1,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 693.3178817853332,
+      "hub_index_ms": 78.40499095618725,
+      "prior_hub_index_ms": 150.18835803493857
+    },
+    {
+      "case": 25,
+      "anchors": 20,
+      "hub_anchors": 2,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 764.4240213558078,
+      "hub_index_ms": 85.72892285883427,
+      "prior_hub_index_ms": 162.80448995530605
+    },
+    {
+      "case": 26,
+      "anchors": 20,
+      "hub_anchors": 0,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 9.133378975093365,
+      "hub_index_ms": 9.018750861287117,
+      "prior_hub_index_ms": 10.093437042087317
+    },
+    {
+      "case": 27,
+      "anchors": 12,
+      "hub_anchors": 0,
+      "relations": 35,
+      "chunks": 24,
+      "baseline_ms": 1.3101762160658836,
+      "hub_index_ms": 1.064058393239975,
+      "prior_hub_index_ms": 1.0621328838169575
+    },
+    {
+      "case": 28,
+      "anchors": 18,
+      "hub_anchors": 1,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 705.3110520355403,
+      "hub_index_ms": 86.19326818734407,
+      "prior_hub_index_ms": 160.0536210462451
+    },
+    {
+      "case": 29,
+      "anchors": 20,
+      "hub_anchors": 0,
+      "relations": 200,
+      "chunks": 200,
+      "baseline_ms": 19.593315199017525,
+      "hub_index_ms": 18.952785059809685,
+      "prior_hub_index_ms": 21.550132893025875
+    }
+  ],
+  "stand": "stand-v6k3b",
+  "measurement": "CPU-only actual frozen graph and KV with deterministic cross-encoder stub",
+  "hub_cases": {
+    "n": 15,
+    "median_ms": {
+      "baseline_ms": 764.4240213558078,
+      "prior_hub_index_ms": 151.76457492634654,
+      "hub_index_ms": 79.94543388485909
+    }
+  },
+  "control_cases": {
+    "n": 15,
+    "median_ms": {
+      "baseline_ms": 6.921825930476189,
+      "prior_hub_index_ms": 7.671044208109379,
+      "hub_index_ms": 6.807087920606136
+    }
+  }
+}

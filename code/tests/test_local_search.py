@@ -5,7 +5,12 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from graph_utils.local_search import EfficientLocalSearchEngine, find_related_text_units
+from graph_utils.local_search import (
+    EfficientLocalSearchEngine,
+    build_hub_index,
+    find_related_text_units,
+    hub_candidates,
+)
 from ragu.graph.types import Entity, Relation
 from ragu.search_engine.local_search import LocalParams, LocalSearchEngine
 from ragu.search_engine.search_functional import _find_most_related_text_unit_from_entities
@@ -243,3 +248,114 @@ def test_a_hub_entity_reads_only_the_chunks_it_keeps():
         full = await _find_most_related_text_unit_from_entities([hub], graph(payloads), edges, neighbors)
         assert [chunk.content for chunk in chunks] == [chunk.content for chunk in full[:200]]
     asyncio.run(run())
+
+
+class HubGraph:
+    """A knowledge graph with hubs, read through the backend calls ragu's search makes: an edge between two entities
+    is in both incident lists, relation strengths repeat (ties), some edges are self-loops, some neighbours have no
+    node and some chunks no payload."""
+
+    def __init__(self, seed, entities=80, hubs=(0, 1, 2), hub_edges=600, edges=400):
+        rng = random.Random(seed)
+        ids = [f'c{index}' for index in range(500)]
+        self.nodes = {}
+        for index in range(entities):
+            count = 300 if index in hubs else rng.randint(1, 12)
+            self.nodes[f'e{index}'] = Entity(f'E{index}', 'TYPE', f'описание {index}', rng.choices(ids, k=count),
+                                             id=f'e{index}')
+        missing = {f'e{index}' for index in rng.sample(range(10, entities), 5)}
+        self.incident = {node: [] for node in self.nodes}
+        strengths = [1.0, 2.0, 2.0, 5.0, 7.5] + [round(rng.uniform(0, 10), 1) for _ in range(20)]
+        pairs = [(f'e{rng.choice(hubs)}', f'e{rng.randrange(entities)}') for _ in range(hub_edges)]
+        pairs += [(f'e{rng.randrange(entities)}', f'e{rng.randrange(entities)}') for _ in range(edges)]
+        for number, (left, right) in enumerate(pairs):
+            subject, target = (left, right) if number % 3 else (right, left)
+            relation = Relation(subject, target, subject, target, f'K{number % 4}', f'связь {number}',
+                                relation_strength=rng.choice(strengths), id=f'r{number}')
+            self.incident[subject].append(relation)
+            if target != subject:
+                self.incident[target].append(relation)
+        for node in missing:
+            self.nodes.pop(node)
+        self.payloads = {chunk_id: {'content': chunk_id, 'chunk_order_idx': 0, 'doc_id': 'doc'}
+                         for chunk_id in ids if rng.randrange(6)}
+
+        async def get_all_edges_for_nodes(node_ids):
+            return [list(self.incident.get(node, [])) for node in node_ids]
+
+        async def get_nodes(node_ids):
+            return [self.nodes.get(node) for node in node_ids]
+
+        storage = SimpleNamespace(get_by_ids=AsyncMock(side_effect=lambda ids: [self.payloads.get(i) for i in ids]))
+        backend = SimpleNamespace(get_all_edges_for_nodes=AsyncMock(side_effect=get_all_edges_for_nodes),
+                                  _graph=SimpleNamespace(degree=lambda: [(node, len(edges))
+                                                                         for node, edges in self.incident.items()]))
+        self.knowledge_graph = SimpleNamespace(index=SimpleNamespace(graph_backend=backend, get_nodes=get_nodes,
+                                                                     chunks_kv_storage=storage))
+
+
+def search_engine(hub_graph, max_related, hub_index=None):
+    engine = object.__new__(EfficientLocalSearchEngine)
+    engine.knowledge_graph = hub_graph.knowledge_graph
+    engine.max_related_candidates = max_related
+    engine.hub_index = hub_index
+    engine.reranker = scored_reranker({f'E{index}': 0.1 + index / 100 for index in range(80)}, default=0.05)
+    return engine
+
+
+@pytest.mark.parametrize('seed', range(6))
+@pytest.mark.parametrize('max_related', [1, 5, 40, 200])
+def test_searches_with_the_hub_index_find_the_same_pools(seed, max_related):
+    async def run():
+        hub_graph = HubGraph(seed)
+        hubs = hub_candidates(hub_graph.knowledge_graph, 100)
+        assert {'e0', 'e1', 'e2'} <= set(hubs)
+        index = await build_hub_index(hub_graph.knowledge_graph, hubs, max_related)
+        rng = random.Random(seed)
+        for query in range(12):
+            anchors = [hub_graph.nodes[node] for node in rng.sample(sorted(hub_graph.nodes), 20)]
+            hubs_first = [hub_graph.nodes[node] for node in ('e0', 'e1', 'e2')]
+            if query % 4 == 0:  # only hubs: every relation and chunk of the pools comes from the precomputed ones
+                anchors = hubs_first
+            elif query % 4 == 1:  # the hubs first, then others that share many of their relations
+                anchors = hubs_first + anchors[:17]
+            else:
+                anchors[rng.randrange(20)] = hub_graph.nodes['e0']
+            hits = [SimpleNamespace(distance=0.9 - position / 100) for position in range(len(anchors))]
+            results = []
+            for hub_index in (None, index):
+                engine = search_engine(hub_graph, max_related, hub_index)
+                engine.retriever = SimpleNamespace(query_entities=AsyncMock(return_value=[(list(anchors), hits)]))
+                [result] = await engine.batch_search(['вопрос'], params=LocalParams(top_k=20, rerank_top_k=20))
+                results.append((result, engine.reranker.score.call_args_list))
+            (before, calls_before), (after, calls_after) = results
+            assert [r.id for r in after.result.relations] == [r.id for r in before.result.relations]
+            assert [asdict(c) for c in after.result.chunks] == [asdict(c) for c in before.result.chunks]
+            assert after.metrics == before.metrics
+            assert calls_after == calls_before  # the same cross-encoder calls with the same texts
+    asyncio.run(run())
+
+
+def test_a_hub_query_reads_no_hub_edges_or_neighbours():
+    async def run():
+        hub_graph = HubGraph(0)
+        index = await build_hub_index(hub_graph.knowledge_graph, ['e0', 'e1', 'e2'], 200)
+        backend = hub_graph.knowledge_graph.index.graph_backend
+        backend.get_all_edges_for_nodes.reset_mock()
+        engine = search_engine(hub_graph, 200, index)
+        anchors = [hub_graph.nodes['e0'], hub_graph.nodes['e1']]
+        engine.retriever = SimpleNamespace(query_entities=AsyncMock(return_value=[
+            (anchors, [SimpleNamespace(distance=0.9), SimpleNamespace(distance=0.8)])]))
+        await engine.batch_search(['вопрос'], params=LocalParams(top_k=2, rerank_top_k=2))
+        read = [node for call in backend.get_all_edges_for_nodes.call_args_list for node in call.args[0]]
+        assert 'e0' not in read and 'e1' not in read
+    asyncio.run(run())
+
+
+def test_the_hub_index_is_not_used_when_the_search_keeps_more_relations_than_it_holds():
+    hub_graph = HubGraph(1)
+    index = asyncio.run(build_hub_index(hub_graph.knowledge_graph, ['e0'], 5))
+    assert search_engine(hub_graph, 5, index)._usable_hub_index() is index
+    assert search_engine(hub_graph, 6, index)._usable_hub_index() is None
+    assert search_engine(hub_graph, 0, index)._usable_hub_index() is None  # no cut, no precomputed list
+    assert hub_candidates(hub_graph.knowledge_graph, 0) == []

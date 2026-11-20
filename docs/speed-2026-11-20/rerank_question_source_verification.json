@@ -1,0 +1,35 @@
+{
+  "base_commit": "29939ce26e9fdc4a249429fc44af128770ef02a4",
+  "experimental_setting": "RERANK_QUESTION_SOURCE",
+  "default": "resolved",
+  "alternative": "original_resolved",
+  "targeted_tests_passed": 76,
+  "pytest_batches": [
+    {
+      "passed": 33,
+      "seconds": 3.69,
+      "maxrss_kib": 231308
+    },
+    {
+      "passed": 43,
+      "seconds": 3.29,
+      "maxrss_kib": 199800
+    }
+  ],
+  "ruff_src_tests": "passed",
+  "mypy": {
+    "status": "passed",
+    "source_files": 67,
+    "maxrss_kib": 419200
+  },
+  "scheduling_parity": "full and retrieval-only, legacy/question_first order, legacy/structured guidance",
+  "mismatch_cache_checks": [
+    "question",
+    "history",
+    "runtime"
+  ],
+  "extra_llm_calls": 0,
+  "gpu_requests_for_implementation": 0,
+  "static_system_prompts_changed": false,
+  "quality_and_latency_evaluation": "pending live controlled screening and full paired evaluation"
+}

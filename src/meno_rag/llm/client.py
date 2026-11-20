@@ -14,6 +14,16 @@ from meno_rag.logging_config import preview_field
 logger = structlog.get_logger(__name__)
 
 
+def completion_text(data: dict[str, Any]) -> str:
+    choice = data["choices"][0]
+    if choice.get("finish_reason") == "length":
+        raise RuntimeError("LLM completion was truncated (finish_reason=length).")
+    content = choice["message"].get("content")
+    if not isinstance(content, str) or not content.strip():
+        raise ValueError("LLM completion contains no non-empty text content.")
+    return content.strip()
+
+
 def endpoint_api_key(base_url: str, default: str, overrides: dict[str, str]) -> str:
     normalized = base_url.rstrip("/").removesuffix("/v1")
     for endpoint, key in overrides.items():
@@ -83,7 +93,7 @@ class VLLMClient:
         attempts = 1 if payload.get("stream") else 3
         for attempt in range(attempts):
             try:
-                return await self._http.post(
+                response = await self._http.post(
                     url, headers=self._headers(base_url), json=payload, timeout=timeout,
                 )
             except (httpx.ReadError, httpx.RemoteProtocolError, httpx.ConnectError) as exc:
@@ -93,7 +103,15 @@ class VLLMClient:
                     "vllm_transport_retry", base_url=base_url, attempt=attempt + 1,
                     error_type=type(exc).__name__,
                 )
-                await asyncio.sleep(0.25 * 2**attempt)
+            else:
+                if response.status_code not in {502, 503, 504} or attempt == attempts - 1:
+                    return response
+                await response.aclose()
+                logger.warning(
+                    "vllm_gateway_retry", base_url=base_url, attempt=attempt + 1,
+                    status_code=response.status_code,
+                )
+            await asyncio.sleep(0.25 * 2**attempt)
         raise AssertionError("Unreachable retry state")
 
     async def tokenize_messages(
@@ -127,7 +145,7 @@ class VLLMClient:
 
     async def chat_completion_text(self, **kwargs: Any) -> str:
         data = await self.chat_completion(stream=False, **kwargs)
-        return str(data["choices"][0]["message"]["content"]).strip()
+        return completion_text(data)
 
     async def stream_chat_completion(
         self,
@@ -176,9 +194,13 @@ class VLLMClient:
                         yield content
                     if fr is not None:
                         finish_reason = fr
+        if finish_reason is None:
+            raise RuntimeError("Поток vLLM завершился без finish_reason.")
         _log_vllm_stream_completion(
             model=model, base_url=base_url, content="".join(accumulated), finish_reason=finish_reason
         )
+        if finish_reason == "length":
+            raise RuntimeError("Поток vLLM усечён (finish_reason=length).")
 
     def _headers(self, base_url: str = "") -> dict[str, str]:
         key = endpoint_api_key(base_url, self.api_key, self.endpoint_api_keys)

@@ -1,0 +1,3603 @@
+{
+  "unique_question_ids": [
+    "app-4d5ecf798e8ad5",
+    "app-5b07c894210e8d",
+    "archive-bench-052",
+    "b954-097",
+    "b954-887",
+    "legacy-004",
+    "legacy-009",
+    "scenario-student-second-retake"
+  ],
+  "unique_question_count": 8,
+  "temporal_blocks": [
+    1,
+    2
+  ],
+  "status": "complete",
+  "driver_sha256": "257ac6327bae998b35f643b91df9db3ef81fbe77ffe76a5c562a94b2ce40844d",
+  "candidate_commit": "bac64808e0c515b65ae4f2f244d920b80b77d33d",
+  "cells": [
+    {
+      "load": 1,
+      "phase_count": 2,
+      "ragu_requested": 16,
+      "question_repeat_counts": {
+        "legacy-009": 2,
+        "scenario-student-second-retake": 2,
+        "archive-bench-052": 2,
+        "b954-887": 2,
+        "app-5b07c894210e8d": 2,
+        "app-4d5ecf798e8ad5": 2,
+        "b954-097": 2,
+        "legacy-004": 2
+      },
+      "ragu_status_counts": {
+        "ok": 16
+      },
+      "ragu": {
+        "prepare_ms": {
+          "n": 16,
+          "median": 7984.141,
+          "p95": 10678.6145,
+          "mean": 7616.6003125
+        },
+        "ttft_ms": {
+          "n": 16,
+          "median": 8353.747,
+          "p95": 11161.14275,
+          "mean": 8009.0365
+        },
+        "generation_ms": {
+          "n": 16,
+          "median": 2708.4545,
+          "p95": 5971.455250000001,
+          "mean": 2809.492875
+        },
+        "source_tail_ms": {
+          "n": 16,
+          "median": 464.64300000000003,
+          "p95": 692.7692499999999,
+          "mean": 458.5119375
+        },
+        "total_ms": {
+          "n": 16,
+          "median": 11524.496500000001,
+          "p95": 15555.307499999999,
+          "mean": 10884.605125
+        },
+        "offered_to_finish_ms": {
+          "n": 16,
+          "median": 50977.084,
+          "p95": 87033.6685,
+          "mean": 49492.164875
+        }
+      },
+      "ragu_throughput_per_second_by_block": {
+        "1": {
+          "completed": 0.09116757896733411,
+          "successful": 0.09116757896733411
+        },
+        "2": {
+          "completed": 0.09212909262045162,
+          "successful": 0.09212909262045162
+        }
+      },
+      "menon_offered": 8,
+      "menon_underload_offered": 8,
+      "menon_status_counts": {
+        "ok": 8
+      },
+      "menon_underload_status_counts": {
+        "ok": 8
+      },
+      "menon_underload": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 3078.0,
+          "p95": 7941.1901499999985,
+          "mean": 4052.872625
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 7551.7485,
+          "p95": 11786.668149999998,
+          "mean": 7324.671375
+        },
+        "offered_lag_ms": {
+          "n": 8,
+          "median": 0.513,
+          "p95": 6.419499999999996,
+          "mean": 1.757125
+        }
+      },
+      "max_num_batched_tokens": 32768
+    },
+    {
+      "load": 1,
+      "phase_count": 2,
+      "ragu_requested": 16,
+      "question_repeat_counts": {
+        "legacy-009": 2,
+        "scenario-student-second-retake": 2,
+        "archive-bench-052": 2,
+        "b954-887": 2,
+        "app-5b07c894210e8d": 2,
+        "app-4d5ecf798e8ad5": 2,
+        "b954-097": 2,
+        "legacy-004": 2
+      },
+      "ragu_status_counts": {
+        "ok": 15,
+        "error": 1
+      },
+      "ragu": {
+        "prepare_ms": {
+          "n": 15,
+          "median": 7944.885,
+          "p95": 12784.8757,
+          "mean": 8028.3142
+        },
+        "ttft_ms": {
+          "n": 15,
+          "median": 8323.933,
+          "p95": 13296.3343,
+          "mean": 8442.513066666666
+        },
+        "generation_ms": {
+          "n": 15,
+          "median": 2688.933,
+          "p95": 6078.8886,
+          "mean": 2803.1532666666667
+        },
+        "source_tail_ms": {
+          "n": 15,
+          "median": 443.476,
+          "p95": 716.8129,
+          "mean": 441.22266666666667
+        },
+        "total_ms": {
+          "n": 15,
+          "median": 12208.531,
+          "p95": 15789.0514,
+          "mean": 11272.690200000001
+        },
+        "offered_to_finish_ms": {
+          "n": 15,
+          "median": 45763.427,
+          "p95": 84542.415,
+          "mean": 48442.10566666667
+        }
+      },
+      "ragu_throughput_per_second_by_block": {
+        "1": {
+          "completed": 0.09690746123613729,
+          "successful": 0.08479402858162012
+        },
+        "2": {
+          "completed": 0.0896318071015953,
+          "successful": 0.0896318071015953
+        }
+      },
+      "menon_offered": 8,
+      "menon_underload_offered": 8,
+      "menon_status_counts": {
+        "ok": 8
+      },
+      "menon_underload_status_counts": {
+        "ok": 8
+      },
+      "menon_underload": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 2460.5125,
+          "p95": 6437.8502499999995,
+          "mean": 3453.560375
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 8032.0355,
+          "p95": 11981.389699999998,
+          "mean": 7492.682375
+        },
+        "offered_lag_ms": {
+          "n": 8,
+          "median": 0.833,
+          "p95": 2.734349999999999,
+          "mean": 1.1512499999999999
+        }
+      },
+      "max_num_batched_tokens": 8192
+    },
+    {
+      "load": 4,
+      "phase_count": 2,
+      "ragu_requested": 16,
+      "question_repeat_counts": {
+        "b954-887": 2,
+        "archive-bench-052": 2,
+        "scenario-student-second-retake": 2,
+        "legacy-009": 2,
+        "app-5b07c894210e8d": 2,
+        "app-4d5ecf798e8ad5": 2,
+        "b954-097": 2,
+        "legacy-004": 2
+      },
+      "ragu_status_counts": {
+        "ok": 16
+      },
+      "ragu": {
+        "prepare_ms": {
+          "n": 16,
+          "median": 16312.751,
+          "p95": 23038.16475,
+          "mean": 14753.0864375
+        },
+        "ttft_ms": {
+          "n": 16,
+          "median": 17460.266499999998,
+          "p95": 23467.642,
+          "mean": 15747.128375
+        },
+        "generation_ms": {
+          "n": 16,
+          "median": 6348.2895,
+          "p95": 18102.03825,
+          "mean": 8007.0395625
+        },
+        "source_tail_ms": {
+          "n": 16,
+          "median": 900.3679999999999,
+          "p95": 2338.4495,
+          "mean": 1053.305125
+        },
+        "total_ms": {
+          "n": 16,
+          "median": 21985.7645,
+          "p95": 35586.0205,
+          "mean": 23813.4310625
+        },
+        "offered_to_finish_ms": {
+          "n": 16,
+          "median": 38839.510500000004,
+          "p95": 53771.98125,
+          "mean": 37386.2885
+        }
+      },
+      "ragu_throughput_per_second_by_block": {
+        "1": {
+          "completed": 0.14873802110458656,
+          "successful": 0.14873802110458656
+        },
+        "2": {
+          "completed": 0.14975496344106956,
+          "successful": 0.14975496344106956
+        }
+      },
+      "menon_offered": 8,
+      "menon_underload_offered": 8,
+      "menon_status_counts": {
+        "ok": 8
+      },
+      "menon_underload_status_counts": {
+        "ok": 8
+      },
+      "menon_underload": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 5140.54,
+          "p95": 17449.297449999995,
+          "mean": 7732.208375
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 14018.1575,
+          "p95": 22497.477499999997,
+          "mean": 14307.974875
+        },
+        "offered_lag_ms": {
+          "n": 8,
+          "median": 1.4645000000000001,
+          "p95": 2.0699,
+          "mean": 1.449875
+        }
+      },
+      "max_num_batched_tokens": 32768
+    },
+    {
+      "load": 4,
+      "phase_count": 2,
+      "ragu_requested": 16,
+      "question_repeat_counts": {
+        "b954-887": 2,
+        "archive-bench-052": 2,
+        "scenario-student-second-retake": 2,
+        "legacy-009": 2,
+        "app-5b07c894210e8d": 2,
+        "app-4d5ecf798e8ad5": 2,
+        "b954-097": 2,
+        "legacy-004": 2
+      },
+      "ragu_status_counts": {
+        "ok": 16
+      },
+      "ragu": {
+        "prepare_ms": {
+          "n": 16,
+          "median": 15460.874,
+          "p95": 25220.757250000002,
+          "mean": 16134.379375
+        },
+        "ttft_ms": {
+          "n": 16,
+          "median": 17612.396,
+          "p95": 25654.59025,
+          "mean": 17515.06125
+        },
+        "generation_ms": {
+          "n": 16,
+          "median": 8061.986000000001,
+          "p95": 14847.1945,
+          "mean": 7984.9263125
+        },
+        "source_tail_ms": {
+          "n": 16,
+          "median": 518.0145,
+          "p95": 1604.8367500000002,
+          "mean": 729.3533125
+        },
+        "total_ms": {
+          "n": 16,
+          "median": 25701.922,
+          "p95": 33559.6275,
+          "mean": 24848.6591875
+        },
+        "offered_to_finish_ms": {
+          "n": 16,
+          "median": 34531.691999999995,
+          "p95": 54037.61975,
+          "mean": 37549.1576875
+        }
+      },
+      "ragu_throughput_per_second_by_block": {
+        "1": {
+          "completed": 0.14622252743737782,
+          "successful": 0.14622252743737782
+        },
+        "2": {
+          "completed": 0.14853553708082923,
+          "successful": 0.14853553708082923
+        }
+      },
+      "menon_offered": 8,
+      "menon_underload_offered": 8,
+      "menon_status_counts": {
+        "ok": 8
+      },
+      "menon_underload_status_counts": {
+        "ok": 8
+      },
+      "menon_underload": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 5566.687,
+          "p95": 17336.240849999995,
+          "mean": 7539.41125
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 17713.176,
+          "p95": 27281.642249999997,
+          "mean": 17150.964875
+        },
+        "offered_lag_ms": {
+          "n": 8,
+          "median": 0.8235,
+          "p95": 1.7516499999999995,
+          "mean": 0.904
+        }
+      },
+      "max_num_batched_tokens": 8192
+    },
+    {
+      "load": 8,
+      "phase_count": 2,
+      "ragu_requested": 24,
+      "question_repeat_counts": {
+        "b954-887": 3,
+        "app-4d5ecf798e8ad5": 3,
+        "archive-bench-052": 3,
+        "app-5b07c894210e8d": 3,
+        "scenario-student-second-retake": 3,
+        "legacy-009": 3,
+        "b954-097": 3,
+        "legacy-004": 3
+      },
+      "ragu_status_counts": {
+        "ok": 24
+      },
+      "ragu": {
+        "prepare_ms": {
+          "n": 24,
+          "median": 21389.167500000003,
+          "p95": 40825.11759999999,
+          "mean": 22113.794458333334
+        },
+        "ttft_ms": {
+          "n": 24,
+          "median": 23512.160499999998,
+          "p95": 41517.411199999995,
+          "mean": 24081.337708333333
+        },
+        "generation_ms": {
+          "n": 24,
+          "median": 13413.2905,
+          "p95": 36925.15205,
+          "mean": 16414.142375
+        },
+        "source_tail_ms": {
+          "n": 24,
+          "median": 751.764,
+          "p95": 2950.6678999999995,
+          "mean": 1282.1769166666666
+        },
+        "total_ms": {
+          "n": 24,
+          "median": 44074.248999999996,
+          "p95": 55066.27859999998,
+          "mean": 39810.11391666667
+        },
+        "offered_to_finish_ms": {
+          "n": 24,
+          "median": 49485.011,
+          "p95": 74199.583,
+          "mean": 54151.53029166667
+        }
+      },
+      "ragu_throughput_per_second_by_block": {
+        "1": {
+          "completed": 0.16036999281782988,
+          "successful": 0.16036999281782988
+        },
+        "2": {
+          "completed": 0.16911686706944948,
+          "successful": 0.16911686706944948
+        }
+      },
+      "menon_offered": 8,
+      "menon_underload_offered": 8,
+      "menon_status_counts": {
+        "ok": 8
+      },
+      "menon_underload_status_counts": {
+        "ok": 8
+      },
+      "menon_underload": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 19627.993000000002,
+          "p95": 30293.230549999997,
+          "mean": 18954.136875
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 32622.9235,
+          "p95": 42499.05195,
+          "mean": 32415.227125
+        },
+        "offered_lag_ms": {
+          "n": 8,
+          "median": 1.8845,
+          "p95": 50.56544999999996,
+          "mean": 11.70375
+        }
+      },
+      "max_num_batched_tokens": 32768
+    },
+    {
+      "load": 8,
+      "phase_count": 2,
+      "ragu_requested": 24,
+      "question_repeat_counts": {
+        "b954-887": 3,
+        "app-4d5ecf798e8ad5": 3,
+        "app-5b07c894210e8d": 3,
+        "archive-bench-052": 3,
+        "scenario-student-second-retake": 3,
+        "legacy-009": 3,
+        "b954-097": 3,
+        "legacy-004": 3
+      },
+      "ragu_status_counts": {
+        "ok": 24
+      },
+      "ragu": {
+        "prepare_ms": {
+          "n": 24,
+          "median": 22076.499000000003,
+          "p95": 42631.81784999999,
+          "mean": 22901.65641666667
+        },
+        "ttft_ms": {
+          "n": 24,
+          "median": 23668.239,
+          "p95": 43371.504949999995,
+          "mean": 24928.520041666667
+        },
+        "generation_ms": {
+          "n": 24,
+          "median": 10772.84,
+          "p95": 37635.81035,
+          "mean": 16465.622291666667
+        },
+        "source_tail_ms": {
+          "n": 24,
+          "median": 930.449,
+          "p95": 2809.1906,
+          "mean": 1215.3777916666668
+        },
+        "total_ms": {
+          "n": 24,
+          "median": 44232.13,
+          "p95": 55119.774399999995,
+          "mean": 40582.6565
+        },
+        "offered_to_finish_ms": {
+          "n": 24,
+          "median": 49698.2055,
+          "p95": 75748.1415,
+          "mean": 54588.662625
+        }
+      },
+      "ragu_throughput_per_second_by_block": {
+        "1": {
+          "completed": 0.1583035348915502,
+          "successful": 0.1583035348915502
+        },
+        "2": {
+          "completed": 0.16646730819283007,
+          "successful": 0.16646730819283007
+        }
+      },
+      "menon_offered": 8,
+      "menon_underload_offered": 8,
+      "menon_status_counts": {
+        "ok": 8
+      },
+      "menon_underload_status_counts": {
+        "ok": 8
+      },
+      "menon_underload": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 16228.624499999998,
+          "p95": 23431.18895,
+          "mean": 16229.878
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 31233.624000000003,
+          "p95": 42626.29185,
+          "mean": 31794.85175
+        },
+        "offered_lag_ms": {
+          "n": 8,
+          "median": 0.6965,
+          "p95": 6.207849999999998,
+          "mean": 1.997125
+        }
+      },
+      "max_num_batched_tokens": 8192
+    }
+  ],
+  "effects": [
+    {
+      "load": 1,
+      "population": "ragu",
+      "factor": "max_num_batched_tokens_8192_minus_32768",
+      "metrics": {
+        "prepare_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 15,
+            "median": -28.806000000000495,
+            "p95": 1628.7480999999982,
+            "mean": 191.85693333333336
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 15,
+          "question_balanced_mean_delta": 180.66256250000004,
+          "question_balanced_median_of_mean_deltas": -35.31449999999995,
+          "per_block": {
+            "1": {
+              "question_clusters": 7,
+              "paired_repeated_turns": 7,
+              "question_balanced_mean_delta": 14.710142857142923,
+              "question_balanced_median_of_mean_deltas": -128.72500000000036
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 346.860375,
+              "question_balanced_median_of_mean_deltas": -8.029500000000098
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -195.96043750000013,
+            704.2327671875001
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -250.5084999999999,
+            582.6005
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 16,
+          "successful_pairs": 15,
+          "equal_context_pairs": 9,
+          "equal_query_pairs": 14
+        },
+        "ttft_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 15,
+            "median": -9.78900000000067,
+            "p95": 1623.512599999998,
+            "mean": 210.3769333333331
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 15,
+          "question_balanced_mean_delta": 196.61887499999978,
+          "question_balanced_median_of_mean_deltas": -41.21350000000075,
+          "per_block": {
+            "1": {
+              "question_clusters": 7,
+              "paired_repeated_turns": 7,
+              "question_balanced_mean_delta": 31.435571428571034,
+              "question_balanced_median_of_mean_deltas": -114.98000000000138
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 366.95062499999995,
+              "question_balanced_median_of_mean_deltas": -9.770500000000538
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -173.43123125000054,
+            719.3519718749998
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -213.1260000000011,
+            591.2389999999996
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 16,
+          "successful_pairs": 15,
+          "equal_context_pairs": 9,
+          "equal_query_pairs": 14
+        },
+        "generation_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 15,
+            "median": 21.657000000000153,
+            "p95": 503.19449999999915,
+            "mean": -11.222466666666682
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 15,
+          "question_balanced_mean_delta": -4.482937500000006,
+          "question_balanced_median_of_mean_deltas": 17.258750000000134,
+          "per_block": {
+            "1": {
+              "question_clusters": 7,
+              "paired_repeated_turns": 7,
+              "question_balanced_mean_delta": 16.477857142857097,
+              "question_balanced_median_of_mean_deltas": 12.961999999999989
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -35.46024999999999,
+              "question_balanced_median_of_mean_deltas": 27.504000000000133
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -191.0358375000001,
+            158.51559062499996
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -119.52750000000015,
+            96.61000000000013
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 16,
+          "successful_pairs": 15,
+          "equal_context_pairs": 9,
+          "equal_query_pairs": 14
+        },
+        "source_tail_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 15,
+            "median": 2.9180000000000064,
+            "p95": 81.33149999999992,
+            "mean": -14.06900000000001
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 15,
+          "question_balanced_mean_delta": -12.81325000000001,
+          "question_balanced_median_of_mean_deltas": -1.9215000000000089,
+          "per_block": {
+            "1": {
+              "question_clusters": 7,
+              "paired_repeated_turns": 7,
+              "question_balanced_mean_delta": -32.62385714285715,
+              "question_balanced_median_of_mean_deltas": -12.896000000000015
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 2.166499999999985,
+              "question_balanced_median_of_mean_deltas": 6.115499999999997
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -31.11188125000001,
+            3.4172937499999794
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -32.41964999999997,
+            6.022999999999968
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 16,
+          "successful_pairs": 15,
+          "equal_context_pairs": 9,
+          "equal_query_pairs": 14
+        },
+        "total_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 15,
+            "median": -12.86200000000008,
+            "p95": 1520.8576000000005,
+            "mean": 166.56553333333346
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 15,
+          "question_balanced_mean_delta": 163.36650000000014,
+          "question_balanced_median_of_mean_deltas": 38.17600000000016,
+          "per_block": {
+            "1": {
+              "question_clusters": 7,
+              "paired_repeated_turns": 7,
+              "question_balanced_mean_delta": -1.4358571428570681,
+              "question_balanced_median_of_mean_deltas": -12.86200000000008
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 313.5667500000002,
+              "question_balanced_median_of_mean_deltas": 31.681999999999334
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -142.94675000000007,
+            527.6251062500003
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -91.13850000000002,
+            581.6864999999998
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 16,
+          "successful_pairs": 15,
+          "equal_context_pairs": 9,
+          "equal_query_pairs": 14
+        },
+        "offered_to_finish_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 15,
+            "median": 115.14400000000023,
+            "p95": 2584.3168999999994,
+            "mean": -698.6754666666662
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 15,
+          "question_balanced_mean_delta": -647.8117499999996,
+          "question_balanced_median_of_mean_deltas": 307.9337499999983,
+          "per_block": {
+            "1": {
+              "question_clusters": 7,
+              "paired_repeated_turns": 7,
+              "question_balanced_mean_delta": -2800.997285714283,
+              "question_balanced_median_of_mean_deltas": -1427.8199999999997
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 1140.8561249999984,
+              "question_balanced_median_of_mean_deltas": 829.3139999999985
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -1913.707032812498,
+            377.1949343749999
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -2752.6218937499975,
+            826.5272500000001
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 16,
+          "successful_pairs": 15,
+          "equal_context_pairs": 9,
+          "equal_query_pairs": 14
+        }
+      }
+    },
+    {
+      "load": 1,
+      "population": "menon",
+      "factor": "max_num_batched_tokens_8192_minus_32768",
+      "metrics": {
+        "ttft_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 8,
+            "median": 97.9805,
+            "p95": 568.913,
+            "mean": -599.3122500000001
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 8,
+          "question_balanced_mean_delta": -599.3122500000001,
+          "question_balanced_median_of_mean_deltas": 97.9805,
+          "per_block": {
+            "1": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": -1297.5349999999999,
+              "question_balanced_median_of_mean_deltas": 218.85699999999974
+            },
+            "2": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": 98.9104999999999,
+              "question_balanced_median_of_mean_deltas": 32.871499999999855
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -2268.4083375,
+            349.3615
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -74.16100000000006,
+            404.05999999999995
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 8,
+          "successful_pairs": 8,
+          "equal_context_pairs": null,
+          "equal_query_pairs": null
+        },
+        "total_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 8,
+            "median": 168.55849999999987,
+            "p95": 794.3101500000001,
+            "mean": 168.01100000000002
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 8,
+          "question_balanced_mean_delta": 168.01100000000002,
+          "question_balanced_median_of_mean_deltas": 168.55849999999987,
+          "per_block": {
+            "1": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": 161.2552499999997,
+              "question_balanced_median_of_mean_deltas": 124.7514999999994
+            },
+            "2": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": 174.76675000000034,
+              "question_balanced_median_of_mean_deltas": 260.9580000000003
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -140.41144375000005,
+            475.4783249999999
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -237.20100000000002,
+            414.35200000000077
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 8,
+          "successful_pairs": 8,
+          "equal_context_pairs": null,
+          "equal_query_pairs": null
+        }
+      }
+    },
+    {
+      "load": 4,
+      "population": "ragu",
+      "factor": "max_num_batched_tokens_8192_minus_32768",
+      "metrics": {
+        "prepare_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": 260.3899999999999,
+            "p95": 7112.385499999999,
+            "mean": 1381.2929375
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": 1381.2929375,
+          "question_balanced_median_of_mean_deltas": 1370.1025,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -307.5631249999999,
+              "question_balanced_median_of_mean_deltas": -251.33050000000094
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 3070.149,
+              "question_balanced_median_of_mean_deltas": 2970.7715000000007
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -290.1699406250001,
+            3300.7083890624995
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -998.4570000000006,
+            2273.914249999995
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 10,
+          "equal_query_pairs": 15
+        },
+        "ttft_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": 624.1450000000004,
+            "p95": 8360.399,
+            "mean": 1767.932875
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": 1767.932875,
+          "question_balanced_median_of_mean_deltas": 1611.1735000000003,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -8.283625000000029,
+              "question_balanced_median_of_mean_deltas": -228.5679999999993
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 3544.149375,
+              "question_balanced_median_of_mean_deltas": 3007.312999999999
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            169.13596093750027,
+            3602.780781249998
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -267.1035000000011,
+            2702.6977499999994
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 10,
+          "equal_query_pairs": 15
+        },
+        "generation_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": 83.4559999999999,
+            "p95": 5109.7885,
+            "mean": -22.11325000000008
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": -22.11325000000008,
+          "question_balanced_median_of_mean_deltas": 101.79124999999976,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 770.27275,
+              "question_balanced_median_of_mean_deltas": 183.91750000000002
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -814.4992500000001,
+              "question_balanced_median_of_mean_deltas": -45.03850000000011
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -1619.0045625,
+            1420.7705265624993
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -1174.8929999999998,
+            1091.9405000000002
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 10,
+          "equal_query_pairs": 15
+        },
+        "source_tail_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": -11.269000000000005,
+            "p95": 341.855,
+            "mean": -323.95181249999996
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": -323.95181249999996,
+          "question_balanced_median_of_mean_deltas": -292.28649999999993,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -208.70300000000003,
+              "question_balanced_median_of_mean_deltas": -0.32349999999996726
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -439.20062499999995,
+              "question_balanced_median_of_mean_deltas": -141.74349999999998
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -656.8366375,
+            -3.104839062500034
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -915.9530000000001,
+            154.91600000000003
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 10,
+          "equal_query_pairs": 15
+        },
+        "total_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": 404.57300000000214,
+            "p95": 11520.67075,
+            "mean": 1035.2281249999999
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": 1035.2281249999999,
+          "question_balanced_median_of_mean_deltas": 803.2497499999995,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 254.0068750000005,
+              "question_balanced_median_of_mean_deltas": 404.57300000000214
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 1816.4493749999992,
+              "question_balanced_median_of_mean_deltas": 416.40949999999975
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -1839.7431015625,
+            3824.883062500001
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -2565.138000000001,
+            4345.477500000001
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 10,
+          "equal_query_pairs": 15
+        },
+        "offered_to_finish_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 16,
+            "median": 401.32900000000154,
+            "p95": 7663.566999999997,
+            "mean": 162.86918749999938
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 16,
+          "question_balanced_mean_delta": 162.86918749999938,
+          "question_balanced_median_of_mean_deltas": 393.1312499999981,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": 493.89299999999935,
+              "question_balanced_median_of_mean_deltas": 407.3495000000021
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 8,
+              "question_balanced_mean_delta": -168.15462500000058,
+              "question_balanced_median_of_mean_deltas": 380.8774999999987
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -2270.5223843750014,
+            2472.399668749998
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -2365.423999999999,
+            3098.796362499946
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 16,
+          "successful_pairs": 16,
+          "equal_context_pairs": 10,
+          "equal_query_pairs": 15
+        }
+      }
+    },
+    {
+      "load": 4,
+      "population": "menon",
+      "factor": "max_num_batched_tokens_8192_minus_32768",
+      "metrics": {
+        "ttft_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 8,
+            "median": 177.24699999999984,
+            "p95": 2128.8620499999997,
+            "mean": -192.79712500000014
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 8,
+          "question_balanced_mean_delta": -192.79712500000014,
+          "question_balanced_median_of_mean_deltas": 177.24699999999984,
+          "per_block": {
+            "1": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": 535.9832499999997,
+              "question_balanced_median_of_mean_deltas": 707.3924999999997
+            },
+            "2": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": -921.5774999999999,
+              "question_balanced_median_of_mean_deltas": -109.94349999999997
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -1981.4621437499998,
+            1193.1276249999999
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -669.5580000000009,
+            1398.7060000000001
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 8,
+          "successful_pairs": 8,
+          "equal_context_pairs": null,
+          "equal_query_pairs": null
+        },
+        "total_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 8,
+            "median": 644.3275000000003,
+            "p95": 11500.254649999995,
+            "mean": 2842.9900000000002
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 8,
+          "question_balanced_mean_delta": 2842.9900000000002,
+          "question_balanced_median_of_mean_deltas": 644.3275000000003,
+          "per_block": {
+            "1": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": 4117.227,
+              "question_balanced_median_of_mean_deltas": 1005.1595000000002
+            },
+            "2": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": 1568.7530000000008,
+              "question_balanced_median_of_mean_deltas": 331.1495
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            260.5242375,
+            6443.0540437499885
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -77.50299999999697,
+            5690.216
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 8,
+          "successful_pairs": 8,
+          "equal_context_pairs": null,
+          "equal_query_pairs": null
+        }
+      }
+    },
+    {
+      "load": 8,
+      "population": "ragu",
+      "factor": "max_num_batched_tokens_8192_minus_32768",
+      "metrics": {
+        "prepare_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 24,
+            "median": 437.8760000000002,
+            "p95": 4366.568149999995,
+            "mean": 787.8619583333337
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 24,
+          "question_balanced_mean_delta": 787.8619583333337,
+          "question_balanced_median_of_mean_deltas": 693.7633333333348,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 801.2600625000006,
+              "question_balanced_median_of_mean_deltas": 750.0925000000016
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 522.1704375000004,
+              "question_balanced_median_of_mean_deltas": 261.8795
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            85.75698750000056,
+            1473.8549385416666
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -236.7583333333338,
+            1941.3910000000003
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 24,
+          "successful_pairs": 24,
+          "equal_context_pairs": 15,
+          "equal_query_pairs": 21
+        },
+        "ttft_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 24,
+            "median": 501.8319999999985,
+            "p95": 4259.053649999993,
+            "mean": 847.1823333333324
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 24,
+          "question_balanced_mean_delta": 847.1823333333324,
+          "question_balanced_median_of_mean_deltas": 523.3863333333329,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 838.6621249999987,
+              "question_balanced_median_of_mean_deltas": 642.5429999999997
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 606.7896874999997,
+              "question_balanced_median_of_mean_deltas": 458.05675000000065
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            162.86675520833273,
+            1555.9141781249982
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -52.79800000000008,
+            2104.8459999999995
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 24,
+          "successful_pairs": 24,
+          "equal_context_pairs": 15,
+          "equal_query_pairs": 21
+        },
+        "generation_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 24,
+            "median": 294.9549999999981,
+            "p95": 2985.0361999999977,
+            "mean": 51.479916666666895
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 24,
+          "question_balanced_mean_delta": 51.479916666666874,
+          "question_balanced_median_of_mean_deltas": 331.1605000000017,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 372.72862500000014,
+              "question_balanced_median_of_mean_deltas": 432.0777499999997
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": -403.8344999999999,
+              "question_balanced_median_of_mean_deltas": 344.5352500000007
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -1279.5434999999998,
+            1127.128208333334
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -573.2092416666669,
+            1577.6653333333336
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 24,
+          "successful_pairs": 24,
+          "equal_context_pairs": 15,
+          "equal_query_pairs": 21
+        },
+        "source_tail_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 24,
+            "median": 4.421000000000021,
+            "p95": 462.40399999999977,
+            "mean": -66.79912499999996
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 24,
+          "question_balanced_mean_delta": -66.79912499999996,
+          "question_balanced_median_of_mean_deltas": -35.46766666666655,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": -169.39937499999996,
+              "question_balanced_median_of_mean_deltas": 1.3720000000000994
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": -72.77556249999998,
+              "question_balanced_median_of_mean_deltas": -88.27399999999992
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -288.4798104166666,
+            129.05769166666653
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -224.42866666666666,
+            142.95466666666667
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 24,
+          "successful_pairs": 24,
+          "equal_context_pairs": 15,
+          "equal_query_pairs": 21
+        },
+        "total_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 24,
+            "median": 906.8990000000049,
+            "p95": 5340.406199999993,
+            "mean": 772.542583333333
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 24,
+          "question_balanced_mean_delta": 772.542583333333,
+          "question_balanced_median_of_mean_deltas": 1320.918166666666,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 1004.5893124999977,
+              "question_balanced_median_of_mean_deltas": 1234.7457499999991
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 45.560250000001815,
+              "question_balanced_median_of_mean_deltas": 649.5052500000029
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -340.7170041666669,
+            1571.6622468750004
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -55.47233333333497,
+            1716.6196666666667
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 24,
+          "successful_pairs": 24,
+          "equal_context_pairs": 15,
+          "equal_query_pairs": 21
+        },
+        "offered_to_finish_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 24,
+            "median": 806.213499999998,
+            "p95": 3609.5442500000045,
+            "mean": 437.1323333333332
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 24,
+          "question_balanced_mean_delta": 437.1323333333331,
+          "question_balanced_median_of_mean_deltas": 706.5113333333331,
+          "per_block": {
+            "1": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": 787.0612500000013,
+              "question_balanced_median_of_mean_deltas": 959.8559999999998
+            },
+            "2": {
+              "question_clusters": 8,
+              "paired_repeated_turns": 12,
+              "question_balanced_mean_delta": -249.856437500001,
+              "question_balanced_median_of_mean_deltas": 527.5137499999983
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -397.97504166666647,
+            1103.0926822916613
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -347.01200000000244,
+            1438.179833333333
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 24,
+          "successful_pairs": 24,
+          "equal_context_pairs": 15,
+          "equal_query_pairs": 21
+        }
+      }
+    },
+    {
+      "load": 8,
+      "population": "menon",
+      "factor": "max_num_batched_tokens_8192_minus_32768",
+      "metrics": {
+        "ttft_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 8,
+            "median": -2981.2395,
+            "p95": 3751.7260999999976,
+            "mean": -2724.2588750000004
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 8,
+          "question_balanced_mean_delta": -2724.2588750000004,
+          "question_balanced_median_of_mean_deltas": -2981.2395,
+          "per_block": {
+            "1": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": -5092.283,
+              "question_balanced_median_of_mean_deltas": -5052.816499999999
+            },
+            "2": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": -356.2347500000003,
+              "question_balanced_median_of_mean_deltas": -455.15750000000025
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -5490.68258125,
+            354.67095624999064
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -6010.881000000001,
+            511.8829999999998
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 8,
+          "successful_pairs": 8,
+          "equal_context_pairs": null,
+          "equal_query_pairs": null
+        },
+        "total_ms": {
+          "pooled_repeated_turn_deltas": {
+            "n": 8,
+            "median": -187.98400000000402,
+            "p95": 654.3717000000004,
+            "mean": -620.3753750000001
+          },
+          "question_clusters": 8,
+          "paired_repeated_turns": 8,
+          "question_balanced_mean_delta": -620.3753750000001,
+          "question_balanced_median_of_mean_deltas": -187.98400000000402,
+          "per_block": {
+            "1": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": -763.5005000000019,
+              "question_balanced_median_of_mean_deltas": -710.300500000003
+            },
+            "2": {
+              "question_clusters": 4,
+              "paired_repeated_turns": 4,
+              "question_balanced_mean_delta": -477.25024999999823,
+              "question_balanced_median_of_mean_deltas": 434.7990000000027
+            }
+          },
+          "nominal_question_cluster_bootstrap95_mean": [
+            -1616.9083906249996,
+            192.3566375000007
+          ],
+          "nominal_question_cluster_bootstrap95_median": [
+            -1538.9039999999986,
+            539.0370000000039
+          ],
+          "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority",
+          "possible_pairs": 8,
+          "successful_pairs": 8,
+          "equal_context_pairs": null,
+          "equal_query_pairs": null
+        }
+      }
+    }
+  ],
+  "warnings": [
+    "Burst loads are short and contain only eight unique questions",
+    "Live rewrite/analysis decisions can differ between scheduling arms",
+    "Source/answer equality alone does not measure semantic answer quality",
+    "Global GPU counters may include unrelated service traffic",
+    "Every block uses a fresh model and identical warmup; residual temporal load remains possible",
+    "Eight independent question IDs; C8 repetitions and two time blocks do not establish release-wide noninferiority",
+    "Hash changes need server-local factual review before any same-quality claim",
+    "Phase completion is not request success; measured failures are listed separately and remain in the denominator"
+  ],
+  "repeatability_same_arm": [
+    {
+      "load": 1,
+      "repeated_question_clusters": 8,
+      "counts": {
+        "correlated_repeat_pairs": 8,
+        "queries_equal": 7,
+        "context_equal": 4,
+        "evidence_equal": 4,
+        "answer_equal": 3,
+        "sources_equal": 4
+      },
+      "upstream_changed_repeats": [
+        {
+          "id": "b954-887",
+          "earlier_block": 1,
+          "earlier_position": 3,
+          "later_block": 2,
+          "later_position": 7,
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "legacy-004",
+          "earlier_block": 1,
+          "earlier_position": 7,
+          "later_block": 2,
+          "later_position": 3,
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "legacy-009",
+          "earlier_block": 1,
+          "earlier_position": 0,
+          "later_block": 2,
+          "later_position": 4,
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "scenario-student-second-retake",
+          "earlier_block": 1,
+          "earlier_position": 1,
+          "later_block": 2,
+          "later_position": 5,
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        }
+      ],
+      "limit": "Repeated turns hold scheduling settings fixed and estimate live-model drift; pair counts are correlated within eight question IDs",
+      "max_num_batched_tokens": 32768
+    },
+    {
+      "load": 1,
+      "repeated_question_clusters": 7,
+      "counts": {
+        "correlated_repeat_pairs": 7,
+        "queries_equal": 7,
+        "context_equal": 7,
+        "evidence_equal": 7,
+        "answer_equal": 7,
+        "sources_equal": 7
+      },
+      "upstream_changed_repeats": [],
+      "limit": "Repeated turns hold scheduling settings fixed and estimate live-model drift; pair counts are correlated within eight question IDs",
+      "max_num_batched_tokens": 8192
+    },
+    {
+      "load": 4,
+      "repeated_question_clusters": 8,
+      "counts": {
+        "correlated_repeat_pairs": 8,
+        "queries_equal": 7,
+        "context_equal": 4,
+        "evidence_equal": 4,
+        "answer_equal": 3,
+        "sources_equal": 4
+      },
+      "upstream_changed_repeats": [
+        {
+          "id": "b954-887",
+          "earlier_block": 1,
+          "earlier_position": 3,
+          "later_block": 2,
+          "later_position": 7,
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "legacy-004",
+          "earlier_block": 1,
+          "earlier_position": 7,
+          "later_block": 2,
+          "later_position": 3,
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "legacy-009",
+          "earlier_block": 1,
+          "earlier_position": 0,
+          "later_block": 2,
+          "later_position": 4,
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "scenario-student-second-retake",
+          "earlier_block": 1,
+          "earlier_position": 1,
+          "later_block": 2,
+          "later_position": 5,
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        }
+      ],
+      "limit": "Repeated turns hold scheduling settings fixed and estimate live-model drift; pair counts are correlated within eight question IDs",
+      "max_num_batched_tokens": 32768
+    },
+    {
+      "load": 4,
+      "repeated_question_clusters": 8,
+      "counts": {
+        "correlated_repeat_pairs": 8,
+        "queries_equal": 8,
+        "context_equal": 8,
+        "evidence_equal": 8,
+        "answer_equal": 5,
+        "sources_equal": 8
+      },
+      "upstream_changed_repeats": [],
+      "limit": "Repeated turns hold scheduling settings fixed and estimate live-model drift; pair counts are correlated within eight question IDs",
+      "max_num_batched_tokens": 8192
+    },
+    {
+      "load": 8,
+      "repeated_question_clusters": 8,
+      "counts": {
+        "correlated_repeat_pairs": 24,
+        "queries_equal": 20,
+        "context_equal": 14,
+        "evidence_equal": 14,
+        "answer_equal": 12,
+        "sources_equal": 14
+      },
+      "upstream_changed_repeats": [
+        {
+          "id": "b954-097",
+          "earlier_block": 1,
+          "earlier_position": 6,
+          "later_block": 2,
+          "later_position": 10,
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "b954-097",
+          "earlier_block": 2,
+          "earlier_position": 2,
+          "later_block": 2,
+          "later_position": 10,
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "b954-887",
+          "earlier_block": 1,
+          "earlier_position": 3,
+          "later_block": 2,
+          "later_position": 7,
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "b954-887",
+          "earlier_block": 1,
+          "earlier_position": 11,
+          "later_block": 2,
+          "later_position": 7,
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "legacy-004",
+          "earlier_block": 1,
+          "earlier_position": 7,
+          "later_block": 2,
+          "later_position": 3,
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "legacy-004",
+          "earlier_block": 1,
+          "earlier_position": 7,
+          "later_block": 2,
+          "later_position": 11,
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "legacy-009",
+          "earlier_block": 1,
+          "earlier_position": 0,
+          "later_block": 2,
+          "later_position": 4,
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "legacy-009",
+          "earlier_block": 1,
+          "earlier_position": 8,
+          "later_block": 2,
+          "later_position": 4,
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "scenario-student-second-retake",
+          "earlier_block": 1,
+          "earlier_position": 1,
+          "later_block": 2,
+          "later_position": 5,
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "scenario-student-second-retake",
+          "earlier_block": 1,
+          "earlier_position": 9,
+          "later_block": 2,
+          "later_position": 5,
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        }
+      ],
+      "limit": "Repeated turns hold scheduling settings fixed and estimate live-model drift; pair counts are correlated within eight question IDs",
+      "max_num_batched_tokens": 32768
+    },
+    {
+      "load": 8,
+      "repeated_question_clusters": 8,
+      "counts": {
+        "correlated_repeat_pairs": 24,
+        "queries_equal": 22,
+        "context_equal": 22,
+        "evidence_equal": 22,
+        "answer_equal": 18,
+        "sources_equal": 20
+      },
+      "upstream_changed_repeats": [
+        {
+          "id": "legacy-009",
+          "earlier_block": 1,
+          "earlier_position": 0,
+          "later_block": 1,
+          "later_position": 8,
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        },
+        {
+          "id": "legacy-009",
+          "earlier_block": 1,
+          "earlier_position": 8,
+          "later_block": 2,
+          "later_position": 4,
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          }
+        }
+      ],
+      "limit": "Repeated turns hold scheduling settings fixed and estimate live-model drift; pair counts are correlated within eight question IDs",
+      "max_num_batched_tokens": 8192
+    }
+  ],
+  "menon_alone": {
+    "A1_warmup": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1755.53,
+          "p95": 8142.024149999996,
+          "mean": 2829.716625
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4224.630999999999,
+          "p95": 10978.588449999996,
+          "mean": 5115.57525
+        }
+      }
+    },
+    "A1_before": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1734.533,
+          "p95": 2346.61,
+          "mean": 1689.147625
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4176.014499999999,
+          "p95": 5179.5179,
+          "mean": 3961.16075
+        }
+      }
+    },
+    "A1_after": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1777.2640000000001,
+          "p95": 2353.54805,
+          "mean": 1691.76725
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4238.495,
+          "p95": 5214.8249,
+          "mean": 3967.500625
+        }
+      }
+    },
+    "B1_warmup": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1740.4724999999999,
+          "p95": 9720.363899999993,
+          "mean": 3116.4985
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4263.534,
+          "p95": 12565.824599999993,
+          "mean": 5422.14775
+        }
+      }
+    },
+    "B1_before": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1775.1925,
+          "p95": 2292.0275500000002,
+          "mean": 1686.306875
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4314.78,
+          "p95": 5153.3830499999995,
+          "mean": 4001.946375
+        }
+      }
+    },
+    "B1_after": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1751.2559999999999,
+          "p95": 2318.157,
+          "mean": 1681.660125
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4256.2275,
+          "p95": 5168.329299999999,
+          "mean": 3982.876625
+        }
+      }
+    },
+    "B2_warmup": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1719.3565,
+          "p95": 8187.879649999995,
+          "mean": 2806.6952499999998
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4174.7835000000005,
+          "p95": 11022.739049999996,
+          "mean": 5059.181625
+        }
+      }
+    },
+    "B2_before": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1737.9925,
+          "p95": 2327.31085,
+          "mean": 1678.917875
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4213.43,
+          "p95": 5099.30535,
+          "mean": 3940.649375
+        }
+      }
+    },
+    "B2_after": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1745.217,
+          "p95": 2329.4192,
+          "mean": 1677.539875
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4223.92,
+          "p95": 5120.601699999999,
+          "mean": 3943.488125
+        }
+      }
+    },
+    "A2_warmup": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1700.1485,
+          "p95": 8150.584749999995,
+          "mean": 2796.14825
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4020.7155,
+          "p95": 10464.036799999994,
+          "mean": 4910.779375
+        }
+      }
+    },
+    "A2_before": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1758.1309999999999,
+          "p95": 2281.3641000000002,
+          "mean": 1677.286125
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4051.0665,
+          "p95": 4637.65735,
+          "mean": 3791.616375
+        }
+      }
+    },
+    "A2_after": {
+      "status_counts": {
+        "ok": 8
+      },
+      "timings": {
+        "ttft_ms": {
+          "n": 8,
+          "median": 1738.6435,
+          "p95": 2277.43325,
+          "mean": 1659.3978749999999
+        },
+        "total_ms": {
+          "n": 8,
+          "median": 4066.1805,
+          "p95": 4595.05345,
+          "mean": 3789.012
+        }
+      }
+    }
+  },
+  "measured_denominators": {
+    "ragu_requested": 112,
+    "ragu_attempted": 112,
+    "ragu_status_counts": {
+      "ok": 111,
+      "error": 1
+    },
+    "menon_offered": 48,
+    "menon_status_counts": {
+      "ok": 48
+    },
+    "latency_scope": "Successful cases and successful matched pairs only; failures remain in the overall attempt denominator"
+  },
+  "failed_measured_ragu_cases": [
+    {
+      "phase": "b1_c1_e0_p0",
+      "model_block": 2,
+      "max_num_batched_tokens": 8192,
+      "concurrency": 1,
+      "id": "app-5b07c894210e8d",
+      "position": 4,
+      "status": "error",
+      "error_type": "HTTPStatusError",
+      "total_ms": 2292.546,
+      "http_requests": {
+        "analysis_or_rewrite": 2,
+        "rerank": 56
+      }
+    }
+  ],
+  "stability_8192_against_32768": [
+    {
+      "load": 1,
+      "counts": {
+        "paired_offered": 16,
+        "queries_equal": 14,
+        "context_equal": 9,
+        "evidence_equal": 9,
+        "answer_equal": 8,
+        "sources_equal": 9,
+        "context_selection_content_or_order_changed_with_same_queries": 5,
+        "http_request_counts_equal": 11,
+        "identical_observed_result": 7,
+        "excluded_failed_pair": 1,
+        "generation_changed_on_same_context_and_evidence": 2,
+        "live_analysis_or_rewrite_decision_changed": 1
+      },
+      "changed_cases": [
+        {
+          "id": "legacy-009",
+          "block": 1,
+          "position": 0,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 58,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -164,
+            "prepare_ms": 693.2450000000008,
+            "ttft_ms": 728.0169999999998,
+            "total_ms": 372.4390000000003
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "tokenize": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0,
+            "rerank": 0
+          }
+        },
+        {
+          "id": "b954-887",
+          "block": 1,
+          "position": 3,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 509,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 1,
+            "answer_chars": 81,
+            "prepare_ms": -128.72500000000036,
+            "ttft_ms": -132.58199999999943,
+            "total_ms": -12.86200000000008
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "legacy-004",
+          "block": 1,
+          "position": 7,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 122,
+            "retrieved_count": 0,
+            "evidence_units": 1,
+            "sources_count": 0,
+            "answer_chars": 59,
+            "prepare_ms": 155.69700000000012,
+            "ttft_ms": 180.38500000000113,
+            "total_ms": 535.9950000000008
+          },
+          "request_count_deltas": {
+            "score": 1,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "app-5b07c894210e8d",
+          "block": 2,
+          "position": 0,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 88,
+            "prepare_ms": 12.747000000000298,
+            "ttft_ms": -9.752000000000407,
+            "total_ms": 115.38100000000031
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "tokenize": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0,
+            "rerank": 0
+          }
+        },
+        {
+          "id": "legacy-004",
+          "block": 2,
+          "position": 3,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -257,
+            "prepare_ms": -30.448999999999614,
+            "ttft_ms": -9.78900000000067,
+            "total_ms": -650.9619999999995
+          },
+          "request_count_deltas": {
+            "score": -3,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "legacy-009",
+          "block": 2,
+          "position": 4,
+          "classification": "live_analysis_or_rewrite_decision_changed",
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": -1965,
+            "retrieved_count": 0,
+            "evidence_units": -1,
+            "sources_count": 0,
+            "answer_chars": -300,
+            "prepare_ms": 2879.6180000000004,
+            "ttft_ms": 2889.3100000000013,
+            "total_ms": 1963.7840000000015
+          },
+          "request_count_deltas": {
+            "score": -4,
+            "rerank": 39,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "scenario-student-second-retake",
+          "block": 2,
+          "position": 5,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 524,
+            "prepare_ms": 269.97299999999996,
+            "ttft_ms": 326.0149999999994,
+            "total_ms": 1331.032000000001
+          },
+          "request_count_deltas": {
+            "score": 5,
+            "rerank": 1,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "b954-887",
+          "block": 2,
+          "position": 7,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": true,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 0,
+            "prepare_ms": -109.17000000000007,
+            "ttft_ms": -82.38799999999992,
+            "total_ms": -65.19599999999991
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        }
+      ],
+      "limit": "First changed observable stage only; complete raw material remains server-local for factual review"
+    },
+    {
+      "load": 4,
+      "counts": {
+        "paired_offered": 16,
+        "queries_equal": 15,
+        "context_equal": 10,
+        "evidence_equal": 10,
+        "answer_equal": 8,
+        "sources_equal": 10,
+        "context_selection_content_or_order_changed_with_same_queries": 5,
+        "http_request_counts_equal": 11,
+        "identical_observed_result": 7,
+        "generation_changed_on_same_context_and_evidence": 3,
+        "live_analysis_or_rewrite_decision_changed": 1
+      },
+      "changed_cases": [
+        {
+          "id": "legacy-009",
+          "block": 1,
+          "position": 0,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 58,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -86,
+            "prepare_ms": 907.1950000000033,
+            "ttft_ms": 958.737000000001,
+            "total_ms": 362.724000000002
+          },
+          "request_count_deltas": {
+            "score": 1,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "b954-887",
+          "block": 1,
+          "position": 3,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 509,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 1,
+            "answer_chars": 81,
+            "prepare_ms": 59.219999999999345,
+            "ttft_ms": 71.53299999999945,
+            "total_ms": 782.1839999999993
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "tokenize": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0,
+            "rerank": 0
+          }
+        },
+        {
+          "id": "legacy-004",
+          "block": 1,
+          "position": 7,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 122,
+            "retrieved_count": 0,
+            "evidence_units": 1,
+            "sources_count": 0,
+            "answer_chars": 145,
+            "prepare_ms": 1324.0079999999998,
+            "ttft_ms": 3049.687,
+            "total_ms": 514.4670000000006
+          },
+          "request_count_deltas": {
+            "score": 4,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "app-5b07c894210e8d",
+          "block": 2,
+          "position": 0,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 92,
+            "prepare_ms": 230.58500000000004,
+            "ttft_ms": 513.9160000000011,
+            "total_ms": 351.0279999999984
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "tokenize": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0,
+            "rerank": 0
+          }
+        },
+        {
+          "id": "legacy-004",
+          "block": 2,
+          "position": 3,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -174,
+            "prepare_ms": -4373.835000000001,
+            "ttft_ms": -2959.351999999999,
+            "total_ms": -14371.312000000002
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "legacy-009",
+          "block": 2,
+          "position": 4,
+          "classification": "live_analysis_or_rewrite_decision_changed",
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": -1965,
+            "retrieved_count": 0,
+            "evidence_units": -1,
+            "sources_count": 0,
+            "answer_chars": -228,
+            "prepare_ms": 3727.0380000000005,
+            "ttft_ms": 3775.9469999999983,
+            "total_ms": 6193.794999999998
+          },
+          "request_count_deltas": {
+            "score": -2,
+            "rerank": 39,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "scenario-student-second-retake",
+          "block": 2,
+          "position": 5,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 524,
+            "prepare_ms": 4645.351999999999,
+            "ttft_ms": 6305.4209999999985,
+            "total_ms": 10440.654999999999
+          },
+          "request_count_deltas": {
+            "score": 5,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "archive-bench-052",
+          "block": 2,
+          "position": 6,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -351,
+            "prepare_ms": 2214.505000000001,
+            "ttft_ms": 2238.679,
+            "total_ms": -1011.4500000000007
+          },
+          "request_count_deltas": {
+            "score": -1,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "b954-887",
+          "block": 2,
+          "position": 7,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": true,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 0,
+            "prepare_ms": 14513.486,
+            "ttft_ms": 14525.333,
+            "total_ms": 14760.718
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        }
+      ],
+      "limit": "First changed observable stage only; complete raw material remains server-local for factual review"
+    },
+    {
+      "load": 8,
+      "counts": {
+        "paired_offered": 24,
+        "queries_equal": 21,
+        "context_equal": 15,
+        "evidence_equal": 15,
+        "answer_equal": 11,
+        "sources_equal": 14,
+        "context_selection_content_or_order_changed_with_same_queries": 6,
+        "http_request_counts_equal": 15,
+        "identical_observed_result": 10,
+        "generation_changed_on_same_context_and_evidence": 5,
+        "live_analysis_or_rewrite_decision_changed": 3
+      },
+      "changed_cases": [
+        {
+          "id": "legacy-009",
+          "block": 1,
+          "position": 0,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 58,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -164,
+            "prepare_ms": 1551.4069999999992,
+            "ttft_ms": 1933.0039999999935,
+            "total_ms": 881.2940000000017
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "scenario-student-second-retake",
+          "block": 1,
+          "position": 1,
+          "classification": "identical_observed_result",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": true,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 0,
+            "prepare_ms": 445.130000000001,
+            "ttft_ms": 714.9170000000013,
+            "total_ms": 877.5639999999985
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "rerank": 1,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "b954-887",
+          "block": 1,
+          "position": 3,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 509,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 1,
+            "answer_chars": 81,
+            "prepare_ms": 152.37300000000323,
+            "ttft_ms": 64.09699999999793,
+            "total_ms": -4432.003000000004
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "app-5b07c894210e8d",
+          "block": 1,
+          "position": 4,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 4,
+            "prepare_ms": -94.03699999999935,
+            "ttft_ms": 311.9369999999999,
+            "total_ms": -1043.0780000000013
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "tokenize": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0,
+            "rerank": 0
+          }
+        },
+        {
+          "id": "legacy-004",
+          "block": 1,
+          "position": 7,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 122,
+            "retrieved_count": 0,
+            "evidence_units": 1,
+            "sources_count": 0,
+            "answer_chars": 59,
+            "prepare_ms": 631.7220000000016,
+            "ttft_ms": 539.0329999999994,
+            "total_ms": 3721.706999999995
+          },
+          "request_count_deltas": {
+            "score": 1,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "legacy-009",
+          "block": 1,
+          "position": 8,
+          "classification": "live_analysis_or_rewrite_decision_changed",
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": -476,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 363,
+            "prepare_ms": 4667.401999999998,
+            "ttft_ms": 4669.532999999999,
+            "total_ms": 5987.896999999997
+          },
+          "request_count_deltas": {
+            "score": 4,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "scenario-student-second-retake",
+          "block": 1,
+          "position": 9,
+          "classification": "identical_observed_result",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": true,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 0,
+            "prepare_ms": 1291.796000000002,
+            "ttft_ms": 777.1889999999985,
+            "total_ms": 1866.4829999999965
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "rerank": 1,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "b954-887",
+          "block": 1,
+          "position": 11,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 509,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 1,
+            "answer_chars": 81,
+            "prepare_ms": 2661.8430000000008,
+            "ttft_ms": 1817.9169999999976,
+            "total_ms": 1346.1299999999974
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "app-5b07c894210e8d",
+          "block": 2,
+          "position": 0,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 88,
+            "prepare_ms": -685.701,
+            "ttft_ms": -510.04399999999987,
+            "total_ms": 913.1110000000044
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "tokenize": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0,
+            "rerank": 0
+          }
+        },
+        {
+          "id": "app-4d5ecf798e8ad5",
+          "block": 2,
+          "position": 1,
+          "classification": "identical_observed_result",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": true,
+            "sources": true
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 0,
+            "prepare_ms": -1083.071,
+            "ttft_ms": -575.1929999999993,
+            "total_ms": -863.7880000000005
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "tokenize": -1,
+            "analysis_or_rewrite": 0,
+            "generation": 0,
+            "rerank": 0
+          }
+        },
+        {
+          "id": "legacy-004",
+          "block": 2,
+          "position": 3,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -154,
+            "prepare_ms": -509.1180000000022,
+            "ttft_ms": -154.6359999999986,
+            "total_ms": -297.71600000000035
+          },
+          "request_count_deltas": {
+            "score": -3,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "legacy-009",
+          "block": 2,
+          "position": 4,
+          "classification": "live_analysis_or_rewrite_decision_changed",
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": -1965,
+            "retrieved_count": 0,
+            "evidence_units": -1,
+            "sources_count": 0,
+            "answer_chars": -228,
+            "prepare_ms": 876.6180000000022,
+            "ttft_ms": 1060.903999999995,
+            "total_ms": -2665.286
+          },
+          "request_count_deltas": {
+            "score": -2,
+            "rerank": 39,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "scenario-student-second-retake",
+          "block": 2,
+          "position": 5,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 524,
+            "prepare_ms": -497.0789999999979,
+            "ttft_ms": -654.5789999999979,
+            "total_ms": 2405.8120000000054
+          },
+          "request_count_deltas": {
+            "score": 5,
+            "rerank": -1,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "b954-887",
+          "block": 2,
+          "position": 7,
+          "classification": "context_selection_content_or_order_changed_with_same_queries",
+          "equal": {
+            "queries": true,
+            "context": false,
+            "evidence": false,
+            "answer": true,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 0,
+            "prepare_ms": 108.51699999999983,
+            "ttft_ms": 256.3610000000008,
+            "total_ms": -5192.875
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "app-5b07c894210e8d",
+          "block": 2,
+          "position": 8,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": true
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": 92,
+            "prepare_ms": 6603.911,
+            "ttft_ms": 6512.644999999999,
+            "total_ms": 5626.0589999999975
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "b954-097",
+          "block": 2,
+          "position": 10,
+          "classification": "live_analysis_or_rewrite_decision_changed",
+          "equal": {
+            "queries": false,
+            "context": false,
+            "evidence": false,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": false,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 160,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -20,
+            "prepare_ms": 430.6219999999994,
+            "ttft_ms": 464.6309999999976,
+            "total_ms": 452.8780000000006
+          },
+          "request_count_deltas": {
+            "score": 1,
+            "rerank": 2,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        },
+        {
+          "id": "legacy-004",
+          "block": 2,
+          "position": 11,
+          "classification": "generation_changed_on_same_context_and_evidence",
+          "equal": {
+            "queries": true,
+            "context": true,
+            "evidence": true,
+            "answer": false,
+            "sources": false
+          },
+          "http_request_counts_equal": true,
+          "numeric_deltas_candidate_minus_reference": {
+            "context_chars": 0,
+            "retrieved_count": 0,
+            "evidence_units": 0,
+            "sources_count": 0,
+            "answer_chars": -174,
+            "prepare_ms": -832.8790000000008,
+            "ttft_ms": -542.7910000000011,
+            "total_ms": 297.6130000000012
+          },
+          "request_count_deltas": {
+            "score": 0,
+            "rerank": 0,
+            "analysis_or_rewrite": 0,
+            "generation": 0
+          }
+        }
+      ],
+      "limit": "First changed observable stage only; complete raw material remains server-local for factual review"
+    }
+  ],
+  "menon_alone_drift_by_model_block": {
+    "A1": {
+      "ttft_ms": {
+        "pooled_repeated_turn_deltas": {
+          "n": 8,
+          "median": 8.286000000000058,
+          "p95": 65.5587999999999,
+          "mean": 2.619624999999999
+        },
+        "question_clusters": 8,
+        "paired_repeated_turns": 8,
+        "question_balanced_mean_delta": 2.619624999999999,
+        "question_balanced_median_of_mean_deltas": 8.286000000000058,
+        "per_block": {
+          "0": {
+            "question_clusters": 8,
+            "paired_repeated_turns": 8,
+            "question_balanced_mean_delta": 2.619624999999999,
+            "question_balanced_median_of_mean_deltas": 8.286000000000058
+          }
+        },
+        "nominal_question_cluster_bootstrap95_mean": [
+          -27.831959375000004,
+          32.458028124999906
+        ],
+        "nominal_question_cluster_bootstrap95_median": [
+          -41.653999999999996,
+          33.103000000000065
+        ],
+        "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+      },
+      "total_ms": {
+        "pooled_repeated_turn_deltas": {
+          "n": 8,
+          "median": 15.408499999999776,
+          "p95": 106.02375000000009,
+          "mean": 6.3398749999999495
+        },
+        "question_clusters": 8,
+        "paired_repeated_turns": 8,
+        "question_balanced_mean_delta": 6.3398749999999495,
+        "question_balanced_median_of_mean_deltas": 15.408499999999776,
+        "per_block": {
+          "0": {
+            "question_clusters": 8,
+            "paired_repeated_turns": 8,
+            "question_balanced_mean_delta": 6.3398749999999495,
+            "question_balanced_median_of_mean_deltas": 15.408499999999776
+          }
+        },
+        "nominal_question_cluster_bootstrap95_mean": [
+          -42.05715312500015,
+          56.34833750000018
+        ],
+        "nominal_question_cluster_bootstrap95_median": [
+          -75.64399999999978,
+          81.27499999999964
+        ],
+        "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+      }
+    },
+    "B1": {
+      "ttft_ms": {
+        "pooled_repeated_turn_deltas": {
+          "n": 8,
+          "median": -12.235000000000014,
+          "p95": 32.54249999999995,
+          "mean": -4.646750000000026
+        },
+        "question_clusters": 8,
+        "paired_repeated_turns": 8,
+        "question_balanced_mean_delta": -4.646750000000026,
+        "question_balanced_median_of_mean_deltas": -12.235000000000014,
+        "per_block": {
+          "0": {
+            "question_clusters": 8,
+            "paired_repeated_turns": 8,
+            "question_balanced_mean_delta": -4.646750000000026,
+            "question_balanced_median_of_mean_deltas": -12.235000000000014
+          }
+        },
+        "nominal_question_cluster_bootstrap95_mean": [
+          -17.071125000000023,
+          11.693681249999953
+        ],
+        "nominal_question_cluster_bootstrap95_median": [
+          -23.480000000000018,
+          3.155999999999949
+        ],
+        "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+      },
+      "total_ms": {
+        "pooled_repeated_turn_deltas": {
+          "n": 8,
+          "median": -18.043500000000222,
+          "p95": 44.284650000000134,
+          "mean": -19.069750000000028
+        },
+        "question_clusters": 8,
+        "paired_repeated_turns": 8,
+        "question_balanced_mean_delta": -19.069750000000028,
+        "question_balanced_median_of_mean_deltas": -18.043500000000222,
+        "per_block": {
+          "0": {
+            "question_clusters": 8,
+            "paired_repeated_turns": 8,
+            "question_balanced_mean_delta": -19.069750000000028,
+            "question_balanced_median_of_mean_deltas": -18.043500000000222
+          }
+        },
+        "nominal_question_cluster_bootstrap95_mean": [
+          -45.89073125000005,
+          10.370484374999936
+        ],
+        "nominal_question_cluster_bootstrap95_median": [
+          -61.36000000000013,
+          28.25500000000011
+        ],
+        "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+      }
+    },
+    "B2": {
+      "ttft_ms": {
+        "pooled_repeated_turn_deltas": {
+          "n": 8,
+          "median": -11.07500000000016,
+          "p95": 34.08154999999995,
+          "mean": -1.3780000000000854
+        },
+        "question_clusters": 8,
+        "paired_repeated_turns": 8,
+        "question_balanced_mean_delta": -1.3780000000000854,
+        "question_balanced_median_of_mean_deltas": -11.07500000000016,
+        "per_block": {
+          "0": {
+            "question_clusters": 8,
+            "paired_repeated_turns": 8,
+            "question_balanced_mean_delta": -1.3780000000000854,
+            "question_balanced_median_of_mean_deltas": -11.07500000000016
+          }
+        },
+        "nominal_question_cluster_bootstrap95_mean": [
+          -15.399750000000097,
+          14.502659374999928
+        ],
+        "nominal_question_cluster_bootstrap95_median": [
+          -20.433637500000057,
+          25.692000000000007
+        ],
+        "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+      },
+      "total_ms": {
+        "pooled_repeated_turn_deltas": {
+          "n": 8,
+          "median": -3.1985000000001946,
+          "p95": 36.28535000000005,
+          "mean": 2.838749999999891
+        },
+        "question_clusters": 8,
+        "paired_repeated_turns": 8,
+        "question_balanced_mean_delta": 2.838749999999891,
+        "question_balanced_median_of_mean_deltas": -3.1985000000001946,
+        "per_block": {
+          "0": {
+            "question_clusters": 8,
+            "paired_repeated_turns": 8,
+            "question_balanced_mean_delta": 2.838749999999891,
+            "question_balanced_median_of_mean_deltas": -3.1985000000001946
+          }
+        },
+        "nominal_question_cluster_bootstrap95_mean": [
+          -12.96900312500009,
+          18.939640624999882
+        ],
+        "nominal_question_cluster_bootstrap95_median": [
+          -22.163000000000466,
+          26.39300000000003
+        ],
+        "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+      }
+    },
+    "A2": {
+      "ttft_ms": {
+        "pooled_repeated_turn_deltas": {
+          "n": 8,
+          "median": -13.634999999999991,
+          "p95": 8.511549999999977,
+          "mean": -17.888250000000042
+        },
+        "question_clusters": 8,
+        "paired_repeated_turns": 8,
+        "question_balanced_mean_delta": -17.888250000000042,
+        "question_balanced_median_of_mean_deltas": -13.634999999999991,
+        "per_block": {
+          "0": {
+            "question_clusters": 8,
+            "paired_repeated_turns": 8,
+            "question_balanced_mean_delta": -17.888250000000042,
+            "question_balanced_median_of_mean_deltas": -13.634999999999991
+          }
+        },
+        "nominal_question_cluster_bootstrap95_mean": [
+          -36.17023437500004,
+          -0.9603812500000045
+        ],
+        "nominal_question_cluster_bootstrap95_median": [
+          -47.80400000000009,
+          7.9220000000000255
+        ],
+        "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+      },
+      "total_ms": {
+        "pooled_repeated_turn_deltas": {
+          "n": 8,
+          "median": 1.3755000000001019,
+          "p95": 26.86900000000001,
+          "mean": -2.604375000000033
+        },
+        "question_clusters": 8,
+        "paired_repeated_turns": 8,
+        "question_balanced_mean_delta": -2.604375000000033,
+        "question_balanced_median_of_mean_deltas": 1.3755000000001019,
+        "per_block": {
+          "0": {
+            "question_clusters": 8,
+            "paired_repeated_turns": 8,
+            "question_balanced_mean_delta": -2.604375000000033,
+            "question_balanced_median_of_mean_deltas": 1.3755000000001019
+          }
+        },
+        "nominal_question_cluster_bootstrap95_mean": [
+          -21.32096249999997,
+          14.569499999999977
+        ],
+        "nominal_question_cluster_bootstrap95_median": [
+          -42.564000000000306,
+          20.40800000000013
+        ],
+        "inference_limit": "Only two temporal blocks; intervals do not establish general noninferiority"
+      }
+    }
+  },
+  "model_blocks": [
+    {
+      "tag": "A1",
+      "ordinal": 1,
+      "max_num_batched_tokens": 32768,
+      "pair_block": 1,
+      "status": "complete",
+      "receipt_sha256": "01286d37dc7647e016fd3f3fd9767f73eb95d8e867d5f6314e88dc0e7a54b5f3"
+    },
+    {
+      "tag": "B1",
+      "ordinal": 2,
+      "max_num_batched_tokens": 8192,
+      "pair_block": 1,
+      "status": "complete",
+      "receipt_sha256": "0d5182cfcc28b99cd9836dc61d43165eabbde1568f613889e1dff3363d31db5a"
+    },
+    {
+      "tag": "B2",
+      "ordinal": 3,
+      "max_num_batched_tokens": 8192,
+      "pair_block": 2,
+      "status": "complete",
+      "receipt_sha256": "f2088f7d57147f86522aceb49e0b996e9d4efd1a2d1b2d9221f8d41710955b79"
+    },
+    {
+      "tag": "A2",
+      "ordinal": 4,
+      "max_num_batched_tokens": 32768,
+      "pair_block": 2,
+      "status": "complete",
+      "receipt_sha256": "c0b1344c6bf02ee73c6dbbfac1e8aa5fed206449862e70ba2882fabccdc284be"
+    }
+  ],
+  "model_block_status_counts": {
+    "complete": 4
+  },
+  "design": {
+    "max_num_batched_tokens_A": 32768,
+    "max_num_batched_tokens_B": 8192,
+    "fresh_model_restarts": 4,
+    "graph_loads": 1,
+    "clock_frozen": true,
+    "context_chunks": 16,
+    "hub_min_edges": 5000,
+    "early_rerank": false,
+    "source_streaming": false,
+    "early_first_query": false,
+    "prompt_timezone": "Asia/Novosibirsk",
+    "rerank_guidance": "structured",
+    "http_requests": {},
+    "rerank_question_source": "resolved",
+    "qa_evidence_policy": "legacy",
+    "rerank_prompt_order": "legacy"
+  }
+}

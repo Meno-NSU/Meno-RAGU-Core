@@ -1,0 +1,78 @@
+{
+  "method": "Manual inspection of selected public benchmark source facts and all16 fixed-context QA outputs; no additional model judge calls.",
+  "cases": [
+    {
+      "id": "dialogue-certificate-referent-missing-order",
+      "required_behavior": "Ask what the second certificate refers to because no numbered alternatives exist in history.",
+      "L": {
+        "seeds": 2,
+        "asks_clarification": 2,
+        "describes_both_procedures": 2
+      },
+      "Q": {
+        "seeds": 2,
+        "asks_clarification": 0,
+        "describes_both_procedures": 1
+      },
+      "interpretation": "Repeatable reduction in ambiguity handling; nearby context changes do not establish loss of essential source facts.",
+      "judge_limit": "Legacy conditional payment-first procedure plus final clarification is better, but strict no-choice nugget should not be treated as unequivocally perfect."
+    },
+    {
+      "id": "doc-b3-005",
+      "required_fact": "Physics is taught on 31.05.01 General Medicine programmes as well as the other listed programmes.",
+      "source_excerpt": "| Физика | 31.05.01 Лечебное дело (General medicine / Лечебное дело) |",
+      "L": {
+        "seeds": 2,
+        "required_Physics_Medicine_association_present": 2
+      },
+      "Q": {
+        "seeds": 2,
+        "required_Physics_Medicine_association_present": 0
+      },
+      "source_recall": "Required table is present in both observed contexts; corresponding candidate rank1/label2 inL/Q/QI/SL/SQ.",
+      "graph_ablation_present_out_of2": {
+        "Q_control": 0,
+        "same_Q_notes_L_common_order": 0,
+        "no_graph": 2,
+        "full_L_note_set": 2
+      },
+      "interpretation": "Selected graph summary set changes whether the model uses the correct table row. Exact individual note effect untested.",
+      "judge_limit": "Physical Foundations of Diagnostics -> Medicine is also true; Q omits the required Physics association and adds another true course. This is incomplete task-focused recall, not proven fabrication."
+    },
+    {
+      "id": "legacy-003",
+      "required_fact": "Vector is listed jointly with NIBKh as a base institute for the molecular biology department; that statement alone does not promise individual placement.",
+      "source_excerpt": "Кафедра молекулярной биологии (базовый институт – НИБХ СО РАН и ГНЦ ВБ «Вектор»)",
+      "L": {
+        "seeds": 2,
+        "correct_base_institute_statement": 0,
+        "false_absence_statement": 2
+      },
+      "Q": {
+        "seeds": 2,
+        "correct_base_institute_statement": 2,
+        "false_absence_statement": 0
+      },
+      "rewrite_ablation": "Original question has two intents; lossy standalone retains only placement guarantee. Holding all other section bytes fixed restores two required chunks from label0 to2 at both seeds and both orders; two negative controls remain0.",
+      "interpretation": "Both source use and pre-rerank intent preservation need separate evaluation."
+    },
+    {
+      "id": "prod-0443",
+      "required_fact": "Benchmark target person for the official leadership section.",
+      "L": {
+        "seeds": 2,
+        "target_person_correct": 2
+      },
+      "Q": {
+        "seeds": 2,
+        "target_person_correct": 2
+      },
+      "interpretation": "Correct main fact across all4 answers; context and verbosity differ. No independent claim about external current leadership verification is made by this experiment."
+    }
+  ],
+  "limitations": [
+    "Purposeful four-case diagnosis, not a population estimate.",
+    "Two seeds do not estimate robustness across model versions or traffic loads.",
+    "Scorer-onlyQI has no reconstructed QA context or measured answer quality."
+  ]
+}

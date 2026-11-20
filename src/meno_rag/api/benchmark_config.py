@@ -24,11 +24,12 @@ _CONTENT_SETTINGS = (
     "rag_rewrite_rerank_model", "graph_top_k", "engine_rerank_top_k", "graph_related_candidates",
     "graph_source_documents", "graph_max_elements", "source_urls_per_document", "embedder_model",
     "engine_reranker_model", "source_attribution", "source_attribution_threshold", "max_sources",
-    "rerank_candidates_per_page", "turn_routing", "source_prior_weight", "source_authority",
+    "rerank_candidates_per_page", "turn_routing", "source_prior_weight", "source_authority", "qa_evidence_policy",
     "context_min_rerank_score", "graph_min_rerank_score", "llm_rerank",
     # answer-affecting switches added after the list was written (missing until 18.11: two stands that answered
     # differently had one fingerprint)
     "hybrid_fusion", "context_style", "graph_element_evidence", "graph_channel", "rerank_prompt_order",
+    "rerank_guidance", "prompt_timezone", "rerank_question_source",
 )
 # Every other setting, deliberately outside the fingerprint: addresses, keys, timeouts, concurrency, logging,
 # auth, storage and backups. tests/test_benchmark_config.py fails for a field in neither list, so a new setting
@@ -49,9 +50,10 @@ _OPERATIONAL_SETTINGS = (
     "openrouter_unreachable_backoff_seconds", "openrouter_x_title", "model_cache_ttl_seconds",
     "model_discovery_timeout_seconds", "httpx_max_connections", "httpx_max_keepalive", "embed_concurrency",
     "bm25_concurrency", "rerank_concurrency", "rewrite_concurrency", "generation_concurrency", "rerank_priority",
+    "early_first_query", "early_rerank", "stream_source_attribution",
     "retrieval_executor_max_workers", "rewrite_timeout_seconds", "rerank_timeout_seconds", "graph_timeout_seconds",
     "generation_timeout_seconds", "fewshots_path_override", "stand_resources_dir", "graph_dir_override",
-    "frida_device", "frida_embedder_name",
+    "frida_device", "frida_embedder_name", "graph_hub_min_edges",
 )
 
 

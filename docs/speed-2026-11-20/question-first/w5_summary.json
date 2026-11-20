@@ -1,0 +1,283 @@
+{
+  "items": 1454,
+  "all_counts": {
+    "same_answer": 68,
+    "same_contexts": 15,
+    "same_queries": 1333,
+    "same_replayed_history": 1448,
+    "same_ordered_context_texts_and_kinds": 18
+  },
+  "robustness": {
+    "qwen": {
+      "n": 29,
+      "declined": 5,
+      "improved": 0,
+      "unchanged": 24,
+      "mean_delta": -0.08333333333333333
+    },
+    "gptoss": {
+      "n": 29,
+      "declined": 2,
+      "improved": 5,
+      "unchanged": 22,
+      "mean_delta": 0.02011494252873563
+    }
+  },
+  "selected_public_cases": [
+    {
+      "id": "dialogue-certificate-referent-missing-order",
+      "question_excerpt": "Мне нужна вторая справка. Как запросить её дистанционно?",
+      "p1_captured": false,
+      "diagnostics": {
+        "id": "dialogue-certificate-referent-missing-order",
+        "profiles": [
+          "robustness"
+        ],
+        "history_turns": 2,
+        "same_answer": false,
+        "same_contexts": false,
+        "same_queries": true,
+        "same_replayed_history": true,
+        "context_counts": [
+          18,
+          18
+        ],
+        "document_jaccard": 0.9090909090909091,
+        "routes": [
+          "nsu",
+          "nsu"
+        ],
+        "judges": {
+          "qwen": {
+            "legacy": 1,
+            "question_first": 0,
+            "delta": -1,
+            "label_flips": [
+              {
+                "nugget_id": "c1",
+                "legacy": "support",
+                "question_first": "contradicts"
+              },
+              {
+                "nugget_id": "c2",
+                "legacy": "support",
+                "question_first": "contradicts"
+              },
+              {
+                "nugget_id": "c3",
+                "legacy": "support",
+                "question_first": "not_support"
+              }
+            ]
+          },
+          "gptoss": {
+            "legacy": 1,
+            "question_first": 0,
+            "delta": -1,
+            "label_flips": [
+              {
+                "nugget_id": "c1",
+                "legacy": "support",
+                "question_first": "not_support"
+              },
+              {
+                "nugget_id": "c2",
+                "legacy": "support",
+                "question_first": "not_support"
+              },
+              {
+                "nugget_id": "c3",
+                "legacy": "support",
+                "question_first": "not_support"
+              }
+            ]
+          }
+        }
+      },
+      "required_quote_groups": [
+        {},
+        {}
+      ]
+    },
+    {
+      "id": "doc-b3-005",
+      "question_excerpt": "По каким образовательным программам НГУ Денис Иванович Карпов, доцент кафедры общей физики, преподаёт физику?",
+      "p1_captured": false,
+      "diagnostics": {
+        "id": "doc-b3-005",
+        "profiles": [
+          "general",
+          "legacy_regression",
+          "archive_reviewed"
+        ],
+        "history_turns": 0,
+        "same_answer": false,
+        "same_contexts": false,
+        "same_queries": true,
+        "same_replayed_history": true,
+        "context_counts": [
+          13,
+          13
+        ],
+        "document_jaccard": 0.7777777777777778,
+        "routes": [
+          "nsu",
+          "nsu"
+        ],
+        "judges": {
+          "qwen": {
+            "legacy": 1,
+            "question_first": 0,
+            "delta": -1,
+            "label_flips": [
+              {
+                "nugget_id": "n1",
+                "legacy": "support",
+                "question_first": "contradicts"
+              }
+            ]
+          },
+          "gptoss": {
+            "legacy": 1,
+            "question_first": 0,
+            "delta": -1,
+            "label_flips": [
+              {
+                "nugget_id": "n1",
+                "legacy": "support",
+                "question_first": "partial"
+              }
+            ]
+          }
+        }
+      },
+      "required_quote_groups": [
+        {
+          "e1": true
+        },
+        {
+          "e1": true
+        }
+      ]
+    },
+    {
+      "id": "legacy-003",
+      "question_excerpt": "В описании кафедры молекулярной биологии ФЕН НГУ вижу «Вектор». Это базовая организация кафедры и гарантирует ли это место практики студенту?",
+      "p1_captured": false,
+      "diagnostics": {
+        "id": "legacy-003",
+        "profiles": [
+          "general",
+          "archive_reviewed",
+          "legacy_regression"
+        ],
+        "history_turns": 0,
+        "same_answer": false,
+        "same_contexts": false,
+        "same_queries": true,
+        "same_replayed_history": true,
+        "context_counts": [
+          18,
+          17
+        ],
+        "document_jaccard": 0.7777777777777778,
+        "routes": [
+          "nsu",
+          "nsu"
+        ],
+        "judges": {
+          "qwen": {
+            "legacy": 0,
+            "question_first": 1,
+            "delta": 1,
+            "label_flips": [
+              {
+                "nugget_id": "n1",
+                "legacy": "contradicts",
+                "question_first": "support"
+              }
+            ]
+          },
+          "gptoss": {
+            "legacy": 0,
+            "question_first": 1,
+            "delta": 1,
+            "label_flips": [
+              {
+                "nugget_id": "n1",
+                "legacy": "contradicts",
+                "question_first": "support"
+              }
+            ]
+          }
+        }
+      },
+      "required_quote_groups": [
+        {
+          "e1": true
+        },
+        {
+          "e1": true
+        }
+      ]
+    },
+    {
+      "id": "prod-0443",
+      "question_excerpt": "Кто указан ректором НГУ в официальном разделе «Руководство» в ноябре 2026 года?",
+      "p1_captured": false,
+      "diagnostics": {
+        "id": "prod-0443",
+        "profiles": [
+          "general",
+          "legacy_regression",
+          "archive_reviewed"
+        ],
+        "history_turns": 0,
+        "same_answer": false,
+        "same_contexts": false,
+        "same_queries": true,
+        "same_replayed_history": true,
+        "context_counts": [
+          16,
+          17
+        ],
+        "document_jaccard": 0.6363636363636364,
+        "routes": [
+          "nsu",
+          "nsu"
+        ],
+        "judges": {
+          "qwen": {
+            "legacy": 1,
+            "question_first": 1,
+            "delta": 0,
+            "label_flips": []
+          },
+          "gptoss": {
+            "legacy": 1,
+            "question_first": 1,
+            "delta": 0,
+            "label_flips": []
+          }
+        }
+      },
+      "required_quote_groups": [
+        {
+          "e1": true
+        },
+        {
+          "e1": true
+        }
+      ]
+    }
+  ],
+  "context_identity_check": {
+    "n": 1454,
+    "same_ordered_context_texts_and_kinds": 18,
+    "same_context_objects_previously_counted": 15
+  },
+  "all_counts_definitions": {
+    "same_contexts": "Complete contexts objects, including metadata and chunk order",
+    "same_ordered_context_texts_and_kinds": "Ordered rendered text and kind pairs; independent of metadata"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "kind": "pinned-HF-v39-vs-prod-candidate-metadata",
+  "actual_part_payload_bytes_checked": false,
+  "files": {
+    "sources/v1/manifest.json": {
+      "HF_sha256": "c9b7daa0d5e1934ba7286677d36e516f5656bad1e16a3489f076f99a6d0d4eb6",
+      "prod_sha256": "c9b7daa0d5e1934ba7286677d36e516f5656bad1e16a3489f076f99a6d0d4eb6",
+      "byte_identity": true,
+      "object_identity": true,
+      "differing_top_keys": [],
+      "HF_parts": 106,
+      "prod_parts": 106,
+      "all_parts_checksums_identical": true,
+      "differing_part_names": [],
+      "HF_records": 211585,
+      "prod_records": 211585,
+      "HF_name": "NSU knowledge base — sources layer",
+      "prod_name": "NSU knowledge base — sources layer",
+      "HF_version": "v3.9b",
+      "prod_version": "v3.9b"
+    },
+    "chunks_cag_manifest.json": {
+      "HF_sha256": "35d66794d6b1e96831fc14c3f71f01e1c10bcd0f45b45aa74aec49b7a89171a3",
+      "prod_sha256": "35d66794d6b1e96831fc14c3f71f01e1c10bcd0f45b45aa74aec49b7a89171a3",
+      "byte_identity": true,
+      "object_identity": true,
+      "differing_top_keys": [],
+      "HF_source_manifest_sha256": "c9b7daa0d5e1934ba7286677d36e516f5656bad1e16a3489f076f99a6d0d4eb6",
+      "prod_source_manifest_sha256": "c9b7daa0d5e1934ba7286677d36e516f5656bad1e16a3489f076f99a6d0d4eb6"
+    },
+    "chunks/v1/stats.json": {
+      "HF_sha256": "ff3701927c87b69e6a591c143085d836787ab8e042e50374e30d40e3bffc8926",
+      "prod_sha256": "ff3701927c87b69e6a591c143085d836787ab8e042e50374e30d40e3bffc8926",
+      "byte_identity": true,
+      "object_identity": true,
+      "differing_top_keys": [],
+      "HF_source_manifest_sha256": "c9b7daa0d5e1934ba7286677d36e516f5656bad1e16a3489f076f99a6d0d4eb6",
+      "prod_source_manifest_sha256": "c9b7daa0d5e1934ba7286677d36e516f5656bad1e16a3489f076f99a6d0d4eb6"
+    }
+  },
+  "HF_branch": "kb-v3.9",
+  "HF_commit": "4333c2325e5ea3c2c64100a0fb8fe7076762b621",
+  "stand_label": "stand-v6k3b",
+  "stand_source_label": "v3.9b-candidate",
+  "stand_build_manifest_sha256": "98bc523d686c7fac09af5a51170ad7cff58659b6818ba43f483c1e5b6602fdba",
+  "stand_source_fingerprint": "3aa82ebcc436630b0977872ef834480622639407398d351bbff3bab5266a2fd4",
+  "scope": "Metadata identity and source attestations only; no independent source part payload or full built-stand rehash"
+}

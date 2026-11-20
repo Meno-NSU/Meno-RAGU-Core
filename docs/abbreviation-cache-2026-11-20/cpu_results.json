@@ -1,0 +1,166 @@
+{
+  "focus50": {
+    "runs": {
+      "fixed_pool": {
+        "unique_inputs": 50,
+        "saved_legacy_prompt_mismatches": 0,
+        "unique_document_hashes": 50,
+        "unique_question_history_hashes": 1,
+        "controlled_repeated_first_50": {
+          "n": 50,
+          "sum_ms": 1.5551429241895676,
+          "mean_ms": 0.03110285848379135,
+          "median_ms": 0.030387891456484795,
+          "p95_ms": 0.04359288141131401
+        },
+        "wall_elapsed_ms_including_two_order_parity": 1513.451041188091,
+        "cached_complete_message_mismatches_both_orders": 0,
+        "baseline": {
+          "n": 50,
+          "sum_ms": 386.63303991779685,
+          "mean_ms": 7.732660798355937,
+          "median_ms": 8.1226690672338,
+          "p95_ms": 10.207229759544134
+        },
+        "cache_first_pass": {
+          "n": 50,
+          "sum_ms": 366.8882427737117,
+          "mean_ms": 7.337764855474234,
+          "median_ms": 7.703569484874606,
+          "p95_ms": 9.8580839112401
+        },
+        "cache_stats": {
+          "hits": 49,
+          "misses": 51,
+          "evictions": 0,
+          "entries": 51,
+          "accounted_bytes": 1778372
+        },
+        "parity_ok": true
+      }
+    },
+    "source_sha256": {
+      "meno_rag.stand.rerank": "37556f7f7a850ac4a147746a3763853557878ea3a0d6c1e1c7cdef562e47a5ff",
+      "meno_rag.stand.abbreviation_cache": "c69483e3c6a867ef262d330a5696a724ff96648c33ce5f8f465afb8c6a6df50a",
+      "meno_rag.stand.rewriting": "b35b373315e6f75c32ff3fa7c572be221a2af84ca83b08e8e11f9c22380a9561",
+      "meno_rag.stand.tokenization": "1ad85bae47b9a2c473c29bdce54c524a781930f5f0f9ec71bec1540587f01aea"
+    },
+    "packages": {
+      "nltk": "3.9.4",
+      "razdel": "0.5.0"
+    },
+    "abbr_sha256": "c31fbddedb7ecc6d3d28eec54fde9e0352b5976d22491b9c95d5b24cfd8d6f1a"
+  },
+  "focus281": {
+    "runs": {
+      "fixed_pool": {
+        "processed_requests": 281,
+        "unique_inputs": 281,
+        "saved_legacy_prompt_mismatches": 0,
+        "unique_document_hashes": 281,
+        "unique_question_history_hashes": 4,
+        "controlled_repeated_first_50": {
+          "n": 50,
+          "sum_ms": 1.4012879692018032,
+          "mean_ms": 0.028025759384036064,
+          "median_ms": 0.026946188881993294,
+          "p95_ms": 0.036407727748155594
+        },
+        "wall_elapsed_ms_including_two_order_parity": 5308.531566057354,
+        "cached_complete_message_mismatches_both_orders": 0,
+        "baseline": {
+          "n": 281,
+          "sum_ms": 1686.9327398017049,
+          "mean_ms": 6.003319358724928,
+          "median_ms": 6.105173844844103,
+          "p95_ms": 9.881599340587854
+        },
+        "cache_first_pass": {
+          "n": 281,
+          "sum_ms": 1558.0678209662437,
+          "mean_ms": 5.544725341516882,
+          "median_ms": 5.675136111676693,
+          "p95_ms": 9.518057573586702
+        },
+        "cache_stats": {
+          "hits": 277,
+          "misses": 285,
+          "evictions": 0,
+          "entries": 285,
+          "accounted_bytes": 8116110
+        },
+        "parity_ok": true
+      }
+    },
+    "source_sha256": {
+      "meno_rag.stand.rerank": "37556f7f7a850ac4a147746a3763853557878ea3a0d6c1e1c7cdef562e47a5ff",
+      "meno_rag.stand.abbreviation_cache": "c69483e3c6a867ef262d330a5696a724ff96648c33ce5f8f465afb8c6a6df50a",
+      "meno_rag.stand.rewriting": "b35b373315e6f75c32ff3fa7c572be221a2af84ca83b08e8e11f9c22380a9561",
+      "meno_rag.stand.tokenization": "1ad85bae47b9a2c473c29bdce54c524a781930f5f0f9ec71bec1540587f01aea"
+    },
+    "packages": {
+      "nltk": "3.9.4",
+      "razdel": "0.5.0"
+    },
+    "abbr_sha256": "c31fbddedb7ecc6d3d28eec54fde9e0352b5976d22491b9c95d5b24cfd8d6f1a"
+  },
+  "all10548": {
+    "runs": {
+      "all_common_pairs": {
+        "processed_requests": 10548,
+        "unique_inputs": 10548,
+        "saved_legacy_prompt_mismatches": 0,
+        "unique_document_hashes": 8980,
+        "unique_question_history_hashes": 100,
+        "controlled_repeated_first_50": {
+          "n": 50,
+          "sum_ms": 1.2621008791029453,
+          "mean_ms": 0.025242017582058907,
+          "median_ms": 0.025673536583781242,
+          "p95_ms": 0.03440491855144501
+        },
+        "wall_elapsed_ms_including_two_order_parity": 196646.47550787777,
+        "cached_complete_message_mismatches_both_orders": 0,
+        "baseline": {
+          "n": 10548,
+          "sum_ms": 69201.14780217409,
+          "mean_ms": 6.560594217119273,
+          "median_ms": 6.9088495802134275,
+          "p95_ms": 10.003951843827963
+        },
+        "cache_first_pass": {
+          "n": 10548,
+          "sum_ms": 56581.8269085139,
+          "mean_ms": 5.364223256400636,
+          "median_ms": 5.9508164413273335,
+          "p95_ms": 9.26312105730176
+        },
+        "cache_stats": {
+          "hits": 11362,
+          "misses": 9734,
+          "evictions": 7686,
+          "entries": 2048,
+          "accounted_bytes": 61530112
+        },
+        "parity_ok": true
+      }
+    },
+    "pair_counts": {
+      "common": 10548,
+      "only_A": 16,
+      "only_B": 13
+    },
+    "source_sha256": {
+      "meno_rag.stand.rerank": "37556f7f7a850ac4a147746a3763853557878ea3a0d6c1e1c7cdef562e47a5ff",
+      "meno_rag.stand.abbreviation_cache": "c69483e3c6a867ef262d330a5696a724ff96648c33ce5f8f465afb8c6a6df50a",
+      "meno_rag.stand.rewriting": "b35b373315e6f75c32ff3fa7c572be221a2af84ca83b08e8e11f9c22380a9561",
+      "meno_rag.stand.tokenization": "1ad85bae47b9a2c473c29bdce54c524a781930f5f0f9ec71bec1540587f01aea"
+    },
+    "packages": {
+      "nltk": "3.9.4",
+      "razdel": "0.5.0"
+    },
+    "abbr_sha256": "c31fbddedb7ecc6d3d28eec54fde9e0352b5976d22491b9c95d5b24cfd8d6f1a"
+  },
+  "executed_profile_script_sha256": "715d5564f6cf71133c2ce5aa25f1947e93494927b1d985e0b4a0fa124b773b4a"
+}

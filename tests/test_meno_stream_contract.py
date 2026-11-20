@@ -1,9 +1,12 @@
 import json
+from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from meno_rag.api.events import StageEvent, StageName, StageStatus
+from meno_rag.stand.attribution import StreamingAttribution
 
 
 def _sources():
@@ -396,3 +399,100 @@ def test_non_stream_answer_carries_the_attributed_sources(monkeypatch):
         )
     assert late.answers == ["ok"]
     assert r.json()["sources"] == [{"document_title": "Doc A", "source_url": "https://nsu.ru/a"}]
+
+
+class _Feed(StreamingAttribution):
+    """A streaming attribution stand-in: records what the answer looked like at each token."""
+
+    def __init__(self):
+        super().__init__([], None, 0.5)
+        self.seen, self.cancelled = [], False
+
+    def feed(self, text):
+        self.seen.append(text)
+
+    def cancel(self):
+        self.cancelled = True
+
+
+class _StreamingLatePipeline(_LatePipeline):
+    def __init__(self):
+        super().__init__()
+        self.feed = _Feed()
+        self.streaming = []
+
+    def start_source_attribution(self, outcome):
+        return self.feed
+
+    async def finalize_sources(self, outcome, answer, streaming=None):
+        self.streaming.append(streaming)
+        return await super().finalize_sources(outcome, answer)
+
+
+def test_the_sources_are_attributed_from_the_text_streamed_so_far(monkeypatch):
+    # speed audit of 19.11, П5: the stream feeds the attribution token by token and hands it to finalize_sources
+    main_mod = _client(monkeypatch)
+    with TestClient(main_mod.app) as c:
+        c.app.state.pipeline = late = _StreamingLatePipeline()
+        r = c.post(
+            "/v1/chat/completions",
+            json={"model": "m", "messages": [{"role": "user", "content": "q"}], "stream": True},
+        )
+    assert late.answers == ["ok"] and late.streaming == [late.feed]
+    assert late.feed.seen and late.feed.seen[-1] == "ok"
+    assert late.feed.cancelled  # finished or not, nothing is left running after the stream
+    assert [p for n, p in _events(r.text) if n == "sources"] == [
+        {"sources": [{"document_title": "Doc A", "source_url": "https://nsu.ru/a"}]}]
+
+
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("finish", ["stop", "length"])
+def test_actual_client_truncation_cannot_emit_success_or_persist(monkeypatch, stream, finish):
+    from meno_rag.llm.client import VLLMClient
+
+    main_mod = _client(monkeypatch)
+    persist = AsyncMock()
+    monkeypatch.setattr(main_mod, "_persist_success", persist)
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        if json.loads(request.content).get("stream"):
+            body = ('data: {"choices":[{"delta":{"content":"partial"}}]}\n\n'
+                    f'data: {{"choices":[{{"delta":{{}},"finish_reason":"{finish}"}}]}}\n\n'
+                    'data: [DONE]\n\n')
+            return httpx.Response(200, content=body.encode())
+        return httpx.Response(200, json={"choices": [{"message": {"content": "partial"}, "finish_reason": finish}]})
+
+    class ClientPipeline(_Pipeline):
+        async def stream_text(self, **kwargs):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+                async for part in VLLMClient(http_client=http).stream_chat_completion(base_url="http://x/v1", model="m", messages=[]):
+                    yield part
+
+        async def generate_text(self, **kwargs):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+                return await VLLMClient(http_client=http).chat_completion_text(base_url="http://x/v1", model="m", messages=[])
+
+    with TestClient(main_mod.app) as client:
+        client.app.state.pipeline = ClientPipeline()
+        response = client.post("/v1/chat/completions", json={"model": "m", "messages": [{"role": "user", "content": "q"}], "stream": stream})
+    assert len(requests) == 1
+    if finish == "stop":
+        persist.assert_awaited_once()
+        if stream:
+            payloads = [json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ") and line != "data: [DONE]"]
+            assert any(choice.get("finish_reason") == "stop" for payload in payloads for choice in payload.get("choices", []))
+        else:
+            assert response.json()["choices"][0]["message"]["content"] == "partial"
+    else:
+        persist.assert_not_awaited()
+        if stream:
+            assert any(name == "error" for name, _ in _events(response.text))
+            payloads = [json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ") and line != "data: [DONE]"]
+            finishes = [choice.get("finish_reason") for payload in payloads for choice in payload.get("choices", [])]
+            assert "stop" not in finishes
+            assert "error" in finishes
+        else:
+            assert response.status_code >= 400
+            assert "choices" not in response.json()

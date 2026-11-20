@@ -9,7 +9,6 @@ from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import asdict, dataclass
-from datetime import date, datetime
 from typing import Any, cast
 
 import httpx
@@ -17,18 +16,21 @@ import structlog
 
 from meno_rag.api.events import StageEvent, StageName, StageStatus
 from meno_rag.config import Settings
+from meno_rag.llm.client import completion_text
 from meno_rag.llm.think_detector import has_thinking
 from meno_rag.logging_config import preview_field
 from meno_rag.schemas import ChatMessage, PipelineOutcome
 from meno_rag.stand.attribution import (
     EvidenceUnit,
     Scorer,
+    StreamingAttribution,
     attribute,
     document_units,
     norm_url,
     page_titles,
     to_sources,
 )
+from meno_rag.stand.clock import prompt_now
 from meno_rag.stand.context import (
     flatten_sources,
     global_chunk_index_to_text,
@@ -38,6 +40,7 @@ from meno_rag.stand.context import (
 )
 from meno_rag.stand.dialogue_history import prepare_dialogue_history
 from meno_rag.stand.dialogue_memory import SummaryStore, build_memory, render_history
+from meno_rag.stand.evidence_policy import with_evidence_policy
 from meno_rag.stand.qa import prepare_prompt_for_question_answering, system_prompt_with_datetime
 from meno_rag.stand.rerank import (
     build_prompt,
@@ -145,6 +148,7 @@ class StandRagPipeline:
         generation_max_tokens: int | None = None,
     ) -> PipelineOutcome:
         question, history = extract_question_and_history(messages)
+        question_time = prompt_now(self.settings.prompt_timezone)
         memory = None
         # sub-stage timings of the turn (recorded only): the memory, the analysis, the rewrite
         turn_timings: dict[str, float] = {}
@@ -185,6 +189,7 @@ class StandRagPipeline:
         )
 
         search_question = question  # what the search and the relevance check work from
+        early_turn: list[Any] = []  # EARLY_FIRST_QUERY: the first query's search and scores, started during the rewrite
         route: str | None  # None: turn routing is off
         if memory is not None and self.settings.turn_routing:
             # One analysis call (Menon 1.1): the route and a question that stands without the history; the rewrite
@@ -193,11 +198,18 @@ class StandRagPipeline:
             async def analyze_and_rewrite() -> tuple[TurnAnalysis, list[str] | None]:
                 analysis_started = time.perf_counter()
                 analysis = await analyze(self.llm_router, runtime.core, question=question, recent=memory.recent,
-                                         summary=memory.summary, today=date.today(),
+                                         summary=memory.summary, today=question_time.date(),
                                          timeout_s=self.settings.rewrite_timeout_seconds)
                 turn_timings["analysis_ms"] = _elapsed_ms(analysis_started)
                 if analysis.route in NO_SEARCH_ROUTES:
                     return analysis, None
+                if self.settings.early_first_query:
+                    early_question, early_history = self._rerank_inputs(
+                        question, analysis.standalone_question, prepared_dialogue_history, has_memory=True)
+                    early = self._start_early_query(analysis.standalone_question, early_history, runtime.core,
+                                                    rerank_question=early_question)
+                    if early is not None:
+                        early_turn.append(early)
                 rewrite_started = time.perf_counter()
                 rewritten = await self._rewrite_question(analysis.standalone_question, prepared_dialogue_history,
                                                          runtime.core)
@@ -211,15 +223,20 @@ class StandRagPipeline:
                         "subqueries": analysis.subqueries, "analysis_fallback": analysis.fallback,
                         "focus": analysis.focus, "timings": dict(turn_timings)}
 
-            analysis, rewritten = await self._timed_stage(
-                StageName.QUERY_REWRITE,
-                emit,
-                analyze_and_rewrite,
-                stage_durations,
-                stage_details,
-                model_id=runtime.core.model_id,
-                detail_of=analysis_detail,
-            )
+            try:
+                analysis, rewritten = await self._timed_stage(
+                    StageName.QUERY_REWRITE,
+                    emit,
+                    analyze_and_rewrite,
+                    stage_durations,
+                    stage_details,
+                    model_id=runtime.core.model_id,
+                    detail_of=analysis_detail,
+                )
+            except BaseException:
+                for early in early_turn:
+                    await early.close()
+                raise
             route, search_question = analysis.route, analysis.standalone_question
             searching = rewritten is not None
             search_queries = list(dict.fromkeys([*rewritten, *analysis.subqueries])) if rewritten is not None else []
@@ -259,49 +276,55 @@ class StandRagPipeline:
             stage_details.setdefault(StageName.QUERY_REWRITE, {})["timings"] = dict(turn_timings)
             searching = route not in NO_SEARCH_ROUTES
 
-        # Few-shot selection is fail-safe and surfaced as its own stage so the
-        # UI can show "found a similar case". Only run (and emit) when enabled
-        # to keep the processing chain clean when the feature is off.
-        selected_fewshots: list[tuple[Any, float]] = []
-        if self.resources.fewshots_enabled:
-            selected_fewshots = await self._timed_stage(
-                StageName.FEWSHOT_SELECTION,
-                emit,
-                lambda: self._select_fewshots(question, search_queries),
-                stage_durations,
-                stage_details,
-            )
+        rerank_question, rerank_history = self._rerank_inputs(
+            question, search_question, prepared_dialogue_history, has_memory=memory is not None)
+        try:
+            # Few-shot selection is fail-safe and surfaced as its own stage so the
+            # UI can show "found a similar case". Only run (and emit) when enabled
+            # to keep the processing chain clean when the feature is off.
+            selected_fewshots: list[tuple[Any, float]] = []
+            if self.resources.fewshots_enabled:
+                selected_fewshots = await self._timed_stage(
+                    StageName.FEWSHOT_SELECTION,
+                    emit,
+                    lambda: self._select_fewshots(question, search_queries),
+                    stage_durations,
+                    stage_details,
+                )
 
-        if searching:
-            retrieval_batches = await self._timed_stage(
-                StageName.RETRIEVAL,
-                emit,
-                lambda: self._retrieve(search_queries),
-                stage_durations,
-                stage_details,
-            )
+            if searching:
+                retrieval_batches = await self._timed_stage(
+                    StageName.RETRIEVAL,
+                    emit,
+                    lambda: self._retrieve(search_queries, **({"early": early_turn[0]} if early_turn else {})),
+                    stage_durations,
+                    stage_details,
+                )
 
-            fused_batches = await self._timed_stage(
-                StageName.FUSION,
-                emit,
-                lambda: self._fuse(retrieval_batches),
-                stage_durations,
-                stage_details,
-            )
+                fused_batches = await self._timed_stage(
+                    StageName.FUSION,
+                    emit,
+                    lambda: self._fuse(retrieval_batches),
+                    stage_durations,
+                    stage_details,
+                )
 
-            reranked_global_chunks = await self._timed_stage(
-                StageName.RERANK,
-                emit,
-                lambda: self._rerank(fused_batches, search_question,
-                                     "" if memory is not None else prepared_dialogue_history, runtime.core),
-                stage_durations,
-                stage_details,
-                model_id=runtime.core.model_id,
-            )
-        else:  # small talk, an injection or a turn about the dialogue: no search, no documents
-            search_queries, retrieval_batches, fused_batches = [], [], []
-            reranked_global_chunks = _RerankOutput([])
-            reranked_global_chunks.final_evidence = []
+                reranked_global_chunks = await self._timed_stage(
+                    StageName.RERANK,
+                    emit,
+                    lambda: self._rerank(fused_batches, rerank_question, rerank_history, runtime.core,
+                                         **({"early": early_turn[0]} if early_turn else {})),
+                    stage_durations,
+                    stage_details,
+                    model_id=runtime.core.model_id,
+                )
+            else:  # small talk, an injection or a turn about the dialogue: no search, no documents
+                search_queries, retrieval_batches, fused_batches = [], [], []
+                reranked_global_chunks = _RerankOutput([])
+                reranked_global_chunks.final_evidence = []
+        finally:
+            for early in early_turn:  # unused or failed early work is cancelled, used work is done already
+                await early.close()
         if capture_trace or self.late_sources:
             if not isinstance(reranked_global_chunks, _RerankOutput):
                 reranked_global_chunks = _RerankOutput(reranked_global_chunks)
@@ -324,7 +347,7 @@ class StandRagPipeline:
             context, sources = "", []
 
         fewshots_for_prompt = [example for example, _score in selected_fewshots]
-        system_prompt = system_prompt_with_datetime(datetime.now())
+        system_prompt = system_prompt_with_datetime(question_time)
 
         def qa_prompt(context):
             user_prompt = prepare_prompt_for_question_answering(
@@ -334,6 +357,7 @@ class StandRagPipeline:
             )
             system = (with_route_rules(system_prompt, route, bool(context), authority=self.settings.source_authority)
                       if route is not None else system_prompt)
+            system = with_evidence_policy(system, self.settings.qa_evidence_policy, route, bool(context))
             return [{"role": "system", "content": system}, {"role": "user", "content": user_prompt}]
 
         qa_messages = qa_prompt(context)
@@ -384,13 +408,16 @@ class StandRagPipeline:
                     "rerank_sampling": asdict(RerankSampling()),
                     "generation_sampling_defaults": asdict(QaSampling()),
                     "generation_max_tokens": completion_tokens,
+                    "rerank_question": rerank_question,
+                    "rerank_dialogue_history": rerank_history,
                     "final_context_budget_chars": context_budget,
                     "settings": {name: getattr(self.settings, name) for name in (
                         "max_rewrite_queries", "rerank_candidates_per_query", "rerank_top_k", "rerank_weight",
                         "max_context_chunks", "max_qa_prompt_chars", "graph_source_documents", "graph_max_elements",
                         "source_urls_per_document", "min_document_quality", "rerank_candidates_per_page",
                         "source_attribution", "source_attribution_threshold", "max_sources", "turn_routing",
-                        "source_prior_weight", "source_authority",
+                        "source_prior_weight", "source_authority", "prompt_timezone", "rerank_question_source",
+                        "qa_evidence_policy",
                     )},
                 },
             )
@@ -451,16 +478,36 @@ class StandRagPipeline:
                              for unit in document_units(document, texts))
         return units
 
-    async def finalize_sources(self, outcome: PipelineOutcome, answer: str) -> list[dict[str, str]]:
-        """Replace the context documents by the pages the answer rests on (no-op without a scorer)."""
+    def start_source_attribution(self, outcome: PipelineOutcome) -> StreamingAttribution | None:
+        """Source attribution that scores the answer's sentences while it streams (feed it the text so far, pass it
+        to finalize_sources): the same sources as attributing the whole answer at the end. Enabled explicitly with
+        STREAM_SOURCE_ATTRIBUTION, and needs a scorer."""
+        if not self.settings.stream_source_attribution or self.source_scorer is None:
+            return None
+        try:
+            units = [EvidenceUnit(**unit) for unit in outcome.evidence]
+        except Exception as exc:  # finalize_sources reports it as before
+            logger.warning("source_attribution_units_failed", error=repr(exc))
+            return None
+        return StreamingAttribution(units, self.source_scorer, self.settings.source_attribution_threshold,
+                                    prior_weight=self.settings.source_prior_weight)
+
+    async def finalize_sources(self, outcome: PipelineOutcome, answer: str,
+                               streaming: StreamingAttribution | None = None) -> list[dict[str, str]]:
+        """Replace the context documents by the pages the answer rests on (no-op without a scorer). ``streaming``:
+        the attribution fed while the answer streamed (start_source_attribution); the result is the same."""
         if self.source_scorer is None:
             return outcome.sources
         started = time.perf_counter()
         counts: dict[str, Any] = {}
         try:
-            units = [EvidenceUnit(**unit) for unit in outcome.evidence]
-            scored = await attribute(answer, units, self.source_scorer, self.settings.source_attribution_threshold,
-                                     prior_weight=self.settings.source_prior_weight, stats=counts)
+            if streaming is not None:
+                scored = await streaming.finish(answer, stats=counts)
+            else:
+                units = [EvidenceUnit(**unit) for unit in outcome.evidence]
+                scored = await attribute(answer, units, self.source_scorer,
+                                         self.settings.source_attribution_threshold,
+                                         prior_weight=self.settings.source_prior_weight, stats=counts)
             outcome.sources = to_sources(scored, self.settings.max_sources)
             if outcome.trace is not None:
                 outcome.trace["source_attribution"] = [
@@ -470,6 +517,9 @@ class StandRagPipeline:
             logger.warning("source_attribution_failed", error=repr(exc))
             outcome.sources = []
             counts["failed"] = True
+        finally:
+            if streaming is not None:
+                await streaming.aclose()
         _record_attribution_timings(outcome, {"attribution_ms": _elapsed_ms(started), **counts})
         return outcome.sources
 
@@ -501,7 +551,6 @@ class StandRagPipeline:
             else:
                 response = await self.llm_router.chat_completion(**call)
                 choice = response["choices"][0]
-                answer = str(choice["message"]["content"]).strip()
                 outcome.trace["generation"] = {
                     "finish_reason": choice.get("finish_reason"),
                     "usage": deepcopy(response.get("usage")),
@@ -510,6 +559,7 @@ class StandRagPipeline:
                     "message": deepcopy(choice["message"]),
                     "sampling": generation_sampling,
                 }
+                answer = completion_text(response)
         logger.info(
             "generation_completed",
             model_id=runtime.generation.model_id,
@@ -662,8 +712,30 @@ class StandRagPipeline:
         )
         return capped
 
-    async def _retrieve(self, search_queries: list[str]) -> list[dict[str, Any]]:
+    async def _retrieve(self, search_queries: list[str], early: Any = None) -> list[dict[str, Any]]:
         raise NotImplementedError("Use RaguRagPipeline for graph retrieval.")
+
+    def _rerank_inputs(
+        self, question: str, resolved: str, dialogue_history: str, *, has_memory: bool
+    ) -> tuple[str, str]:
+        if self.settings.rerank_question_source == "resolved":
+            return resolved, "" if has_memory else dialogue_history
+        if question == resolved:
+            return question, dialogue_history
+        combined = (
+            "Исходная реплика пользователя (сохраните все её просьбы и ограничения):\n"
+            + question
+            + "\n\nСамостоятельная формулировка для разрешения ссылок по истории "
+            "(уточняет исходную реплику, но не заменяет её):\n"
+            + resolved
+        )
+        return combined, dialogue_history
+
+    def _start_early_query(
+        self, question: str, dialogue_history: str, runtime: ModelRuntime, *, rerank_question: str | None = None
+    ) -> Any:
+        """EARLY_FIRST_QUERY hook: the graph pipeline starts retrieval and optional scores; here nothing."""
+        return None
 
     async def _run_retrieval(self, fn: Callable[..., Any], *args: Any) -> Any:
         """Run a blocking retrieval call on the dedicated executor when present,
@@ -686,6 +758,7 @@ class StandRagPipeline:
         user_question: str,
         dialogue_history: str,
         runtime: ModelRuntime,
+        early: Any = None,
     ) -> list[tuple[int, float]]:
         # Per-query coverage (meno_stand research model): each rewrite query keeps
         # its OWN top-`rerank_top_k` after reranking, and the per-query winners are
@@ -764,12 +837,12 @@ class StandRagPipeline:
         order = self.settings.rerank_prompt_order
         prompt = build_prompt(
             user_question, dialogue_history, cur_doc, self.resources.abbreviations, self.resources.stemmer,
-            order=order,
+            order=order, abbreviation_cache=getattr(self.resources, "abbreviation_tokens", None),
         )
         if not await self._prompt_fits(prompt, runtime, 20, chat_template_kwargs={"enable_thinking": False}):
             overhead = build_prompt(
                 user_question, dialogue_history, " ", self.resources.abbreviations, self.resources.stemmer,
-                order=order,
+                order=order, abbreviation_cache=getattr(self.resources, "abbreviation_tokens", None),
             )
             if not await self._prompt_fits(overhead, runtime, 20, chat_template_kwargs={"enable_thinking": False}):
                 raise ValueError("Вопрос, история и инструкции реранкера не помещаются в контекст модели.")
@@ -795,16 +868,18 @@ class StandRagPipeline:
         # vLLM forwards `chat_template_kwargs` into the jinja renderer. Critical
         # for rerank: with `max_tokens=1` a Qwen3 model otherwise spends its
         # only token on `<think>` and never emits a classifier digit, leaving
-        # the response with no "0"/"1"/"2" in top_logprobs and `score_from_logprobs`
-        # returning 0.0 for every chunk — exactly the "Отобрано топ-0" symptom
-        # observed on the stand with `qwen3-30b-fp16`.
+        # the response with no "0"/"1"/"2" in top_logprobs. The parser rejects
+        # that response and triggers the JSON fallback below.
         #
         # Harmless for models without thinking — unknown chat_template_kwargs
         # are ignored by their templates. For non-Qwen3 thinking models that
         # don't recognise the flag (e.g. DeepSeek-R1), this won't help and the
         # JSON fallback below catches the failure to keep rerank working.
+        guidance: dict[str, Any] = {"guided_choice": ["0", "1", "2"]}
+        if runtime.provider == "vllm" and self.settings.rerank_guidance == "structured":
+            guidance = {"structured_outputs": {"choice": ["0", "1", "2"]}}
         rerank_extra_body: dict[str, Any] = {
-            "guided_choice": ["0", "1", "2"],
+            **guidance,
             "chat_template_kwargs": {"enable_thinking": False},
             **self._rerank_priority(runtime),
         }
@@ -844,6 +919,7 @@ class StandRagPipeline:
                         self.resources.stemmer,
                         is_json=True,
                         order=order,
+                        abbreviation_cache=getattr(self.resources, "abbreviation_tokens", None),
                     ),
                     stage=StageName.RERANK,
                     max_tokens=20,
@@ -870,12 +946,12 @@ class StandRagPipeline:
         tokenizer = getattr(self.llm_router, "tokenize_messages", None)
         if tokenizer is None:
             return True
-        # A token covers at least one character, so once the model's context length is known a prompt that is
-        # shorter in characters (with a margin for the chat template) fits without asking the tokenizer — the
-        # reranker used to make one tokenizer round trip per candidate.
+        # Byte-fallback tokens can split a single Unicode character. UTF-8 bytes,
+        # with the template margin, bound byte-based tokenizers conservatively;
+        # counting characters would wrongly skip tokenization for rare scripts.
         known = getattr(self, "_context_lengths", {}).get((runtime.base_url, runtime.model_id))
-        chars = sum(len(str(message.get("content") or "")) for message in messages)
-        if known is not None and chars + completion_tokens + 32 + PROMPT_TEMPLATE_MARGIN_TOKENS <= known:
+        byte_count = sum(len(str(message.get("content") or "").encode("utf-8")) for message in messages)
+        if known is not None and byte_count + completion_tokens + 32 + PROMPT_TEMPLATE_MARGIN_TOKENS <= known:
             return True
         budget = await tokenizer(runtime=runtime, messages=messages, chat_template_kwargs=chat_template_kwargs)
         if budget is None:

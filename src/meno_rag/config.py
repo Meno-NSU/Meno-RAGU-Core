@@ -2,6 +2,7 @@ import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,6 +19,16 @@ class Settings(BaseSettings):
     # this to false wherever that does not hold.
     log_content_previews: bool = Field(default=True, validation_alias="LOG_CONTENT_PREVIEWS")
     app_env: str = Field(default="development", validation_alias=AliasChoices("APP_ENV", "ENVIRONMENT"))
+    prompt_timezone: str = Field(default="Asia/Novosibirsk", validation_alias="PROMPT_TIMEZONE")
+
+    @field_validator("prompt_timezone")
+    @classmethod
+    def _check_prompt_timezone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except (ValueError, ZoneInfoNotFoundError) as exc:
+            raise ValueError("PROMPT_TIMEZONE must name an available IANA timezone.") from exc
+        return value
 
     database_url: str = Field(
         default="sqlite+aiosqlite:///./var/meno_rag.sqlite3",
@@ -145,6 +156,13 @@ class Settings(BaseSettings):
     # value (with that policy) lets the turn analysis, the rewrite and the answers of RAGU and Menon go before the
     # ~85 rerank prompts of a turn (speed audit of 19.11, П3); it changes the order of work, not its results.
     rerank_priority: int = Field(default=0, validation_alias="RERANK_PRIORITY")
+    # The standalone question is the first search query: start its retrieval during the rewrite and reuse it
+    # in the normal retrieval stage. EARLY_RERANK also lets its LLM scores overlap the rewrite. Both only change
+    # scheduling; the question, prompts, candidate pools and score reuse remain the same.
+    early_first_query: bool = Field(default=False, validation_alias="EARLY_FIRST_QUERY")
+    # Only effective with EARLY_FIRST_QUERY. False overlaps graph retrieval alone; LLM scoring starts in the
+    # normal rerank stage, so early LLM scoring does not compete with the rewrite for model capacity.
+    early_rerank: bool = Field(default=True, validation_alias="EARLY_RERANK")
     generation_concurrency: int = Field(default=32, validation_alias="GENERATION_CONCURRENCY")
     embed_concurrency: int = Field(default=8, validation_alias="EMBED_CONCURRENCY")
     # BM25 (lexical) retrieval runs in threads. Bound it so a burst of concurrent
@@ -258,6 +276,7 @@ class Settings(BaseSettings):
     engine_rerank_top_k: int = Field(default=30, gt=0, validation_alias="ENGINE_RERANK_TOP_K")
     graph_timeout_seconds: float = Field(default=120.0, gt=0, validation_alias="GRAPH_TIMEOUT_SECONDS")
     graph_related_candidates: int = Field(default=200, ge=0, validation_alias="GRAPH_RELATED_CANDIDATES")
+    graph_hub_min_edges: int = Field(default=0, ge=0, validation_alias="GRAPH_HUB_MIN_EDGES")
     # The fusion of the dense and BM25 lists in every hybrid vector search (entities, relations, chunks): "rrfw" is
     # RRF with every rank tie broken in favour of the dense list (BM25 weight 1 - 1e-4); "rrf" is Qdrant's default
     # RRF, whose ties come back in arbitrary order, so a repeated query got another LLM-rerank pool for 35% of 324
@@ -285,6 +304,10 @@ class Settings(BaseSettings):
     # The LLM reranker (Menon 1.0's stand: the model labels every candidate 0/1/2). Off: the engine's cross-encoder
     # score is the relevance, as in Menon 1.1, and the floors above apply to it.
     llm_rerank: bool = Field(default=True, validation_alias="LLM_RERANK")
+    # Explicit vLLM choice protocol: legacy keeps guided_choice; structured uses structured_outputs.choice.
+    # Verify support on every possible endpoint before enabling structured; never infer a server version.
+    # Other providers retain their existing request format. This setting changes the benchmark fingerprint.
+    rerank_guidance: Literal["legacy", "structured"] = Field(default="legacy", validation_alias="RERANK_GUIDANCE")
     # The order of the LLM reranker's prompt sections (stand/rerank.py build_prompt). "legacy": the abbreviation
     # dictionary, the document, the history, the question, the instruction, as always. "question_first": the same
     # sections, the history, question and instruction first, so the part all candidates of a turn share is computed
@@ -293,6 +316,9 @@ class Settings(BaseSettings):
     # the "legacy" order twice (replays R1/R2) before turning it on.
     rerank_prompt_order: Literal["legacy", "question_first"] = Field(
         default="legacy", validation_alias="RERANK_PROMPT_ORDER"
+    )
+    rerank_question_source: Literal["resolved", "original_resolved"] = Field(
+        default="resolved", validation_alias="RERANK_QUESTION_SOURCE"
     )
     graph_min_rerank_score: float = Field(default=0.0, ge=0, le=1, validation_alias="GRAPH_MIN_RERANK_SCORE")
     # Links shown per document: a summary of several pages carries up to dozens of URLs under one title.
@@ -304,6 +330,7 @@ class Settings(BaseSettings):
     # teacher's record: over a hundred parts under one link) otherwise fills the pool and no other page is reranked.
     rerank_candidates_per_page: int = Field(default=6, ge=0, validation_alias="RERANK_CANDIDATES_PER_PAGE")
     source_attribution: bool = Field(default=True, validation_alias="SOURCE_ATTRIBUTION")
+    stream_source_attribution: bool = Field(default=False, validation_alias="STREAM_SOURCE_ATTRIBUTION")
     # The kind of every turn, as in Menon 1.1 (stand/routing.py): general questions may use general knowledge,
     # small talk and turns about the dialogue skip the search. Off: every turn is searched and answered from documents.
     turn_routing: bool = Field(default=True, validation_alias="TURN_ROUTING")
@@ -323,6 +350,9 @@ class Settings(BaseSettings):
     # context chunks; this order at 1 with the KB's quality scale 253, posts 14.5%, news 4.9% (at 1.5: 253, 13.1%, 4.2%).
     source_prior_weight: float = Field(default=1.0, ge=0, validation_alias="SOURCE_PRIOR_WEIGHT")
     source_authority: bool = Field(default=True, validation_alias="SOURCE_AUTHORITY")
+    qa_evidence_policy: Literal["legacy", "document_first"] = Field(
+        default="legacy", validation_alias="QA_EVIDENCE_POLICY"
+    )
     source_attribution_threshold: float = Field(default=0.5, ge=0, le=1, validation_alias="SOURCE_ATTRIBUTION_THRESHOLD")
     max_sources: int = Field(default=5, ge=1, validation_alias="MAX_SOURCES")
 

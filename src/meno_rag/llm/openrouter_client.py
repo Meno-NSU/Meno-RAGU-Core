@@ -14,6 +14,7 @@ from typing import Any
 import httpx
 import structlog
 
+from meno_rag.llm.client import completion_text
 from meno_rag.llm.openrouter_errors import (
     OpenRouterBadRequestError,
     OpenRouterRateLimitError,
@@ -77,7 +78,7 @@ class OpenRouterClient:
 
     async def chat_completion_text(self, **kwargs: Any) -> str:
         data = await self.chat_completion(stream=False, **kwargs)
-        return str(data["choices"][0]["message"]["content"]).strip()
+        return completion_text(data)
 
     async def stream_chat_completion(
         self,
