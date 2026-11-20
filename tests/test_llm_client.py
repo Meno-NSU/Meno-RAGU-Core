@@ -395,7 +395,15 @@ async def test_stream_with_explicit_finish_keeps_text_and_length_warning(monkeyp
     with capture_logs() as logs:
         monkeypatch.setattr(client_module, "logger", structlog.get_logger(__name__))
         async with httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(200, content=content.encode()))) as http:
-            received = [part async for part in VLLMClient(http_client=http).stream_chat_completion(base_url="http://x/v1", model="m", messages=[])]
+            received = []
+            async def consume():
+                async for part in VLLMClient(http_client=http).stream_chat_completion(base_url="http://x/v1", model="m", messages=[]):
+                    received.append(part)
+            if finish == "length":
+                with pytest.raises(RuntimeError, match="finish_reason=length"):
+                    await consume()
+            else:
+                await consume()
     assert received == ["hello ", "world"]
     assert bool([entry for entry in logs if entry["event"] == "generation_truncated"]) == (finish == "length")
 

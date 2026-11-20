@@ -15,7 +15,10 @@ logger = structlog.get_logger(__name__)
 
 
 def completion_text(data: dict[str, Any]) -> str:
-    content = data["choices"][0]["message"].get("content")
+    choice = data["choices"][0]
+    if choice.get("finish_reason") == "length":
+        raise RuntimeError("LLM completion was truncated (finish_reason=length).")
+    content = choice["message"].get("content")
     if not isinstance(content, str) or not content.strip():
         raise ValueError("LLM completion contains no non-empty text content.")
     return content.strip()
@@ -196,6 +199,8 @@ class VLLMClient:
         _log_vllm_stream_completion(
             model=model, base_url=base_url, content="".join(accumulated), finish_reason=finish_reason
         )
+        if finish_reason == "length":
+            raise RuntimeError("Поток vLLM усечён (finish_reason=length).")
 
     def _headers(self, base_url: str = "") -> dict[str, str]:
         key = endpoint_api_key(base_url, self.api_key, self.endpoint_api_keys)

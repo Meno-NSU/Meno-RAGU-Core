@@ -1,5 +1,7 @@
 import json
+from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -441,3 +443,56 @@ def test_the_sources_are_attributed_from_the_text_streamed_so_far(monkeypatch):
     assert late.feed.cancelled  # finished or not, nothing is left running after the stream
     assert [p for n, p in _events(r.text) if n == "sources"] == [
         {"sources": [{"document_title": "Doc A", "source_url": "https://nsu.ru/a"}]}]
+
+
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("finish", ["stop", "length"])
+def test_actual_client_truncation_cannot_emit_success_or_persist(monkeypatch, stream, finish):
+    from meno_rag.llm.client import VLLMClient
+
+    main_mod = _client(monkeypatch)
+    persist = AsyncMock()
+    monkeypatch.setattr(main_mod, "_persist_success", persist)
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        if json.loads(request.content).get("stream"):
+            body = ('data: {"choices":[{"delta":{"content":"partial"}}]}\n\n'
+                    f'data: {{"choices":[{{"delta":{{}},"finish_reason":"{finish}"}}]}}\n\n'
+                    'data: [DONE]\n\n')
+            return httpx.Response(200, content=body.encode())
+        return httpx.Response(200, json={"choices": [{"message": {"content": "partial"}, "finish_reason": finish}]})
+
+    class ClientPipeline(_Pipeline):
+        async def stream_text(self, **kwargs):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+                async for part in VLLMClient(http_client=http).stream_chat_completion(base_url="http://x/v1", model="m", messages=[]):
+                    yield part
+
+        async def generate_text(self, **kwargs):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+                return await VLLMClient(http_client=http).chat_completion_text(base_url="http://x/v1", model="m", messages=[])
+
+    with TestClient(main_mod.app) as client:
+        client.app.state.pipeline = ClientPipeline()
+        response = client.post("/v1/chat/completions", json={"model": "m", "messages": [{"role": "user", "content": "q"}], "stream": stream})
+    assert len(requests) == 1
+    if finish == "stop":
+        persist.assert_awaited_once()
+        if stream:
+            payloads = [json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ") and line != "data: [DONE]"]
+            assert any(choice.get("finish_reason") == "stop" for payload in payloads for choice in payload.get("choices", []))
+        else:
+            assert response.json()["choices"][0]["message"]["content"] == "partial"
+    else:
+        persist.assert_not_awaited()
+        if stream:
+            assert any(name == "error" for name, _ in _events(response.text))
+            payloads = [json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ") and line != "data: [DONE]"]
+            finishes = [choice.get("finish_reason") for payload in payloads for choice in payload.get("choices", [])]
+            assert "stop" not in finishes
+            assert "error" in finishes
+        else:
+            assert response.status_code >= 400
+            assert "choices" not in response.json()
