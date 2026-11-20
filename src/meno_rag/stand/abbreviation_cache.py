@@ -68,9 +68,9 @@ class AbbreviationTokenCache:
 
     def find(self, document: str, history: str, question: str,
              abbreviations: dict[str, dict[str, str | list[str]]]) -> str:
-        document_tokens = self.tokens(document)
-        common_tokens = self.tokens(history + "\n\n" + question)
-        selected = (document_tokens.raw | document_tokens.stemmed | common_tokens.raw | common_tokens.stemmed)
+        source = document + "\n\n" + history + "\n\n" + question
+        tokens = self.tokens(source)
+        selected = tokens.raw | tokens.stemmed
         return _format_abbreviations(selected.intersection(abbreviations), abbreviations)
 
     def stats(self) -> dict[str, int]:

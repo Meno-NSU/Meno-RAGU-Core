@@ -14,7 +14,7 @@ ABBR = {"нгу": {"abbreviation": "НГУ", "explanation": ["Новосибир
 
 
 @pytest.mark.parametrize("stemmer", [None, SnowballStemmer("russian")])
-def test_fragment_union_matches_original_at_token_boundaries(stemmer):
+def test_complete_input_matches_original_at_token_boundaries(stemmer):
     cache = AbbreviationTokenCache(stemmer)
     fragments = ["", "НГУ", "ФИТ", "музея", "ВК", "НГУ-", "-фит", "1.", "2", "a@example.ru", "ё\u0308", "музеи\n", "<a>", "нгу/фит"]
     for document, history, question in product(fragments, repeat=3):
@@ -84,3 +84,27 @@ def test_cache_belongs_to_one_resource_instance_and_its_stemmer():
     assert first.abbreviation_tokens.stemmer is first.stemmer
     first.abbreviation_tokens.tokens("НГУ")
     assert second.abbreviation_tokens.stats()["entries"] == 0
+
+
+@pytest.mark.parametrize("stemmer", [None, SnowballStemmer("russian")])
+@pytest.mark.parametrize("order", ["legacy", "question_first"])
+@pytest.mark.parametrize("is_json", [False, True])
+def test_ordinal_across_document_boundary_keeps_exact_prompt(stemmer, order, is_json):
+    from meno_rag.stand.rerank import build_prompt
+
+    dictionary = {"10": {"abbreviation": "10", "explanation": ["Synthetic boundary alias"]}}
+    cache = AbbreviationTokenCache(stemmer)
+    args = ("1", "", "10.", dictionary, stemmer)
+    original = build_prompt(*args, order=order, is_json=is_json)
+    assert "ABBREVIATION DICTIONARY" not in original[-1]["content"]
+    assert build_prompt(*args, order=order, is_json=is_json, abbreviation_cache=cache) == original
+
+
+def test_complete_input_cache_reuses_only_the_same_full_text():
+    cache = AbbreviationTokenCache(None)
+    cache.find("document", "history", "question", {})
+    assert cache.stats()["misses"] == 1
+    cache.find("document", "history", "question", {})
+    assert cache.stats()["hits"] == 1
+    cache.find("document", "another history", "question", {})
+    assert cache.stats()["misses"] == 2
